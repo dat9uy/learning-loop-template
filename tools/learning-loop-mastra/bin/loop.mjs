@@ -14,6 +14,7 @@
 // Usage:
 //   node bin/loop.mjs list
 //   node bin/loop.mjs <tool> '<json-args>'
+//   node bin/loop.mjs <tool> --args-file <path>   # read JSON args from a file
 //   node bin/loop.mjs <tool> --schema    # pull the normalized input schema
 //
 // Exit codes (repo convention per validate-registry-refs.js:240-274):
@@ -186,6 +187,59 @@ function parseToolDispatch(subcommand, jsonArgs) {
   return { kind: "tool", tool: subcommand, jsonArgs };
 }
 
+// Read the JSON payload file. Mirrors the inline path: anything other
+// than a clean UTF-8 read is a UsageError (exit 2) so the agent sees a
+// caller-side problem, not a handler error. We do not print file
+// contents to keep error messages free of payload leakage.
+function loadArgsFile(path) {
+  let content;
+  try {
+    content = readFileSync(path, "utf8");
+  } catch (err) {
+    throw new UsageError(`cannot read args file ${path}: ${err.code ?? err.message}`);
+  }
+  if (content.trim() === "") {
+    throw new UsageError(`empty args file: ${path}`);
+  }
+  return content;
+}
+
+// Validate the operands of `<tool> --args-file <path>`. Kept under
+// cyclomatic 4 (CRAP 20 at 0% subprocess coverage) like main() — the
+// file form is exercised via subprocess tests fallow cannot attribute.
+function requireArgsFilePath(subcommand, path, argc) {
+  if (!path) {
+    throw new UsageError(`usage: loop.mjs ${subcommand} --args-file <path>`);
+  }
+  if (argc > 5) {
+    throw new UsageError(`too many arguments for --args-file; usage: loop.mjs <tool> --args-file <path>`);
+  }
+  // A path that looks like a flag (e.g. `--args-file --schema`) is a
+  // caller mistake, not a file to open — reject it explicitly instead of
+  // surfacing a confusing "cannot read" for a file named like the flag.
+  if (path.startsWith("--")) {
+    throw new UsageError(`--args-file path must not be a flag; usage: loop.mjs <tool> --args-file <path>`);
+  }
+  return path;
+}
+
+// Resolve the file-backed invocation shape. Accepts exactly:
+//   loop.mjs <tool> --args-file <path>
+// Rejects everything else (extra args, missing path, unknown tool,
+// flag-shaped path) with a usage error so callers never see a silent
+// dispatch — one accepted shape keeps the contract small.
+function resolveArgsFileAction(argv) {
+  const subcommand = argv[2];
+  if (argv[3] !== "--args-file") {
+    return null;
+  }
+  const path = requireArgsFilePath(subcommand, argv[4], argv.length);
+  if (!CLI_TOOLS.has(subcommand)) {
+    throw new UsageError(`unknown tool: ${subcommand}`);
+  }
+  return { kind: "args-file", tool: subcommand, path };
+}
+
 async function main() {
   const [, , subcommand, jsonArgs] = process.argv;
   // Plain `if` chain (not switch + ??): fallow scores cyclomatic per
@@ -200,6 +254,16 @@ async function main() {
   const schemaAction = parseSchemaDispatch(subcommand, jsonArgs);
   if (schemaAction) {
     await runSchema(schemaAction.tool);
+    return;
+  }
+  // File-backed form. Resolved before parseToolDispatch so it takes
+  // precedence over the inline JSON branch.
+  const argsFileAction = resolveArgsFileAction(process.argv);
+  if (argsFileAction) {
+    pinRuntimeIdAtBoot();
+    const content = loadArgsFile(argsFileAction.path);
+    const result = await runTool(argsFileAction.tool, content);
+    process.stdout.write(JSON.stringify(result) + "\n");
     return;
   }
   // parseToolDispatch throws UsageError on missing args, so reaching here

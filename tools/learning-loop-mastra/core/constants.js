@@ -32,6 +32,22 @@ export const OBSERVATION_STALENESS_WINDOW_MS =
  *
  * Overridable via `META_STATE_BATCH_LIMIT` env var for stress tests.
  */
+/**
+ * Single source of truth for the finding-entry `category` / `severity`
+ * enums. Consumed by the zod schema in `core/meta-state.js` (which
+ * re-exports the categories for backward compat) and by the SessionStart
+ * transport banner (`hooks/universal/session-start-inject-discoverability.cjs`),
+ * which inlines the values into the write-tool sketch — centralizing here
+ * means a new category or severity cannot silently leave the banner stale.
+ */
+export const META_STATE_FINDING_CATEGORIES = [
+  "gate-logic-bug", "record-repair-gap", "schema-drift",
+  "mcp-tool-missing", "budget-check",
+  "loop-anti-pattern",
+];
+
+export const META_STATE_FINDING_SEVERITIES = ["warning", "escalate"];
+
 export const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 500;
 
 /**

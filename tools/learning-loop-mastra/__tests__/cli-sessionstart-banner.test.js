@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { CLI_READ_TOOLS } from "../core/cli-tools.js";
+import { META_STATE_FINDING_CATEGORIES, META_STATE_FINDING_SEVERITIES } from "../core/constants.js";
 import { BANNER_BYTES_BUDGET } from "./banner-budget.js";
 
 const require = createRequire(import.meta.url);
@@ -68,6 +69,12 @@ test("transport banner with recordsViaCli adds write-tool sketches (one-liner pe
   // Recovery policy + write-tool sketches are surfaced.
   assert.ok(banner.includes("InternalError"), "banner must name the InternalError shape");
   assert.ok(banner.includes("Write-tool arg sketches"), "banner must label the sketches section");
+  // The file-backed dispatch form must be advertised so agents with
+  // gate-sensitive or shell-risky payloads know the alternate shape.
+  assert.ok(
+    banner.includes("--args-file <path>"),
+    "records-via-cli banner must advertise the --args-file form",
+  );
   // Spot-check a few write tools are present in the sketches section.
   for (const writeTool of [
     "meta_state_report",
@@ -82,6 +89,33 @@ test("transport banner with recordsViaCli adds write-tool sketches (one-liner pe
   // No full schema re-injection: the banner must not embed a JSON
   // schema's `$schema` key (it would mean a schema dump leaked in).
   assert.ok(!banner.includes('"$schema"'), `banner must not embed a JSON schema; got: ${banner.slice(0, 500)}`);
+});
+
+test("--args-file dispatch form is covered in the banner footer", () => {
+  const banner = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
+  assert.match(
+    banner,
+    /loop\.mjs <tool> --args-file <path>/,
+    "records-via-cli banner must show the inline JSON + file-form invocation guidance",
+  );
+});
+
+test("meta_state_report sketch inlines the required category enum values", () => {
+  const banner = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
+  // The sketch is built from the same constants the zod schema enforces
+  // (core/constants.js), so this test locks banner ≡ schema rather than a
+  // hand-copied literal list.
+  for (const value of META_STATE_FINDING_CATEGORIES) {
+    assert.ok(
+      banner.includes(value),
+      `meta_state_report sketch must list category value "${value}"`,
+    );
+  }
+  // The severity enum is also enforced.
+  assert.ok(
+    banner.includes(`severity:${META_STATE_FINDING_SEVERITIES.join("|")}`),
+    "sketch must list the severity enum",
+  );
 });
 
 test("transport banner interpolates the pinned LOOP_SURFACE value so the agent need not guess", () => {

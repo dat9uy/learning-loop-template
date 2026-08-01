@@ -21,21 +21,32 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { CLI_READ_TOOLS, CLI_WRITE_TOOLS } = require("../../core/cli-tools.js");
+const { META_STATE_FINDING_CATEGORIES, META_STATE_FINDING_SEVERITIES } = require("../../core/constants.js");
 
 // write-tool one-line arg sketches for the
 // SessionStart banner. Each entry lists the top-level required keys (no `?`)
 // plus a curated subset of optional ones (trailing `?`); the agent composes
 // the JSON string from a sketch and pulls the full shape (enums, nested
-// objects) on demand via `loop.mjs <tool> --schema`. Keep this table aligned
-// with the actual schema: `cli-write-hint-sketch-drift.test.cjs` imports this
-// table and asserts, per write tool, that the sketch's required (no-`?`)
-// keys exactly equal the schema's `required` top-level keys and that every
-// `?` key is a real optional schema property — so a schema change that adds
-// or renames a required key breaks the test, not the agent's first write.
-// The fallback (no schema access) is the harness failing closed — empty
-// sketches.
+// objects) on demand via `loop.mjs <tool> --schema`. A required key may
+// include a `key:enum1|enum2|...` annotation so the enforced enum values
+// are visible in the banner without forcing a `--schema` round-trip. The
+// drift test parser (`cli-write-hint-sketch-drift.test.cjs`) strips the
+// annotation via `key.split(":")[0]` before extracting the key name, so an
+// annotation does not poison the required-keys check. Keep the table
+// aligned with the actual schema: the drift test asserts, per write tool,
+// that the sketch's required (no-`?`) keys exactly equal the schema's
+// `required` top-level keys and that every `?` key is a real optional
+// schema property — so a schema change that adds or renames a required
+// key breaks the test, not the agent's first write. The fallback (no
+// schema access) is the harness failing closed — empty sketches.
 const WRITE_TOOL_SKETCHES = {
-  meta_state_report: "{category,severity,affected_system,description}",
+  // Required-enum annotations live after the key with a `:` separator,
+  // built from META_STATE_FINDING_CATEGORIES / META_STATE_FINDING_SEVERITIES
+  // (core/constants.js) so a schema enum change propagates to the banner
+  // instead of leaving a hand-copied list stale. The drift-test parser
+  // strips the annotation before extracting the key name, so the
+  // annotation does not poison the required-keys check.
+  meta_state_report: `{category:${META_STATE_FINDING_CATEGORIES.join("|")},severity:${META_STATE_FINDING_SEVERITIES.join("|")},affected_system,description}`,
   meta_state_resolve: "{id,resolution}",
   meta_state_promote_rule: "{id,rule_id,enforcement,pattern_type,pattern,hint_text?,hint_suggestion?,hint_order?,hint_slug?}",
   meta_state_log_change: "{change_dimension,change_target,change_diff,reason}",
@@ -108,6 +119,7 @@ function buildRecordsViaCliLines(surface) {
   const lines = [
     "  Writes also ride the CLI: mastra_<write> MCP tools are NOT registered either.",
     "  Exit 0 → result JSON on stdout. Exit 1 → structured JSON on stderr (recognized rejection: {error,code,reason}; InternalError: {error:'InternalError',internal:true}). Exit 2 → usage/caller-config (human-readable).",
+    "  Invoke with inline JSON: `loop.mjs <tool> '<json-args>'`. Read JSON from a file when the payload is too large or shell-risky for argv: `loop.mjs <tool> --args-file <path>`. Schema enums (e.g. meta_state_report category) are inlined into the sketch; pull the full shape on demand via `loop.mjs <tool> --schema`.",
     "  Write-tool arg sketches (one-liner; full shape via `loop.mjs <tool> --schema`):",
   ];
   for (const tool of CLI_WRITE_TOOLS) {
