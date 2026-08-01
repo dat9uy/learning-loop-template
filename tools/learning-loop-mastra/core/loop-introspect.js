@@ -11,17 +11,16 @@ import {
   isBoundPath,
 } from "./change-log-bound-paths.js";
 import { resolveToolImportUrl } from "./manifest-loader.js";
-// Phase 2 (plans/260717-1826-unify-context-injection): the canonical hint
-// source is core/hint-registry.js. The frozen DISCOVERABILITY_HINTS /
-// PROCESS_HINTS consts that lived here (2026-06-12 → 2026-07-17) are deleted;
+// The canonical hint source is core/hint-registry.js. The frozen
+// DISCOVERABILITY_HINTS / PROCESS_HINTS consts that lived here are deleted;
 // the builders below are thin projections over the registry — same return
 // shape, same order, no call-site changes for loop_describe consumers.
 import { listHints, buildProcessView, resolveHintText } from "./hint-registry.js";
-// Plan 260730-0240-relationship-model-centralize-defer-drop: the relationship
-// model centralization makes `buildInverseIndexes` a thin re-export of the
-// graph module's canonical implementation. The 6 named maps are preserved
-// for backward compatibility; the only intentional change is the dual-field
-// `promoted_to_rule_inverse` dedup (2→1 ref, canonical `rule.origin`).
+// Relationship-model centralization: `buildInverseIndexes` is a thin
+// re-export of the graph module's canonical implementation. The 6 named
+// maps are preserved for backward compatibility; the only intentional
+// change is the dual-field `promoted_to_rule_inverse` dedup (2→1 ref,
+// canonical `rule.origin`).
 import { buildInverseIndexes } from "./entry/relationship-graph.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -119,7 +118,7 @@ function listAllMetaCategories() {
 /**
  * Return the operator-curated discoverability hints used by loop_describe
  * warm tier and the SessionStart hook. Back-compat projection over the
- * canonical registry (Phase 2 of plan 260717-1826-unify-context-injection).
+ * canonical registry (the hint-registry collapse).
  *
  * Returns a frozen array — preserved from the pre-Phase-2 contract.
  * Pure function — no I/O.
@@ -151,10 +150,9 @@ export function buildDiscoverabilityPointers() {
 
 /**
  * Return operator-curated process rules (agent behavior under operational
- * conditions). Phase 3 (plans/260717-1826-unify-context-injection): the
- * 8 rule-derived process entries resolve `text` from `rule.hint_text` at
- * call time. The 2 standalone rows (pnpm-test-discipline + file-edit-drift-
- * and-fingerprints) keep inline text.
+ * conditions). The 8 rule-derived process entries resolve `text` from
+ * `rule.hint_text` at call time. The 2 standalone rows (pnpm-test-discipline
+ * + file-edit-drift-and-fingerprints) keep inline text.
  *
  * Skip semantics: a rule-derived entry whose rule is missing/inactive/
  * scope-filtered is DROPPED from the returned array (correct for injection).
@@ -214,8 +212,8 @@ export function buildProcessPointers({ rulesById } = {} = {}) {
 }
 
 /**
- * Build the Rec 10 (plan 260704-0301-stale-findings-dispatch-handle Phase 3)
- * session-start surfacing: a bounded top-5 list of stale dispatch candidates
+ * Build the Rec 10 session-start surfacing: a bounded top-5 list of stale
+ * dispatch candidates
  * (non-empty evidence_code_ref, severity !== "escalate", no ledger_ref,
  * non-terminal) + a list of orphan findings (INC-10: reported/active findings
  * that have a `dispatch-<id>` ledger row but no `ledger_ref` back-pointer —
@@ -344,8 +342,8 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set(), fileIn
 }
 
 /**
- * Build the Rec 12 (plan 260708-1216-rec12-closed-loop, phase 3) change-log
- * gap-hints: a bounded top-5 list of branch-touched bound-artifact paths
+ * Build the Rec 12 change-log gap-hints: a bounded top-5 list of
+ * branch-touched bound-artifact paths
  * that no `meta_state_log_change` entry covers (advisory session-start
  * surfacing, NOT a gate).
  *
