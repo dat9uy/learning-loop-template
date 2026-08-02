@@ -21,6 +21,14 @@ superseded_by: plans/reports/investigation-260802-0152-meta-state-lifecycle-mode
 > settled and independent of that question; they can be revived from this plan once
 > the lifecycle model is tightened. P4 (reopens) will be re-scoped by the lifecycle
 > report's outcome.
+>
+> **REVIVED 2026-08-02** as `plans/260802-1606-recurrence-trigger-window/` after PR 109
+> shipped the lifecycle migration (`accepted` status, `reopens`/`cascade_from` writers
+> dropped, citation substrate). The revival source is
+> `plans/reports/investigation-260802-1606-recurrence-trigger-design-post-lifecycle.md`.
+> P1–P3 revive (P3's grace window collapsed to permanent-for-non-archived suppression
+> per a 5-persona predict); **P4 dissolves** entirely (file-index co-citation replaces
+> the reopens linkage — no code); P5 → P4 (renumbered).
 
 # recurrence-trigger-window
 
