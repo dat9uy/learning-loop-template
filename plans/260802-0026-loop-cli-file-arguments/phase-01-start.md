@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "File-backed CLI arguments and discoverability"
-status: pending
+status: completed
 priority: P1
 effort: "2-4h"
 dependencies: []
@@ -45,12 +45,12 @@ Extend argv dispatch only. A small resolver reads the file synchronously before 
 
 ## Success Criteria
 
-- [ ] Valid payload files produce the same JSON result as equivalent inline payloads.
-- [ ] Invalid file invocations exit 2 and do not emit handler success output.
-- [ ] Existing CLI contract tests stay green.
-- [ ] SessionStart banner advertises `--args-file` and all allowed report categories.
-- [ ] Banner remains under `BANNER_BYTES_BUDGET`.
-- [ ] Runtime-agnostic checklist passes.
+- [x] Valid payload files produce the same JSON result as equivalent inline payloads.
+- [x] Invalid file invocations exit 2 and do not emit handler success output.
+- [x] Existing CLI contract tests stay green.
+- [x] SessionStart banner advertises `--args-file` and all allowed report categories.
+- [x] Banner remains under `BANNER_BYTES_BUDGET`.
+- [x] Runtime-agnostic checklist passes.
 
 ## Risk Assessment
 

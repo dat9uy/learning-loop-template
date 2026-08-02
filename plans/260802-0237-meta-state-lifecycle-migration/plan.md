@@ -1,7 +1,7 @@
 ---
 title: "meta-state-lifecycle-migration"
 description: "Tighten the meta-state registry's lifecycle model: add an `accepted` finding status, collapse `superseded` into `resolved`, replace the bespoke relationship fields (consolidated_into/origin/supersedes) with one untyped `citation` kind, and drop `reopens`/`cascade_from` writers. Registry-wide refactor with phased, test-first migration."
-status: pending
+status: in-progress
 priority: P1
 effort: ""
 tags: [meta-state, lifecycle, status, citation, registry, schema]
@@ -130,7 +130,7 @@ with no live writers.
 
 | # | Phase | Status | Depends on |
 |---|-------|--------|------------|
-| 1 | [Phase 1: `accepted` status + terminal-set harmonization](./phase-01-accepted-status.md) | Pending | — |
+| 1 | [Phase 1: `accepted` status + terminal-set harmonization](./phase-01-accepted-status.md) | Completed | — |
 | 2 | [Phase 2: `citation` kind substrate](./phase-02-citation-substrate.md) | Pending | — |
 | 3 | [Phase 3: collapse `superseded` → `resolved` + citation](./phase-03-superseded-collapse.md) | Pending | 2 |
 | 4 | [Phase 4: migrate `origin` + `supersedes` to citations; retire `promoted_to_rule`](./phase-04-origin-supersedes-migration.md) | Pending | 2 |

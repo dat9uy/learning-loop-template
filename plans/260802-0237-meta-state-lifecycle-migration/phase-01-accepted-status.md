@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "accepted status + terminal-set harmonization"
-status: pending
+status: completed
 priority: P1
 effort: ""
 dependencies: []
@@ -104,16 +104,17 @@ status — a patch cannot flip it.
 
 ## Success Criteria
 
-- [ ] `accepted` parses on the finding schema and is terminal in all six
+- [x] `accepted` parses on the finding schema and is terminal in all six
       terminal-set copies (characterization test green).
-- [ ] `isOpen`/`isStaleView`/`deriveStatus` treat `accepted` as terminal.
-- [ ] `meta_state_accept` flips `open`→`accepted` (true-append); rejects
+- [x] `isOpen`/`isStaleView`/`deriveStatus` treat `accepted` as terminal.
+- [x] `meta_state_accept` flips `open`→`accepted` (true-append); rejects
       non-findings, already-accepted, and terminal findings.
-- [ ] `meta_state_resolve` rejects `accepted` (`already_terminal`);
+- [x] `meta_state_resolve` rejects `accepted` (`already_terminal`);
       `meta_state_archive` accepts `accepted`→`archived`.
-- [ ] `accepted` is distinct/filterable and not session-claimable.
+- [x] `accepted` is distinct/filterable and not session-claimable.
 - [ ] The open accepted-limitation finding(s) are migrated to `accepted`.
-- [ ] Focused + broadened test suites green.
+      *(migration script authored; dry-run + apply are operator-gated)*
+- [x] Focused + broadened test suites green.
 
 ## Risk Assessment
 
