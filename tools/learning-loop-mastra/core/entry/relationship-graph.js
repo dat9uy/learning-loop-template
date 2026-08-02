@@ -56,13 +56,30 @@ function parseConsolidates(cl) {
  */
 const CROSS_REFS = {
   finding: [
-    { field: "consolidated_into",  targetKind: "change-log", multi: false },
+    // Phase 3: `consolidated_into` collapsed into a citation row. The
+    // field stays `.optional()` on the schema (inert-historical; old
+    // version lines still parse) but is de-routed from `CROSS_REFS` so
+    // `forwardRefs`/`buildInverseIndexes` stop indexing it. The canonical
+    // consolidated edge now lives in `citations_inverse` (sourced from
+    // `meta_state_supersede` citation emissions, target=change-log,
+    // source=finding).
+    //
+    // Phase 4: `promoted_to_rule` (the legacy dual-field ghost-ref that
+    // mirrored `rule.origin`) is also retired. The canonical promotion
+    // edge is now the origin citation row emitted by
+    // `meta_state_promote_rule`. The field stays `.optional()` on the
+    // schema (inert-historical) but is no longer indexed.
     { field: "reopens",            targetKind: "finding",    multi: true  },
-    { field: "promoted_to_rule",   targetKind: "rule",       multi: false, legacy: true },
   ],
   "change-log": [
-    { field: "supersedes",         targetKind: "change-log", multi: false },
-    { field: "consolidates",       targetKind: "finding",    multi: true  },
+    // Phase 4: `supersedes` was de-routed from `CROSS_REFS`; the
+    // canonical change-log→change-log / change-log→rule supersession
+    // edge is now a citation row emitted by `meta_state_log_change`
+    // (and `meta_state_patch` for rule→rule). The field stays
+    // `.optional()` on the schema (inert-historical) but is no longer
+    // indexed. Phase 3 retired `consolidates` (the symmetric
+    // counterpart of `consolidated_into`) — both fields are
+    // inert-historical; the edge is sourced from `citations_inverse`.
   ],
   // Citation kind: the asserted-relationship carrier that replaces the
   // bespoke on-record fields consolidated_into/origin/supersedes/
@@ -78,8 +95,14 @@ const CROSS_REFS = {
     { field: "target",             targetKind: "any",        multi: false },
   ],
   rule: [
-    { field: "origin",             targetKind: "finding",    multi: false, canonicalPromotion: true },
-    { field: "supersedes",         targetKind: "rule",       multi: false },
+    // Phase 4: `origin` + `supersedes` de-routed from `CROSS_REFS`. The
+    // canonical promotion / supersession edges are now citation rows
+    // (`source:rule, target:finding, rationale:"origin"` /
+    // `source:rule, target:prior-rule, rationale:"supersedes"`). The
+    // fields stay `.optional()` on the schema (inert-historical; old
+    // version lines still parse) but are no longer indexed by the
+    // inverse maps. The promoted_to_rule ghost-ref retired with origin
+    // (Phase 4 follow-through).
     // red-team R4/R10: `applies_to_resolution` is `z.string()` (not
     // `entryIdRefArray`); its real contract is "finding id OR a determinism-
     // checklist pattern". RI-EXEMPT; forwardOnly (no inverse map). The
@@ -136,14 +159,10 @@ function kindForId(id, entries, hintKind) {
  * but in-flight processes may read pre-migration data.
  */
 // Normalize a cross-ref field value to a list of id strings, or `null` when
-// the field is absent/empty/wildcard and should be skipped. Handles the
-// legacy CSV-string `consolidates` form and per-id wildcard/empty filtering.
+// the field is absent/empty/wildcard and should be skipped. Per-id
+// wildcard/empty filtering.
 function fieldIdValues(spec, value) {
   if (value === undefined || value === null || value === "" || value === "*") return null;
-  if (spec.field === "consolidates" && typeof value === "string") {
-    const parsed = parseConsolidates(value);
-    return parsed.length > 0 ? parsed : null;
-  }
   if (Array.isArray(value)) {
     const ids = value.filter((id) => id !== undefined && id !== null && id !== "" && id !== "*");
     return ids.length > 0 ? ids : null;
@@ -177,10 +196,16 @@ export function forwardRefs(entry, entries) {
  * is handled in `buildInverseIndexes` (which restricts the
  * `promoted_to_rule_inverse` map to the canonical `rule.origin` source).
  *
- * Wire-shape normalization: when a change-log's `consolidates` is the
- * inbound source, re-label the field to `consolidated_into` (the
- * finding-side field name) so the relationships tool's INBOUND_KEY_MAP
- * keys it as `consolidated_by` — matches the legacy wire shape.
+ * Post Phase 3: `consolidates` was de-routed from `CROSS_REFS`; the
+ * consolidated edge is sourced from `citations_inverse` (citation
+ * `source:finding, target:change-log, rationale:"consolidated into…"`).
+ *
+ * Citation-source substitution: when a citation's `target` field points
+ * at `targetId`, the inbound source is the citation's `source` value
+ * (the finding that emitted the edge), NOT the citation's own id —
+ * callers surface `cited_by` as the citing finding, not as the audit
+ * row. This makes the wire shape symmetric with the non-citation case
+ * (the source endpoint is what the user-facing tool wants to know).
  */
 export function inverseRefs(targetId, entries) {
   const refs = [];
@@ -188,8 +213,18 @@ export function inverseRefs(targetId, entries) {
     const entryKind = entry.entry_kind ?? "finding";
     for (const r of forwardRefs(entry, entries)) {
       if (r.id !== targetId) continue;
-      const field = r.field === "consolidates" ? "consolidated_into" : r.field;
-      refs.push({ kind: entryKind, id: entry.id, field });
+      // Citation: report the citation's source as the inbound source id.
+      // The source kind is resolved via `kindForId` (rule/finding/change-log);
+      // for origin citations the source is a rule; for consolidated
+      // citations the source is a finding. The `entries` parameter
+      // enables lookup-first resolution (canonical id-prefix fallback
+      // handles entries that are not on disk).
+      if (entryKind === "citation" && r.field === "target") {
+        const sourceKind = kindForId(entry.source, entries, "any");
+        refs.push({ kind: sourceKind, id: entry.source, field: "target" });
+        continue;
+      }
+      refs.push({ kind: entryKind, id: entry.id, field: r.field });
     }
   }
   return refs;
@@ -249,11 +284,19 @@ function upsertList(map, key, val) {
   if (!arr.includes(val)) arr.push(val);
 }
 
-// Route one forward ref into the appropriate inverse map(s). `origin` feeds
-// two maps (canonical `promoted_to_rule_inverse` dedup); `consolidates` and
-// `consolidated_into` populate `consolidated_into_inverse` from both sides;
-// the legacy `promoted_to_rule` source is skipped (canonical is `rule.origin`);
+// Route one forward ref into the appropriate inverse map(s). The legacy
+// `promoted_to_rule` source is skipped (canonical edge is now a citation);
 // forwardOnly fields (`applies_to_resolution`) have no inverse map.
+//
+// `consolidated_into`/`consolidates` (Phase 3) and `origin`/`supersedes`
+// (Phase 4) were de-routed from `CROSS_REFS`; the canonical edges
+// (consolidated, origin, supersedes) now live in `citations_inverse`
+// (sourced from citation emissions by `meta_state_supersede` /
+// `meta_state_promote_rule` / `meta_state_log_change` / `meta_state_patch`).
+// `consolidated_into_inverse` / `origin_inverse` / `supersedes_inverse` /
+// `promoted_to_rule_inverse` remain in the named-maps shape for backward
+// compat with legacy readers (kept empty; the wire shape collapses into
+// `cited_by`).
 //
 // Citation route: a citation's `source` and `target` field values
 // are the two relationship endpoints. The inverse map is keyed by the
@@ -287,35 +330,16 @@ function indexRef(indexes, ref, entry) {
     }
     return;
   }
-  if (ref.field === "origin") {
-    pushToIndexUnique(indexes.origin_inverse, ref.id, entry.id);
-    pushToIndexUnique(indexes.promoted_to_rule_inverse, entry.id, ref.id);
-    return;
-  }
-  if (ref.field === "consolidates") {
-    upsertList(indexes.consolidated_into_inverse, entry.id, ref.id);
-    return;
-  }
-  if (ref.field === "consolidated_into") {
-    upsertList(indexes.consolidated_into_inverse, ref.id, entry.id);
-    return;
-  }
   const mapName = fieldToInverseMap(ref.field);
   if (mapName) pushToIndex(indexes[mapName], ref.id, entry.id);
 }
 
 export function buildInverseIndexes(entries) {
   const indexes = newIndexState();
-  // Pre-populate `consolidated_into_inverse` keys for change-logs with an
-  // empty `consolidates` array — matches the legacy `indexConsolidatedInto`
-  // contract (`loop-introspect.test.js:146-166`). forwardRefs returns []
-  // for empty fields, so without this pre-population the key would not be
-  // created and consumers expect `[]` for the empty case.
-  for (const entry of entries) {
-    if (entry.entry_kind === "change-log" && Array.isArray(entry.consolidates) && entry.consolidates.length === 0) {
-      indexes.consolidated_into_inverse.set(entry.id, []);
-    }
-  }
+  // Phase 3: `consolidated_into` and `consolidates` were de-routed from
+  // `CROSS_REFS`. The legacy `consolidated_into_inverse` pre-population
+  // (for change-logs with an empty `consolidates` array) is dropped; the
+  // consolidated edge is sourced from `citations_inverse` going forward.
   for (const entry of entries) {
     for (const ref of forwardRefs(entry, entries)) {
       indexRef(indexes, ref, entry);

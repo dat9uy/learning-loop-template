@@ -130,32 +130,27 @@ describe("consistencyCheck pure function", () => {
     assert.deepStrictEqual(result.drift_events[0].missing_fields, ["resolved_by"]);
   });
 
-  // C-8: F-4 breach — superseded without consolidated_into
-  test("C-8: F-4 breach (status=superseded missing consolidated_into) emits 1 drift event", () => {
-    const entry = makeEntry({
-      id: "meta-260601T0000Z-f4-superseded-no-target",
-      status: "superseded",
-    });
-    const result = consistencyCheck([entry]);
-    assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].invariant_id, "F-4");
-    assert.deepStrictEqual(result.drift_events[0].missing_fields, ["consolidated_into"]);
-  });
+  // C-8 (removed): F-4 retired in Phase 3 of meta-state-lifecycle-migration.
+// `superseded` was collapsed into `resolved` + a citation row; the F-4
+// invariant (which required `consolidated_into` on `superseded`) is no
+// longer needed and is removed from META_STATE_CONSISTENCY_INVARIANTS.
 
-  // C-9: F-1 breach — open + supersede-marker fields
-  test("C-9: F-1 breach (status=open carries consolidated_into + superseded_at) emits 1 drift event", () => {
+  // C-9: F-1 breach — open + resolved_marker fields (Phase 3 dropped
+  // `consolidated_into` + `superseded_at` from the forbid list; the test
+  // exercises a still-forbidden pair).
+  test("C-9: F-1 breach (status=open carries resolved_at + resolved_by) emits 1 drift event", () => {
     const entry = makeEntry({
-      id: "meta-260601T0000Z-f1-open-supersede-fields",
+      id: "meta-260601T0000Z-f1-open-resolved-fields",
       status: "open",
-      consolidated_into: "meta-260601T0000Z-other",
-      superseded_at: "2026-06-01T00:00:00.000Z",
+      resolved_at: "2026-06-01T00:00:00.000Z",
+      resolved_by: "operator",
     });
     const result = consistencyCheck([entry]);
     assert.strictEqual(result.drift_count, 1);
     assert.strictEqual(result.drift_events[0].invariant_id, "F-1");
     assert.deepStrictEqual(result.drift_events[0].forbidden_fields, [
-      "consolidated_into",
-      "superseded_at",
+      "resolved_at",
+      "resolved_by",
     ]);
   });
 
@@ -204,9 +199,10 @@ describe("consistencyCheck pure function", () => {
     const entries = [
       makeEntry({ id: "meta-260601T0000Z-zeta", status: "open", resolved_at: "2026-06-01T00:00:00.000Z" }),
       makeEntry({ id: "meta-260601T0000Z-alpha", status: "open", resolved_at: "2026-06-01T00:00:00.000Z" }),
+      // Phase 3: `superseded` was retired; use `resolved` instead.
       makeEntry({
         id: "meta-260601T0000Z-beta",
-        status: "superseded",
+        status: "resolved",
       }),
     ];
     const result = consistencyCheck(entries);
@@ -256,12 +252,14 @@ describe("consistencyCheck pure function", () => {
     assert.strictEqual(result.drift_count, 0);
   });
 
-  // C-16: invariant registry contract — exactly 5 invariants with stable ids
-  test("C-16: META_STATE_CONSISTENCY_INVARIANTS has exactly 4 entries with ids [F-1, F-2, F-3, F-4]", () => {
-    assert.strictEqual(META_STATE_CONSISTENCY_INVARIANTS.length, 4);
+  // C-16: invariant registry contract — exactly 3 invariants with stable ids
+// (Phase 3 removed F-4; the `superseded`-keyed detector was retired when
+// `superseded` was collapsed into `resolved` + a citation row).
+  test("C-16: META_STATE_CONSISTENCY_INVARIANTS has exactly 3 entries with ids [F-1, F-2, F-3]", () => {
+    assert.strictEqual(META_STATE_CONSISTENCY_INVARIANTS.length, 3);
     assert.deepStrictEqual(
       META_STATE_CONSISTENCY_INVARIANTS.map((inv) => inv.id),
-      ["F-1", "F-2", "F-3", "F-4"]
+      ["F-1", "F-2", "F-3"]
     );
   });
 });

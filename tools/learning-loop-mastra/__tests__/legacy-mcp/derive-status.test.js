@@ -267,10 +267,12 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(result.recommendation, "no_action");
   });
 
-  test("terminal (superseded) + code-only → recommendation: no_action", () => {
+  test("terminal (resolved — supersede closure) + code-only → recommendation: no_action", () => {
+    // Phase 3: `superseded` collapsed into `resolved` + a citation row.
+    // The terminal-set membership moved; the recommendation is unchanged.
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
-    const entry = baseEntry({ status: "superseded", evidence_code_ref: "src.js" });
+    const entry = baseEntry({ status: "resolved", evidence_code_ref: "src.js" });
     const result = deriveStatus(entry, ctx);
     assert.strictEqual(result.drift, false);
     assert.strictEqual(result.recommendation, "no_action");
@@ -300,12 +302,14 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(result.recommendation, "no_action");
   });
 
-  test("terminal (superseded) + mechanism-shipped → recommendation: no_action", () => {
+  test("terminal (resolved — supersede closure) + mechanism-shipped → recommendation: no_action", () => {
+    // Phase 3: `superseded` collapsed into `resolved` + a citation row.
+    // The terminal-set membership moved; the recommendation is unchanged.
     const ctx = baseContext({ test_passed: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
     const entry = baseEntry({
-      status: "superseded",
+      status: "resolved",
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });

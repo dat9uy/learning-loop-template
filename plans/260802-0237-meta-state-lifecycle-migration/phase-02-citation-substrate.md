@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "citation kind substrate"
-status: pending
+status: completed
 priority: P1
 effort: ""
 dependencies: []

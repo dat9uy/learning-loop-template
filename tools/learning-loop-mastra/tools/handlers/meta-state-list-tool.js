@@ -10,30 +10,31 @@ import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 // Set of statuses excluded by default from `meta_state_list` results.
-// collapses to {resolved, superseded} (the canonical
-// terminal set); `archived` is excluded upstream by the entry_kind/status
-// filter pair, not here.
-const EXCLUDABLE_STATUSES = new Set(["resolved", "superseded"]);
+// Phase 3 collapsed `superseded` into `resolved` + a citation; the
+// canonical terminal set is {resolved, accepted}; `archived` is excluded
+// upstream by the entry_kind/status filter pair, not here.
+const EXCLUDABLE_STATUSES = new Set(["resolved", "accepted"]);
 
 const REF_FIELDS = [
-  "consolidated_into",
-  "supersedes",
+  // Phase 3+4: `consolidated_into` / `origin` / `supersedes` /
+  // `promoted_to_rule` were collapsed into citation rows. The new wire
+  // shape is `ref_field:"citation"`, which sources from
+  // `citations_inverse` (Phase 2+).
+  "citation",
   "addresses",
   "proposed_design_for",
-  "origin",
   "reopens",
 ];
 
 // Inverse-map-backed fields are O(1) via buildInverseIndexes.
-// Scan-backed fields (consolidated_into, proposed_design_for) iterate
-// entries and tolerate the wire-format wrap {item: [...]} that
-// meta_state_patch can produce on top-level arrays under passthrough
-// ZodObject fields.
+// Scan-backed fields (proposed_design_for) iterate entries and tolerate
+// the wire-format wrap {item: [...]} that meta_state_patch can produce on
+// top-level arrays under passthrough ZodObject fields. `citation` is
+// inverse-backed via `citations_inverse` (Phase 2+).
 const INVERSE_BACKED_REF_FIELDS = new Set([
-  "supersedes",
   "addresses",
-  "origin",
   "reopens",
+  "citation",
 ]);
 
 /**
@@ -56,7 +57,7 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "Read the meta-state registry. Defaults to a compact projection excluding resolved/superseded entries; use id/session_id/ref_by+ref_field for narrow queries and include_all_versions:true for history. Read-only.",
+  description: "Read the meta-state registry. Defaults to a compact projection excluding resolved/accepted entries; use id/session_id/ref_by+ref_field for narrow queries and include_all_versions:true for history. Read-only.",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),
@@ -112,30 +113,12 @@ export const metaStateListTool = {
       if (INVERSE_BACKED_REF_FIELDS.has(ref_field)) {
         const inverse = buildInverseIndexes(entries);
         const inverseMap = {
-          supersedes: inverse.supersedes_inverse,
           addresses: inverse.addresses_inverse,
-          origin: inverse.origin_inverse,
           reopens: inverse.reopens_inverse,
+          citation: inverse.citations_inverse,
         }[ref_field];
         const refs = inverseMap.get(ref_by) || [];
         matchingIds = new Set(refs);
-      } else if (ref_field === "consolidated_into") {
-        // Scan: pick change-logs whose `consolidates` array includes ref_by.
-// schema is z.array(z.string()); the
-        // migration script normalizes any legacy single-string value to a
-        // one-element array, so the array membership check is the canonical
-        // post-migration path. Tolerate the legacy string form for in-flight
-        // processes that read pre-migration data.
-        for (const e of entries) {
-          if (e.entry_kind !== "change-log") continue;
-          const cl = e.consolidates;
-          const matches = Array.isArray(cl)
-            ? cl.includes(ref_by)
-            : typeof cl === "string"
-              ? cl.split(",").map((s) => s.trim()).includes(ref_by)
-              : false;
-          if (matches) matchingIds.add(e.id);
-        }
       } else if (ref_field === "proposed_design_for") {
         // Scan: pick loop-designs where proposed_design_for includes ref_by.
         // Tolerate the wire-format wrap {item: [...]}.
@@ -181,8 +164,9 @@ export const metaStateListTool = {
     // caller explicitly filters by a terminal status (e.g., status="resolved"),
     // honor that filter — the user is opting in to terminal entries.
     // include_archived: true is the unified "show me the audit trail" affordance;
-    // it surfaces all 4 terminal statuses (superseded, resolved, auto-resolved,
+    // it surfaces all 4 terminal statuses (resolved, accepted, auto-resolved,
     // archived) without requiring callers to know which statuses are terminal.
+// (Phase 3 collapsed `superseded` into `resolved` + a citation.)
     const isExplicitStatusFilter = typeof status === "string" && EXCLUDABLE_STATUSES.has(status);
     const includeTerminal = include_archived || isExplicitStatusFilter;
     if (!includeTerminal) {

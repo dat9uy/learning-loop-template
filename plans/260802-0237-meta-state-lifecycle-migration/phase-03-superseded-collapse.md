@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "collapse superseded into resolved + citation"
-status: pending
+status: completed
 priority: P1
 effort: ""
 dependencies: [2]

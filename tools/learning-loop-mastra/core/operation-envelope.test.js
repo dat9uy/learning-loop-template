@@ -90,12 +90,12 @@ describe("buildEnvelope — shape and counts", () => {
     assert.equal(envelope.target, "test-target");
     assert.deepEqual(envelope.pre_count, {
       total: 3,
-      by_status: { open: 3, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
+      by_status: { open: 3, resolved: 0, accepted: 0, archived: 0 },
       by_kind: { finding: 3, "change-log": 0, rule: 0, "loop-design": 0 },
     });
     assert.deepEqual(envelope.post_count, {
       total: 2,
-      by_status: { open: 2, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
+      by_status: { open: 2, resolved: 0, accepted: 0, archived: 0 },
       by_kind: { finding: 2, "change-log": 0, rule: 0, "loop-design": 0 },
     });
     assert.match(envelope.content_hash, /^sha256:[a-f0-9]{64}$/);
@@ -121,16 +121,16 @@ describe("buildEnvelope — shape and counts", () => {
       postRegistry,
     });
 
-    // by_status keys are exactly the canonical 5 — no "active" / "reported" / "stale" leakage.
-    // `accepted` is the standing-trade-off terminal.
+    // by_status keys are exactly the canonical 4 — no "active" / "reported" / "stale" / "superseded" leakage.
+// `accepted` is the standing-trade-off terminal. Phase 3 collapsed
+// `superseded` into `resolved` + a citation row.
     assert.deepEqual(
       Object.keys(envelope.pre_count.by_status).sort(),
-      ["accepted", "archived", "open", "resolved", "superseded"],
+      ["accepted", "archived", "open", "resolved"],
     );
     assert.equal(envelope.pre_count.by_status.open, 5, "5 entries collapsed to open (4 findings + 1 change-log)");
     assert.equal(envelope.pre_count.by_status.archived, 0);
     assert.equal(envelope.pre_count.by_status.resolved, 0);
-    assert.equal(envelope.pre_count.by_status.superseded, 0);
     assert.deepEqual(
       Object.keys(envelope.pre_count.by_kind).sort(),
       ["change-log", "finding", "loop-design", "rule"],
@@ -429,7 +429,9 @@ describe("normalizeLegacyStatus", () => {
   test("returns canonical statuses unchanged", () => {
     assert.equal(normalizeLegacyStatus("open"), "open");
     assert.equal(normalizeLegacyStatus("resolved"), "resolved");
-    assert.equal(normalizeLegacyStatus("superseded"), "superseded");
+    // `superseded` was collapsed into `resolved` + a citation row in
+    // Phase 3; pre-migration on-disk lines map to `resolved` here.
+    assert.equal(normalizeLegacyStatus("superseded"), "resolved");
     assert.equal(normalizeLegacyStatus("archived"), "archived");
   });
 });
@@ -466,7 +468,7 @@ describe("validateEnvelope", () => {
       ...env,
       pre_count: {
         ...env.pre_count,
-        by_status: { open: 0, resolved: 0, superseded: 0, archived: 0, active: 0 },
+        by_status: { open: 0, resolved: 0, accepted: 0, archived: 0, active: 0 },
       },
     };
     const result = validateEnvelope(tampered);

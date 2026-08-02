@@ -282,15 +282,16 @@ export function appendCitationEntryAtomic(root, entry) {
 }
 
 // The `lifecycle-status-stale-mechanism` loop-design collapses the finding
-// status enum to `{open, resolved, superseded, accepted}` (+ `archived`
-// runtime-applied at archive time, outside the enum). `accepted` is the
-// standing-trade-off terminal; `meta_state_accept` flips `open` → `accepted`;
-// `accepted` is terminal for `isOpen`/`isStaleView`/`deriveStatus`.
+// status enum to `{open, resolved, accepted}` (+ `archived` runtime-applied
+// at archive time, outside the enum). `superseded` folded into `resolved`
+// + a citation in `citations.jsonl`; `accepted` is the standing-trade-off
+// terminal; `meta_state_accept` flips `open` → `accepted`; `accepted` is
+// terminal for `isOpen`/`isStaleView`/`deriveStatus`.
 // `reported`/`active`/`stale`/`auto-resolved` are removed from the enum — read
 // sites use `isOpen`/`isStaleView` instead. `archived` lives outside the enum
 // because it is applied by `archiveEntry` after the entry has been removed
 // from the canonical set.
-export const TERMINAL_STATUSES = new Set(["resolved", "superseded", "accepted"]);
+export const TERMINAL_STATUSES = new Set(["resolved", "accepted"]);
 const AFFECTED_SYSTEM_ENUM = [
   "meta",
   "gate-logic",
@@ -398,16 +399,24 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code location; see field_glossary.evidence_code_ref"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["open", "resolved", "superseded", "accepted", "archived"]).optional()
+  status: z.enum(["open", "resolved", "accepted", "archived"]).optional()
     .describe("Finding lifecycle; use field_glossary.status and the dedicated lifecycle tools."),
+  // Inert-historical: old version lines still carry these so the schema
+  // accepts them on read; the write path no longer stamps them (Phase 3
+  // collapse). `consolidated_into` + `superseded_at` + `superseded_by` are
+  // the `superseded` closure fields; the canonical supersede edge is now
+  // a citation row in `citations.jsonl`. De-routed from `CROSS_REFS` so
+  // they are no longer indexed by the inverse maps.
   consolidated_into: z.string().optional()
-    .describe("Canonical change-log id for a superseded finding; see field_glossary.id"),
+    .describe("Inert-historical: canonical change-log id of the prior `superseded` closure; the live edge is a citation row."),
   verification: z.object({}).passthrough().optional()
     .describe("Verification reproduction object; see field_glossary.verification"),
+  // Inert-historical: stamped by the prior `meta_state_supersede`; the live
+  // closure is `resolved` + a citation. Old version lines still parse.
   superseded_at: z.string().optional()
-    .describe("ISO timestamp set by meta_state_supersede."),
+    .describe("Inert-historical: prior `meta_state_supersede` timestamp; the live closure uses `resolved_at` + a citation."),
   superseded_by: z.string().optional()
-    .describe("Operator id set by meta_state_supersede. Default 'operator'."),
+    .describe("Inert-historical: prior `meta_state_supersede` operator id; the live closure uses `resolved_by`."),
   session_id: z.string().optional()
     .describe("Session idempotency key for hook-emitted findings; see field_glossary.session_id"),
   mechanism_check: z.coerce.boolean().optional()
@@ -616,7 +625,10 @@ export function agentChecklistPatternProblems(pattern) {
 const metaStateRuleEntryObject = z.object({
   entry_kind: z.literal("rule").default("rule"),
   id: z.string().regex(/^rule-[a-z0-9-]+$/).describe("Stable rule id; see field_glossary.id"),
-  origin: z.string().describe("Finding id that originated this rule"),
+  origin: z.string().optional()
+    .describe("Inert-historical: Finding id that originated this rule. Phase 4 retired the on-record field; the canonical promotion edge is the origin citation row emitted by meta_state_promote_rule."),
+  supersedes: z.string().optional()
+    .describe("Prior rule id refined by this rule (inert-historical; Phase 4 collapsed the on-record field into a rule→rule citation row)"),
   enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced"),
   pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language"),
   pattern: z.string().describe("The pattern (regex body, glob path, or session_id)"),
@@ -625,7 +637,7 @@ const metaStateRuleEntryObject = z.object({
   applies_to_resolution: z.string().optional()
     .describe("Finding id gated by a determinism checklist"),
   supersedes: z.string().optional()
-    .describe("Prior rule id refined by this rule"),
+    .describe("Inert-historical: prior rule id refined by this rule. Phase 4 collapsed the on-record field into a rule→rule citation row emitted by meta_state_patch."),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   status: z.enum(["active", "inactive", "archived"]).default("active")
     .describe("Rule lifecycle; inactive rules are not enforced; archived tombstones are appended by deleteEntry"),
@@ -788,7 +800,6 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "created_at",
   "created_by",
   "code_fingerprint",
-  "consolidated_into",
   "resolved_at",
   "resolved_by",
   "resolution",

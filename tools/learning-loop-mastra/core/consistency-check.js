@@ -9,25 +9,30 @@
 // layer (tools/handlers/meta-state-consistency-check-tool.js) is
 // responsible for root resolution and registry reading.
 //
-// Invariant set: F-1, F-2, F-3, F-4. Finding statuses are keyed on the
-// post-migration enum {open, resolved, superseded, archived} (write
-// schema at core/meta-state.js) — an invariant keyed on a status the
-// write path cannot produce is a dead detector.
+// Invariant set: F-1, F-2, F-3. Finding statuses are keyed on the
+// post-migration enum {open, resolved, accepted, archived} (write
+// schema at core/meta-state.js). `superseded` was collapsed into
+// `resolved` + a citation row in `citations.jsonl` (Phase 3 of
+// `meta-state-lifecycle-migration`); F-4 (which required
+// `consolidated_into` on `superseded` findings) is removed as a dead
+// detector. F-1 is updated to drop `consolidated_into` + `superseded_at`
+// from the open-finding forbid list — those fields are inert-historical
+// on disk (old version lines still carry them) but are no longer
+// stamped by the write path.
 
 export const META_STATE_CONSISTENCY_INVARIANTS = [
   // F-1: an open finding must not carry terminal audit fields. The
   // forbid list is drawn from the fields stamped by the resolve,
-  // supersede, and archive handlers in core/meta-state.js.
+  // accept, and archive handlers in core/meta-state.js.
+  // `consolidated_into` + `superseded_at` removed (inert-historical;
+  // not stamped by the live write path).
   { id: "F-1", status: "open", kind: "finding",
     forbid: ["resolved_at", "resolved_by", "resolution",
-             "consolidated_into", "superseded_at",
              "archived_at", "archived_by", "archived_reason"] },
   { id: "F-2", status: "archived", kind: "finding",
     require: ["archived_at", "archived_by", "archived_reason"] },
   { id: "F-3", status: "resolved", kind: "finding",
     require: ["resolved_by"] },
-  { id: "F-4", status: "superseded", kind: "finding",
-    require: ["consolidated_into"] },
 ];
 
 // null and undefined both count as "not set". Anything else (including

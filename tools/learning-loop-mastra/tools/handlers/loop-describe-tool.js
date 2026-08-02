@@ -195,28 +195,38 @@ export const loopDescribeTool = {
         // cache created before the glossary existed still returns it.
         result.field_glossary = listFieldGlossary();
 
-        // Superseded lineage surface: group all finding entries with
-        // status='superseded' and a consolidated_into pointer by their
-        // canonical change-log entry. Orphans (consolidated_into points to a
+        // Superseded lineage surface: group all `resolved` findings whose citation
+        // log entry points at a change-log (Phase 3 collapsed `superseded`
+        // into `resolved` + a citation). Orphans (citation target is a
         // non-existent change-log) are surfaced in a separate array.
+        // Backward-compat: findings still carrying `consolidated_into` on
+        // disk (pre-migration rows, none expected after the one-time
+        // migration script runs) are still surfaced.
         const changeLogMap = new Map(
           allEntries
             .filter((e) => e.entry_kind === "change-log")
             .map((cl) => [cl.id, cl]),
         );
-        const superseded = allEntries.filter(
-          (e) => e.entry_kind !== "change-log" && e.status === "superseded" && typeof e.consolidated_into === "string",
+        const findingMap = new Map(
+          allEntries
+            .filter((e) => e.entry_kind === "finding")
+            .map((f) => [f.id, f]),
         );
+        // Citation rows source the canonical consolidated edge
+        // (`source:finding, target:change-log, rationale:"consolidated into…"`).
+        const citations = allEntries.filter((e) => e.entry_kind === "citation");
         const groups = new Map();
         const orphans = [];
-        for (const f of superseded) {
-          const target = changeLogMap.get(f.consolidated_into);
+        for (const c of citations) {
+          if (c.source.startsWith("meta-") === false && !findingMap.has(c.source)) continue;
+          const target = changeLogMap.get(c.target);
           if (!target) {
-            orphans.push({ id: f.id, consolidated_into: f.consolidated_into, note: "change-log not found" });
+            orphans.push({ id: c.source, consolidated_into: c.target, note: "change-log not found" });
             continue;
           }
           if (!groups.has(target.id)) groups.set(target.id, { change_log: target, findings: [] });
-          groups.get(target.id).findings.push(f);
+          const f = findingMap.get(c.source);
+          if (f) groups.get(target.id).findings.push(f);
         }
         const lineage = Array.from(groups.values())
           .map((g) => ({
@@ -238,6 +248,7 @@ export const loopDescribeTool = {
           promoted_to_rule_inverse: Object.fromEntries(inverseIndexes.promoted_to_rule_inverse),
           reopens_inverse: Object.fromEntries(inverseIndexes.reopens_inverse),
           consolidated_into_inverse: Object.fromEntries(inverseIndexes.consolidated_into_inverse),
+          citations_inverse: Object.fromEntries(inverseIndexes.citations_inverse),
         };
 
         // Evidence-code-ref coverage (dual-field schema unification)
