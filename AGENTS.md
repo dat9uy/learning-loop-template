@@ -27,8 +27,9 @@ The meta-surface is implemented across 3 layers:
 
   > **Path invariant:** shell files MUST live at
   > `tools/learning-loop-mastra/mastra/` and MUST NOT be at the top level of
-  > `tools/learning-loop-mastra/`. Enforced by
-  > `tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/no-top-level-shell-files.test.js`.
+  > `tools/learning-loop-mastra/`. `storage.js` is the deliberate top-level
+  > exception (the Mastra `LibSQLStore` setup, pinned as a Q1.A lock); any
+  > other shell file belongs under `mastra/`.
 
 - **Runtime interface (contract).** The contract that agent runtimes sign
   to integrate with the loop. Lives at `tools/learning-loop-mastra/interface/`.
@@ -62,7 +63,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 | Kind | Role | Lifespan |
 |---|---|---|
-| `finding` | A loop-self-diagnostic observation. No live TTL (`expires_at` is vestigial); `stale` is a derived view, not a status. Phase 3 collapsed `superseded` into `resolved` + a citation row (`meta_state_supersede`); Phase 1 added `accepted` (standing trade-off; `meta_state_accept`). | open → accepted \| resolved \| archived |
+| `finding` | A loop-self-diagnostic observation. No live TTL (`expires_at` is vestigial); `stale` is a derived view, not a status. Supersede is a flavor of resolve + a citation row (`meta_state_supersede`); `accepted` is a standing trade-off (`meta_state_accept`). | open → accepted \| resolved \| archived |
 | `change-log` | An immutable audit record of a system change. No TTL. | Forever |
 | `rule` | A promoted invariant the loop enforces. Two enforcement classes: `gate` (hard-block) and `agent` (consult). | Forever (until superseded) |
 | `loop-design` | A deferred design that will create or modify rules, schemas, or tools. | Active → inactive (when shipped) → archived |
@@ -71,7 +72,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 **The substrate** (the vendor APIs the loop operates against — vnstock, fastapi, tanstack, etc.) is replaceable. It exists to provoke learning; the learning is not *about* the substrate.
 
-For the gate system internals (inbound/outbound gate flows, MCP tool flow, staleness, known issues F1–F13), see `docs/architecture.md`. For the engine invariant (deterministic-step / agentic-step / record / rule / promotion) and the two-surface split, see `docs/loop-engine.md`.
+For the gate system internals (inbound/outbound gate flows, MCP tool flow, staleness, known issues), see `docs/architecture.md`. For the engine invariant (deterministic-step / agentic-step / record / rule / promotion) and the two-surface split, see `docs/loop-engine.md`.
 
 ---
 
@@ -124,7 +125,7 @@ The pre-commit hook (`simple-git-hooks.pre-commit`) still runs `pnpm test && pnp
 
 ## 4. Git Union Merge Driver (one-time per-clone setup)
 
-`.gitattributes` marks `runtime-state.jsonl`, `change-log.jsonl`, `meta-state.jsonl`, and `citations.jsonl` as `merge=union` so parallel PRs that each append a line at EOF auto-merge instead of conflicting. The `citations.jsonl` was added in Phase 2 of plan 260802-0237 — the citation log carries the canonical asserted-relationship edges (`source:rule, target:finding, rationale:"origin"`; `source:finding, target:change-log, rationale:"consolidated into…"`; etc.). The attribute only names the driver — **the driver command must be configured in each clone** (`git config` is per-clone and not committable). Run once per clone:
+`.gitattributes` marks `runtime-state.jsonl`, `change-log.jsonl`, `meta-state.jsonl`, and `citations.jsonl` as `merge=union` so parallel PRs that each append a line at EOF auto-merge instead of conflicting. The citation log (`citations.jsonl`) carries the canonical asserted-relationship edges (`source:rule, target:finding, rationale:"origin"`; `source:finding, target:change-log, rationale:"consolidated into…"`; etc.). The attribute only names the driver — **the driver command must be configured in each clone** (`git config` is per-clone and not committable). Run once per clone:
 
 ```bash
 git config merge.union.driver "git merge-file --union %A %O %B"

@@ -34,7 +34,7 @@ The same run also self-heals the internal manifest entries: `hash` and `maturity
 2. pnpm skills:sync                           # auto-normalizes + fans out
 ```
 
-`npx skills` is the provider CLI; it owns `skills-lock.json` and rewrites the `mastra` entry to its native schema on every `add`/`update`. Without the next step, the loop's manifest-driven exclusion (`external:true`) and the F6 hash trust anchor (`manifest.skills.mastra.hash === sha256(SKILL.md)`) are dropped — contract `listLoopMaintainedSkills` would re-enumerate `mastra` and F10/F6 fail.
+`npx skills` is the provider CLI; it owns `skills-lock.json` and rewrites the `mastra` entry to its native schema on every `add`/`update`. Without the next step, the loop's manifest-driven exclusion (`external:true`) and the hash trust anchor (`manifest.skills.mastra.hash === sha256(SKILL.md)`) are dropped — contract `listLoopMaintainedSkills` would re-enumerate `mastra` and parity fails.
 
 `pnpm skills:sync` auto-heals this by running `normalizeManifest` in-process before fan-out: the `external:true` / `delivery` / `targets` / `maturity` / `sourceType` / `source` fields are restored from the policy table at `tools/scripts/skills-lib.mjs#EXTERNAL_POLICY`, and the `hash` is re-derived from the most-recently-written `<surface>/skills/mastra/SKILL.md` (the surface `npx` just wrote to). Then fan-out closes any drift on `.factory` + `.mastracode` like in path A.
 
@@ -51,16 +51,16 @@ This is the same `normalizeManifest` that `pnpm skills:sync` runs internally, ex
 ## What NOT to do
 
 - **Do NOT hand-edit `skills-lock.json`.** The write-gate blocks ad-hoc edits to the lockfile; `pnpm skills:normalize` is the sanctioned restore. The gate's purpose is to prevent ad-hoc clobbering; normalize IS the sanctioned anti-clobber.
-- **Do NOT run `npx skills add/update mastra-ai/skills` without immediately following it with `pnpm skills:sync`.** Between those two commands, the manifest is in the clobbered state and F10/F6 + the contract fail.
-- **Do NOT delete `<surface>/skills/<name>/SKILL.md` on a single surface.** `pnpm skills:sync` self-heals deleted mirrors (F13), but a missing detected surface after `npx` is a different failure mode — call `pnpm skills:sync` and check the output for `no-detected-copy` before re-running `npx`.
+- **Do NOT run `npx skills add/update mastra-ai/skills` without immediately following it with `pnpm skills:sync`.** Between those two commands, the manifest is in the clobbered state and the contract fails.
+- **Do NOT delete `<surface>/skills/<name>/SKILL.md` on a single surface.** `pnpm skills:sync` self-heals deleted mirrors, but a missing detected surface after `npx` is a different failure mode — call `pnpm skills:sync` and check the output for `no-detected-copy` before re-running `npx`.
 
 ## Failure-mode quick reference
 
 | Symptom | Cause | Recovery |
 |---------|-------|----------|
 | `listLoopMaintainedSkills` enumerates `mastra` (contract fails with `maturity-not-declared`) | `npx skills` clobbered the manifest; `external:true` is gone | `pnpm skills:sync` (auto-normalizes) |
-| F10 / F6 parity fails | `manifest.skills.mastra.hash` no longer matches installed SKILL.md, or `external:true` is gone | `pnpm skills:sync` |
-| F11 / F12 cross-surface byte-identity fails | A runtime surface has stale mastra content from before fan-out | `pnpm skills:sync` |
+| Skills-lock parity fails | `manifest.skills.mastra.hash` no longer matches installed SKILL.md, or `external:true` is gone | `pnpm skills:sync` |
+| Cross-surface byte-identity fails | A runtime surface has stale mastra content from before fan-out | `pnpm skills:sync` |
 | `[sync-skills] FAIL mastra: no-detected-copy` | `<runtime>/skills/mastra/SKILL.md` was deleted or never installed | Re-run `npx skills add mastra-ai/skills --copy` for the detected runtime, then `pnpm skills:sync` |
 | `[normalize-skills] FATAL: normalize mastra: no real-dir SKILL.md found` | All 3 surfaces' mastra trees were deleted; normalize can't derive a hash | Same as above |
 | `FATAL: normalize <name>: canonicalSource missing at ...` | Internal canonical SKILL.md was deleted | Restore the canonical file, then `pnpm skills:sync` |

@@ -2,7 +2,7 @@
 
 **Audience:** Engineers and agents debugging or extending tool inputSchemas in the `learning-loop-mastra` MCP server. Replaces the need to read `node_modules/@mastra/{core,mcp,schema-compat}/dist/*.js` and `node_modules/zod/v4/core/*.js`.
 
-**Why this doc exists:** the coerce-layer zod-native migration shipped a 125-line `schema-parity.js` shim that has a non-obvious interaction with the Mastra SDK and zod 4.4.3 internal APIs. Without this doc, future agents have to re-discover the shim's behavior empirically. This file is the canonical reference.
+**Why this doc exists:** the coerce-layer zod-native migration introduced a 125-line `schema-parity.js` shim that has a non-obvious interaction with the Mastra SDK and zod 4.4.3 internal APIs. Without this doc, future agents have to re-discover the shim's behavior empirically. This file is the canonical reference.
 
 **Transport scope:** this doc describes the **MCP transport's** schema-conversion path (`tools/list` → JSON Schema). The stateless CLI (`tools/learning-loop-mastra/bin/loop.mjs`) calls handlers directly and **bypasses** `MCPServer.convertSchema` and the shim, so under `LOOP_RECORDS_VIA_CLI=1` (set by all three runtimes) the shim only affects the MCP residue surface; the full 41-tool surface on the CLI is unaffected.
 
@@ -16,7 +16,7 @@
 
 ## TL;DR
 
-The MCP server exposes tools to clients via `tools/list`. Each tool's `inputSchema` is converted from a Zod schema to JSON Schema. The conversion goes through **Mastra SDK 1.42.0's `MCPServer.convertSchema`**, which delegates to `@mastra/schema-compat`'s `standardSchemaToJSONSchema`. **This path does NOT reliably honor the `_zod.toJSONSchema` override** that `create-loop-tool.js:38` sets. The shim's job is to recover byte-identical JSON Schema for migration use cases where `z.preprocess` / `z.union([bool, string]).transform` would otherwise change the shape. (This affects the MCP surface only — the CLI transport bypasses this path; see Transport scope above.)
+The MCP server exposes tools to clients via `tools/list`. Each tool's `inputSchema` is converted from a Zod schema to JSON Schema. The conversion goes through **Mastra SDK 1.42.0's `MCPServer.convertSchema`**, which delegates to `@mastra/schema-compat`'s `standardSchemaToJSONSchema`. This path **honors** the `_zod.toJSONSchema` override that `create-loop-tool.js:60` sets (verified by live e2e; see §3.5). The shim's job is to recover byte-identical JSON Schema for migration use cases where `z.preprocess` / `z.union([bool, string]).transform` would otherwise change the shape. (This affects the MCP surface only — the CLI transport bypasses this path; see Transport scope above.)
 
 ---
 
@@ -97,7 +97,7 @@ The MCP server exposes tools to clients via `tools/list`. Each tool's `inputSche
 | `schema._zod.def.in` / `def.out` | lines 27, 28, 36 | Pipe's input/output schemas (used for `z.preprocess` and `z.union().transform()`) | Stable for `type:"pipe"` |
 | `schema._zod.bag` | lines 56-58 | Object with array min/max (read for length constraints) | Stable for arrays |
 | `globalRegistry` | line 120 | Public API; `.get(schema)?.description` to preserve `.describe()` | Stable — public |
-| `schema._zod.toJSONSchema` (assignment) | `create-loop-tool.js:38` | **WRITES** an override function; zod's own `process` checks it at `node_modules/zod/v4/core/to-json-schema.js:49` | Mechanism works in 4.4.3; see §3 caveat |
+| `schema._zod.toJSONSchema` (assignment) | `create-loop-tool.js:60` | **WRITES** an override function returning a clone; zod's own `process` checks it at `node_modules/zod/v4/core/to-json-schema.js:49` | Mechanism works in 4.4.3; see §3 |
 
 ### 2.2 Shim branches (migration wrappers → parity view)
 
@@ -136,25 +136,47 @@ If a future migration needs any of these, extend `buildParitySchema` and add a p
 
 ### 3.1 What the override does
 
-In `create-loop-tool.js:29-40`:
+In `create-loop-tool.js:23-62`:
 ```js
-function attachParityJSONSchema(schema) {
+function attachParityJSONSchema(schema, parityHints) {
   const paritySchema = buildParitySchema(schema);
   const parityJSONSchema = z.toJSONSchema(paritySchema, {
     target: "draft-7",
     io: "input",
   });
-  // Zod's `process` checks `schema._zod.toJSONSchema?.()` before invoking the
-  // type-specific processor, so overriding it lets us return the unwrapped
-  // JSON Schema while still using the wrapped schema for parsing.
-  schema._zod.toJSONSchema = () => parityJSONSchema;
+  // Inject model-visible JSON-schema hints (draft-7 constraints like
+  // minProperties) on top of the parity view. Generation-only: this never
+  // affects .parse() — the override is on the converted JSON schema object,
+  // while runtime validation uses the real Zod schema. Deep-merges per-field
+  // so existing property constraints are preserved.
+  if (parityHints && typeof parityHints === "object") {
+    for (const [field, hint] of Object.entries(parityHints)) {
+      const propSchema = parityJSONSchema?.properties?.[field];
+      if (!propSchema || !hint || typeof hint !== "object") continue;
+      Object.assign(propSchema, hint);
+    }
+  }
+  // Override zod's per-schema JSON Schema generator so the schema exposed to
+  // MCP clients via `tools/list` is the parity view. zod's `process` in
+  // node_modules/zod/v4/core/to-json-schema.js:49 checks
+  // `schema._zod.toJSONSchema?.()` and uses its return value. The override IS
+  // honored through Mastra's MCPServer.convertSchema → standardSchemaToJSONSchema
+  // path (verified empirically; e2e guard in mcp-tools-list-parity.test.js).
+  //
+  // IMPORTANT: return a clone on every call. Mastra converts tools more than
+  // once (MCPServer constructor + __registerMastra), and zod's toJSONSchema
+  // mutates the returned object in place (extractDefs replaces the root schema
+  // with {"$ref":"#"}). Reusing the same object causes the second conversion
+  // to emit only the $ref sentinel.
+  schema._zod.toJSONSchema = () => JSON.parse(JSON.stringify(parityJSONSchema));
   return schema;
 }
 ```
 
-The comment at lines 35-37 is **partially correct**:
-- ✅ TRUE: zod's `process` function at `node_modules/zod/v4/core/to-json-schema.js:49` does check `schema._zod.toJSONSchema?.()` and uses its return value as the result.
-- ⚠️ INACCURATE: "overriding it lets us return the unwrapped JSON Schema" — this only works for some call paths. See §3.3.
+The override does two things:
+
+1. **Parity view** — it returns the unwrapped JSON Schema (`buildParitySchema` strips `z.preprocess` / guarded-boolean unions) so `tools/list` exposes the pre-migration shape while `.parse()` stays strict. `parityHints` deep-merges draft-7 constraints (e.g. `minProperties`) onto the parity view — generation-only, never affecting `.parse()`.
+2. **Clone on every call** — `() => JSON.parse(JSON.stringify(parityJSONSchema))`, not `() => parityJSONSchema`. zod's `toJSONSchema` mutates the returned object in place (`extractDefs` replaces the root schema with `{"$ref":"#"}`), and Mastra converts each tool more than once (`MCPServer` constructor + `__registerMastra`). Returning the same object makes the second conversion emit only the `$ref` sentinel. The clone is the fix — and the diagnosis of the synthetic-probe `$ref` quirk in §3.3/§3.5 (the probe reused the object; production clones).
 
 ### 3.2 zod 4.4.3 `process` function (verbatim)
 
@@ -188,7 +210,7 @@ Tested at `/tmp/probe-q3-clean.cjs` (now removed; results inlined below):
 | `s["~standard"].jsonSchema.input(...)` (nested object) | ❌ NO | `{"$schema":"...","$ref":"#"}` |
 | `standardSchemaToJSONSchema(s, {io:"input"})` (Mastra's actual call) | ❌ NO | `{"$schema":"...","$ref":"#"}` |
 
-**Pattern:** the override is honored by zod's `process` for SIMPLE schemas, but routes through `finalize`'s def-extraction logic for NESTED schemas — and ends up as a self-reference `{"$ref":"#"}` because the override result is treated as a reusable def.
+**Pattern (synthetic probe, now explained):** the probe returned `{"$ref":"#"}` for nested schemas. This is not a nested-vs-simple routing difference — it is the mutation-in-place diagnosed in §3.1: the probe reused the same object across calls, and zod's `extractDefs` replaces the root schema with `{"$ref":"#"}` once it has been through a conversion, so the next call emitted only the sentinel. Production clones on every call and never hits it (see §3.5).
 
 ### 3.4 What this means for the MCP server
 
@@ -208,10 +230,10 @@ convertSchema(schema) {
 
 **Therefore:** the override is **bypassed** in the actual production code path.
 
-### 3.5 Q3 status: REFUTED by live e2e
+### 3.5 Override-bypass concern: refuted by live e2e
 
-The scout report's concern that the `_zod.toJSONSchema` override is bypassed
-in production was investigated empirically. A live e2e probe spawns the actual
+The concern that the `_zod.toJSONSchema` override is bypassed in production
+was investigated empirically. A live e2e probe spawns the actual
 MCP server, sends `tools/list`, and inspects every MCP-registered tool's
 inputSchema. Result: all return real JSON Schemas
 (`type:"object"` with proper `properties` map). The override DOES propagate
@@ -221,30 +243,27 @@ through `MCPServer.convertSchema` → `standardSchemaToJSONSchema` →
 CLI surface is not on this path.)
 
 **Known caveat (not blocking):** the synthetic probe at
-`/tmp/probe-q3-clean.cjs` still returns `{"$ref":"#"}` for synthetic nested
-schemas called in isolation. This is a zod 4.4.3 quirk in the `process` +
-`finalize` interaction when the override is called without the full
-`JSON_SCHEMA_LIBRARY_OPTIONS.override` context (provided by
-`@mastra/schema-compat`'s `jsonSchemaOverride`). The discrepancy is not
-fully diagnosed; the most likely explanation is that the migration-touched
-schemas use `z.object({...})` roots which route through `finalize` differently
-than the synthetic probe's nested objects. Production never hits the
-synthetic-probe quirk because the full override context is provided.
+`/tmp/probe-q3-clean.cjs` returns `{"$ref":"#"}` for synthetic nested schemas.
+The cause is now known (see §3.1): zod's `toJSONSchema` mutates the returned
+object in place — `extractDefs` replaces the root schema with `{"$ref":"#"}` —
+so reusing the same object across Mastra's multiple conversions makes the
+second conversion emit only the `$ref` sentinel. The production override
+returns a clone on every call (`JSON.parse(JSON.stringify(parityJSONSchema))`),
+so it never hits the mutation; the synthetic probe reused the object and did.
 
-**Bottom line:** the shim works in production. No refactor needed. The new
-e2e test (rec #1) is a regression guard against future shim/SDK changes; it
-will fail loudly if the synthetic-probe quirk ever re-manifests in production.
+**Bottom line:** the shim works in production. No refactor needed. The e2e
+test in `mcp-tools-list-parity.test.js` is a regression guard against future
+shim/SDK changes; it will fail loudly if the `$ref` sentinel ever
+re-manifests in production.
 
-### 3.6 What to do if the bug is real — RESOLVED: bug is NOT real
+### 3.6 Fallback strategies (not pursued — the bug is not real)
 
-This section is preserved for historical context. The Q3
-finding (synthetic-probe bypass) is REFUTED for all MCP-surfaced production tools
-(verified by live e2e). The "if the bug is real" options below are NOT being
-pursued. If a future zod 4.4.x patch or Mastra SDK upgrade re-manifests the
-synthetic-probe quirk in production, the e2e regression test
+The synthetic-probe bypass is refuted for all MCP-surfaced production tools
+(verified by live e2e). The strategies below are not pursued. If a future
+zod 4.4.x patch or Mastra SDK upgrade re-manifests the synthetic-probe quirk
+in production, the e2e regression test
 (`tools/learning-loop-mastra/__tests__/mcp-tools-list-parity.test.js`) will
-fail loudly. The 3 strategies listed here remain valid fallbacks for that
-hypothetical future:
+fail loudly. These remain valid fallbacks for that hypothetical future:
 
 - Strategy A: Wrap with Vercel-shape `{ _type: "function", jsonSchema: parity }` — incompatible with `createTool` (which expects zod), but documents the short-circuit path
 - Strategy B: Wrap with `toStandardSchema()` from `@mastra/schema-compat` — would be a no-op refactor
@@ -252,13 +271,13 @@ hypothetical future:
 
 ---
 
-## 4. SP2 fingerprint scope
+## 4. Grounding fingerprint scope
 
-A meta-state entry records a fingerprint on `create-loop-tool.js`. The shim file `schema-parity.js` is **NOT** in the SP2 fingerprint registry.
+A meta-state entry records a fingerprint on `create-loop-tool.js`. The shim file `schema-parity.js` is **NOT** in the grounding fingerprint registry.
 
-**Implication:** if zod renames a `_zod.def.type` string, `schema-parity.js` may silently change behavior (passthrough branch at line 110) without SP2 detecting the drift. The 7 parity tests in `coerce-correctness.test.js` are the de facto regression net — they will fail loudly.
+**Implication:** if zod renames a `_zod.def.type` string, `schema-parity.js` may silently change behavior (passthrough branch at line 110) without the grounding check detecting the drift. The 7 parity tests in `coerce-correctness.test.js` are the de facto regression net — they will fail loudly.
 
-**Recommendation:** add `schema-parity.js` to the SP2 fingerprint registry (via `meta_state_log_change` with `evidence_code_ref: "tools/learning-loop-mastra/mastra/schema-parity.js"`).
+**Recommendation:** add `schema-parity.js` to the grounding fingerprint registry (via `meta_state_log_change` with `evidence_code_ref: "tools/learning-loop-mastra/mastra/schema-parity.js"`).
 
 ---
 
@@ -377,9 +396,10 @@ The shim handles: `pipe`, `optional`, `default`, `nullable`, `array`, `object`, 
 | File | What it does |
 |------|--------------|
 | `tools/learning-loop-mastra/mastra/schema-parity.js:15-125` | `buildParitySchema` — the shim |
-| `tools/learning-loop-mastra/mastra/create-loop-tool.js:17-50` | `normalizeInputSchema` + `attachParityJSONSchema` + `createLoopTool` |
-| `tools/learning-loop-mastra/mastra/create-loop-tool.js:38` | The `_zod.toJSONSchema` override assignment |
-| `tools/learning-loop-mastra/mastra/create-loop-tool.js:35-37` | The partially-correct comment about the override mechanism |
+| `tools/learning-loop-mastra/core/schema-normalize.js:18` | `normalizeInputSchema` (moved out of create-loop-tool.js so transport-agnostic consumers — the read-only CLI — can reuse it without importing `@mastra/core`) |
+| `tools/learning-loop-mastra/mastra/create-loop-tool.js:23-62` | `attachParityJSONSchema` — parity view + `parityHints` deep-merge + clone-on-return override |
+| `tools/learning-loop-mastra/mastra/create-loop-tool.js:60` | The `_zod.toJSONSchema` override assignment (returns a clone) |
+| `tools/learning-loop-mastra/mastra/create-loop-tool.js:64-76` | `createLoopTool` — the factory that applies the shim + the R2 write-gate |
 | `tools/learning-loop-mastra/mastra/server.js:13-43` | Manifest loop, tool registration, `MCPServer.startStdio()` |
 | `tools/learning-loop-mastra/__tests__/coerce-correctness.test.js:89-189` | 7 parity tests that lock the shim's behavior |
 | `tools/learning-loop-mastra/__tests__/coerce-correctness.test.js:94-103` | `assertParityMatchesBaseline` — tests `z.toJSONSchema` directly, NOT the MCP path |
@@ -395,33 +415,21 @@ The shim handles: `pipe`, `optional`, `default`, `nullable`, `array`, `object`, 
 
 ---
 
-## 8. Recommendations (in priority order)
-
-| # | Action | Owner | Blocked by |
-|---|--------|-------|------------|
-| 1 | **Add e2e regression guard** at `tools/learning-loop-mastra/__tests__/mcp-tools-list-parity.test.js` — 4 tests (1 universal + 3 per-tool load-bearing) | any agent | none — implementation in phase-02 step 2.2 |
-| 2 | ~~Fix the shim~~ — NOT NEEDED. Shim works in production. | n/a | n/a |
-| 3 | Fix comment at `create-loop-tool.js:35-37` (verbatim in phase-02 step 2.1) | any agent | none |
-| 4 | Add `schema-parity.js` to SP2 fingerprint registry | any agent | none |
-| 5 | Pin zod to 4.4.x — ALREADY DONE in `package.json:48` | n/a | n/a |
-| 6 | Restore or remove missing `research-260618-0031-zod-impact-analysis.md` reference in `plans/260618-0029-coerce-layer-zod-native-migration/plan.md:11` | any agent | none (handled in phase-02 step 2.7) |
-| 7 | Fix plan's `.optional()` overstatement at `phase-01-schema-migration.md:123-126` | any agent | none (out of scope; doc nit) |
-
-## 9. JIT branch contracts + shared field glossary
+## 8. JIT branch contracts + shared field glossary
 
 A prior phase slimmed the `tools/list` manifest-tool wire by moving the **branch-union tool schemas** off the wire and onto **at-invocation error payloads** (JIT). Per-tool invocation contracts are never trimmed; only the *location* of the branch schema moves.
 
-### 9.1 What moved off-wire
+### 8.1 What moved off-wire
 
 - **`meta_state_patch`** — the `patch` argument is now a free-form `z.preprocess(deepStripEnvelope, z.record(z.string(), z.unknown()))` with a parity `minProperties: 1` constraint, NOT the per-kind `buildPatchSchemaFor(kind).strict()` union. The four per-kind branch schemas (`finding`/`change-log`/`rule`/`loop-design`) are no longer serialized into `tools/list`; they ride `invalid_field` / `empty_patch` error payloads instead. Call sites: `meta-state-patch-tool.js` (`invalid_field` payload built from `buildPatchSchemaPayload(entry_kind)`; `empty_patch` payload when the effective patch has no mutable field after stripping identity/CAS fields).
 - **`meta_state_batch`** — same pattern via `buildInvalidFieldResult` in `meta-state-batch-tool.js`.
 - **`meta_state_report`** — input schema narrowed to the user-settable `REPORT_FIELDS` subset (immutable/server-set fields like `id`, `created_at`, `status`, `entry_kind` are no longer accepted inputs; the handler never read them). Each field's `.describe()` points at the glossary: `See field_glossary.<field>`.
 
-### 9.2 The identity invariant is preserved
+### 8.2 The identity invariant is preserved
 
 Relocating the branch schema does NOT relax the identity invariant. `entry_kind` inside a patch is denied at the handler as `{patched:false, reason:"immutable_field", denied_fields:["entry_kind"]}` (deep strip in `core/meta-state.js` + the `IMMUTABLE_PATCH_FIELDS` set) — the registry's `entry_kind` cannot flip via a patch. The rejection *mechanism* moved from a Zod `.strict()` throw at the MCP boundary to a handler-level `immutable_field` return; the registry-state invariant is unchanged.
 
-### 9.3 Shared field glossary
+### 8.3 Shared field glossary
 
 `core/field-glossary.js` is the single source of truth for meta-state field definitions (role: `primitive` — no imports, pure data + lookup). It is served two ways:
 

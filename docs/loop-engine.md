@@ -4,6 +4,16 @@
 
 The learning loop is an engine. Its memory is the record. Its telos is to grow the deterministic surface and shrink the agentic one. This document names the engine's invariant, its concept vocabulary, and the two surfaces that must never share vocabulary. It is implementation-agnostic: it names roles, not mechanisms. The mechanism that realizes each role today lives in `docs/architecture.md`; the contract a runtime must satisfy to participate lives in `docs/runtime-contract.md`.
 
+## Layer model (L1/L2/L3)
+
+The docs declare a level in frontmatter — **L1 concept, L2 mechanism/contract, L3 implementation** — that names *how stable a claim is*, not a hierarchy of importance.
+
+- **L1** is the engine's theory: stable; renameable only by re-debating the invariant. This doc and `docs/philosophy.md`.
+- **L2** is the contract/mechanism that realizes the theory: tools and transitions can be renamed or split without breaking L1. `docs/runtime-contract.md`, `docs/meta-state-lifecycle.md`.
+- **L3** is today's wiring: paths, modules, gate plumbing — interchangeable. `docs/architecture.md`.
+
+A claim belongs at the lowest level it can survive: true regardless of which mechanism runs it → L1; depends on a tool name → L2; depends on a file path → L3. This is the same gradient as the injection × consumption model below (§ Authoring loop-maintained skills): prose/concept at one end, encoded mechanism at the other. The "distinction among values earns its keep only when deterministic code branches on it" rule (see `docs/philosophy.md`) is the decision that tells you *when* to move a claim down this gradient — encode it as L2/L3 mechanism only when code branches on it; otherwise it stays L1 prose.
+
 ## A finding is a deferred decision, not a thing to be removed
 
 A finding is the loop's way of deferring a decision the engine cannot yet make. It is not "something bad to be cleaned up." Every finding has explicit exits, and the loop is wrong if it silently closes one. The exits, named in role form:
@@ -37,7 +47,7 @@ These are ROLES in the engine, not mechanisms. They use lowercase common nouns; 
 
 - **deterministic-step** — a step whose outcome is fixed by a rule or registry state. Anyone may run it; the outcome does not depend on judgment.
 - **agentic-step** — a step deferred to a model or an operator+runtime session because it cannot yet be encoded. The step itself is not recorded during deferral; only its *outcome* is recorded, via the promotion path.
-- **record** — the durable form of what happened: a finding, a change-log, a rule, a loop-design. The record is the loop's memory across sessions, and three stores realize it: `meta-state.jsonl` holds the four kinds (findings, change-logs, rules, loop-designs) — the loop's self-model; `runtime-state.jsonl` holds the loop's short-term memory in two conceptually distinct row kinds — **budget tracking** (mutable state for an external resource budget, with a tracking lifecycle: initial → active → paused → stopped) and **ledger logs** (immutable audit of an event that happened) — see § Budget tracking vs ledger log; `file-index.jsonl` holds the path-keyed evidence fingerprints that ground mechanism-check findings — the loop's contact with the filesystem. The concept surface names these as the realization of the memory role; how each store is read, written, and kept consistent is implementation-surface detail in `docs/architecture.md`, and the contract a runtime must satisfy to participate is in `docs/runtime-contract.md`. See § The change-log trigger (Rec 12) for when an action becomes a change-log.
+- **record** — the durable form of what happened: a finding, a change-log, a rule, a loop-design. The record is the loop's memory across sessions, and three stores realize it: `meta-state.jsonl` holds the four kinds (findings, change-logs, rules, loop-designs) — the loop's self-model; `runtime-state.jsonl` holds the loop's short-term memory in two conceptually distinct row kinds — **budget tracking** (mutable state for an external resource budget, with a tracking lifecycle: initial → active → paused → stopped) and **ledger logs** (immutable audit of an event that happened) — see § Budget tracking vs ledger log; `file-index.jsonl` holds the path-keyed evidence fingerprints that ground mechanism-check findings — the loop's contact with the filesystem. The concept surface names these as the realization of the memory role; how each store is read, written, and kept consistent is implementation-surface detail in `docs/architecture.md`, and the contract a runtime must satisfy to participate is in `docs/runtime-contract.md`. See § The change-log trigger for when an action becomes a change-log.
 - **rule** — a promoted record that enforces an invariant. A rule is what a recurring agentic deferral becomes once it is encoded.
 - **promotion** — the lift from "this agentic deferral happened once" to "this is now a deterministic rule." Promotion is how the deterministic surface grows.
 
@@ -102,13 +112,13 @@ These are the irreducible judgments that survive in the concept surface — the 
 12. **Loss-function question.** Self-referential learning needs a stated target. Proposed composite: drift recovery rate (findings caught + resolved vs drifted) and findings-per-promoted-rule ratio (efficiency of the finding → rule → invariant pipeline). A loop with no stated loss function optimizes whatever is easiest to measure.
 13. **Operator-capture guard.** When the operator's corrections shape what the loop learns and the loop's gates shape what the operator sees, they co-adapt; the meta-surface becomes a record of operator preferences, not system truths. A discovered-vs-acked annotation on change-logs would surface an operator-capture index. Not yet implemented; the schema decision is open.
 
-## The change-log trigger (Rec 12)
+## The change-log trigger
 
 An action becomes a change-log when it changes a bound artifact (a concept- or implementation-surface doc, a runtime contract, a registry schema, a tool manifest, a tracker lifecycle, or `tools/**` / `core/**` source) or a rule/policy. Not for in-session scratch, plan drafts, or reversible edits inside a not-yet-shipped plan.
 
-Skills are the first bound artifact with the gate wired: a skill file is a bound artifact (per the L2 contract: `tools/learning-loop-mastra/interface/CONTRACT.md` Req #3). Editing a skill triggers a change-log entry; the change-log is a record write (MCP tool, already logged in `meta-state.jsonl`), not a bound-artifact edit. **The recursion is bounded: bound-artifact edits emit change-logs, change-logs are records, records are not bound artifacts → the recursion is bounded.** This is the intended invariant — true on disk now that the phase-5 skills write-gate makes skill files bound artifacts.
+Skills are the first bound artifact with the gate wired: a skill file is a bound artifact (per the L2 contract: `tools/learning-loop-mastra/interface/CONTRACT.md` Req #3). Editing a skill triggers a change-log entry; the change-log is a record write (MCP tool, already logged in `meta-state.jsonl`), not a bound-artifact edit. **The recursion is bounded: bound-artifact edits emit change-logs, change-logs are records, records are not bound artifacts → the recursion is bounded.** This is the intended invariant — skill files are bound artifacts under the skills write-gate, so the recursion holds on disk.
 
-**Symmetry (Q11):** there is no operator exemption (escape-hatch #13 — the operator-capture guard). Operator edits and agent edits are recorded symmetrically. Authority governs *which actions may run*; the trigger governs *which are recorded* — orthogonal. `meta_state_log_change` is trigger-gated, not authority-gated (open in both `live` and `autonomous` session modes).
+**Symmetry — no operator exemption.** Operator edits and agent edits are recorded symmetrically (escape-hatch #13 — the operator-capture guard). Authority governs *which actions may run*; the trigger governs *which are recorded* — orthogonal. `meta_state_log_change` is trigger-gated, not authority-gated (open in both `live` and `autonomous` session modes).
 
 **Honest framing:** the change-log step is operator-triggered today. Auto-detecting a bound-artifact edit that did not emit a change-log (the gap detector) is deferred to the change-log gap-detection work (auto-detecting an unlogged bound-artifact edit, plus session-start gap injection). Until that lands, the invariant holds when the operator follows the gated authoring path; a violation produces a record drift, not a hard failure.
 
@@ -128,7 +138,7 @@ The maintainer standard for any loop-maintained skill (a skill mirrored across `
    The injection axis rides a declared **channel** (named in `core/hint-renderer.js#CHANNELS`); channel delivery fidelity varies per provider profile and is attested by the classifier, not assumed. See `docs/architecture.md` § Context-Injection Division of Labor for the channel table + delivery-attestation mechanism.
 2. **Mirror requirement** — skills mirror across `.claude`/`.factory`/`.mastracode` via `writeToAllSkills` (phase 4 fan-out in `core/surfaces.js`). The byte-identity invariant is asserted by `legacy-mcp/skills-mirror-parity.test.js`; a single-surface placement fails the contract with `skill-mirror-gap`.
 3. **Frontmatter discipline** — `maturity:` (state-1/2/3) is hard-required by `CONTRACT.md` Req #3. Per-skill frontmatter parse is error-isolated (one bad skill yields a per-skill fail, does not abort the validator); size cap is 64KB (billion-laughs guard).
-4. **Gated authoring path** — direct writes to `<surface>/skills/**` are blocked by the phase-5 write-gate (`evaluateWriteGate` skills rule). To edit a skill:
+4. **Gated authoring path** — direct writes to `<surface>/skills/**` are blocked by the skills write-gate (`evaluateWriteGate` skills rule). To edit a skill:
    1. `gate_mark_preflight(surface: "skills")` — unlocks the dedicated `.loop-preflight-skills` marker (30-minute TTL).
    2. Write to the skill (Edit each mirror via `writeToAllSkills` for byte-identity, OR `Edit` per mirror if the change is a manual fix).
    3. `meta_state_log_change` — record the system change (the change-log half of self-maintenance).
