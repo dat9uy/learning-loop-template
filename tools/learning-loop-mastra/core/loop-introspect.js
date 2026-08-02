@@ -235,13 +235,18 @@ export function buildProcessPointers({ rulesById } = {} = {}) {
  * @param {Set<string>} [dispatchIds] — finding ids that have a `dispatch-<id>` ledger row
  * @returns {{ fixable_candidates: object[], orphan_findings: object[], dispatch_protocol_prompt: string }}
  */
-// terminal Set collapses to {resolved, superseded}
-// (+archived runtime-applied). The 4-member version mirrored the legacy enum;
-// `auto-resolved` is gone (dead write path) and the open-set lives in
-// `isOpen`/`isStaleView` instead of literal status equality.
-const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
+// terminal Set collapses to {resolved, superseded, accepted}
+// (+archived runtime-applied). `accepted` is the standing-trade-off terminal;
+// it is excluded from the stale-dispatch candidate set. The 4-member version
+// mirrored the legacy enum; `auto-resolved` is gone (dead write path) and the
+// open-set lives in `isOpen`/`isStaleView` instead of literal status equality.
+// Exported so the acceptance-status characterization test
+// (`core/__tests__/meta-state-accepted-status.test.js`) can pin the
+// agreement between this constant and the other five terminal-set copies.
+export const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
   "resolved",
   "superseded",
+  "accepted",
   "archived",
 ]);
 
@@ -516,9 +521,10 @@ export function listActiveFindings(root, { categories } = {}) {
 export function listAntiPatterns(root, { categories } = {}) {
   const entries = readRegistry(root);
   // Anti-patterns are surfaced in open states; filter out closed statuses so
-  // the list does not include resolved/superseded findings. `archived` is
-  // excluded by the `isOpen` check (it tolerates null but not `archived`).
-  const CLOSED_STATUSES = new Set(["resolved", "superseded"]);
+  // the list does not include resolved/superseded/accepted findings.
+  // `archived` is excluded by the `isOpen` check (it tolerates null but not
+  // `archived`).
+  const CLOSED_STATUSES = new Set(["resolved", "superseded", "accepted"]);
   return filterByCategories(
     entries.filter(
       (e) => e.category === "loop-anti-pattern" && !CLOSED_STATUSES.has(e.status)

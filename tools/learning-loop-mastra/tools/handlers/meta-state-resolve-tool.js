@@ -7,11 +7,11 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { loadPromotedRules, checkResolutionEvidence } from "../../core/gate-logic.js";
 import { isOpen } from "../../core/stale-view.js";
 
-// TERMINAL_STATUSES collapses to {resolved, superseded}.
+// TERMINAL_STATUSES collapses to {resolved, superseded, accepted}.
 // `archived` is runtime-applied and excluded from the short-circuit (an
 // already-archived entry is filtered upstream by the entry_kind check; this set
-// only gates the resolved/superseded branch).
-const TERMINAL_STATUSES = new Set(["resolved", "superseded"]);
+// only gates the resolved/superseded/accepted branch).
+const TERMINAL_STATUSES = new Set(["resolved", "superseded", "accepted"]);
 
 export const metaStateResolveTool = {
   name: "meta_state_resolve",

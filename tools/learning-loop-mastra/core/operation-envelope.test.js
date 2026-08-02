@@ -90,12 +90,12 @@ describe("buildEnvelope — shape and counts", () => {
     assert.equal(envelope.target, "test-target");
     assert.deepEqual(envelope.pre_count, {
       total: 3,
-      by_status: { open: 3, resolved: 0, superseded: 0, archived: 0 },
+      by_status: { open: 3, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
       by_kind: { finding: 3, "change-log": 0, rule: 0, "loop-design": 0 },
     });
     assert.deepEqual(envelope.post_count, {
       total: 2,
-      by_status: { open: 2, resolved: 0, superseded: 0, archived: 0 },
+      by_status: { open: 2, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
       by_kind: { finding: 2, "change-log": 0, rule: 0, "loop-design": 0 },
     });
     assert.match(envelope.content_hash, /^sha256:[a-f0-9]{64}$/);
@@ -121,10 +121,11 @@ describe("buildEnvelope — shape and counts", () => {
       postRegistry,
     });
 
-    // by_status keys are exactly the canonical 4 — no "active" / "reported" / "stale" leakage
+    // by_status keys are exactly the canonical 5 — no "active" / "reported" / "stale" leakage.
+    // `accepted` is the standing-trade-off terminal.
     assert.deepEqual(
       Object.keys(envelope.pre_count.by_status).sort(),
-      ["archived", "open", "resolved", "superseded"],
+      ["accepted", "archived", "open", "resolved", "superseded"],
     );
     assert.equal(envelope.pre_count.by_status.open, 5, "5 entries collapsed to open (4 findings + 1 change-log)");
     assert.equal(envelope.pre_count.by_status.archived, 0);

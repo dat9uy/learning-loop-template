@@ -2,15 +2,15 @@
 
 exports[`measure:context default run prints required keys with sane ranges 1`] = `
 {
-  "banner_bytes": 3445,
+  "banner_bytes": 3512,
   "banner_bytes_reads_only": 651,
-  "banner_bytes_records_via_cli": 3445,
-  "cli_tool_count": 41,
-  "dropped_def_bytes": 48233,
+  "banner_bytes_records_via_cli": 3512,
+  "cli_tool_count": 42,
+  "dropped_def_bytes": 49098,
   "measured_at": Any<String>,
   "per_tool": [
     {
-      "bytes": 4268,
+      "bytes": 4312,
       "name": "meta_state_log_change",
     },
     {
@@ -110,6 +110,10 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
       "name": "meta_state_touch",
     },
     {
+      "bytes": 821,
+      "name": "meta_state_accept",
+    },
+    {
       "bytes": 817,
       "name": "workflow_intentional_skip",
     },
@@ -175,7 +179,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
     },
   ],
   "root": Any<String>,
-  "savings_bytes": 44788,
-  "savings_pct": 92.9,
+  "savings_bytes": 45586,
+  "savings_pct": 92.8,
 }
 `;

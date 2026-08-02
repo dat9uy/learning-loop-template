@@ -64,6 +64,19 @@ const CROSS_REFS = {
     { field: "supersedes",         targetKind: "change-log", multi: false },
     { field: "consolidates",       targetKind: "finding",    multi: true  },
   ],
+  // Citation kind: the asserted-relationship carrier that replaces the
+  // bespoke on-record fields consolidated_into/origin/supersedes/
+  // promoted_to_rule. `source` and `target` are both forward refs into the
+  // union — the citation's own id is NOT a ref target, so it stays out of
+  // the inverse map population (the source/target field values carry the
+  // edges). targetKind:"any" so source can point at any kind (rule,
+  // change-log, finding) and target likewise (finding origin source, rule
+  // target; change-log supersedes rule target; etc.). The verb stays prose
+  // in `rationale` and is NEVER a runtime branch — see the state-3 L1.
+  citation: [
+    { field: "source",             targetKind: "any",        multi: false },
+    { field: "target",             targetKind: "any",        multi: false },
+  ],
   rule: [
     { field: "origin",             targetKind: "finding",    multi: false, canonicalPromotion: true },
     { field: "supersedes",         targetKind: "rule",       multi: false },
@@ -85,7 +98,12 @@ const CROSS_REFS = {
  * cross-ref table (e.g. `supersedes` is always `change-log` →
  * `change-log`); finally, when no hint is available (loop-design
  * `proposed_design_for`, which targets either `rule` or `finding`), fall
- * back to a prefix heuristic (`rule-` → `rule`, else `finding`).
+ * back to a prefix heuristic.
+ *
+ * Canonical id prefixes: `meta-` (finding), `rule-` (rule),
+ * `change-…` (change-log), `loop-design-` (loop-design), and `citation-`
+ * (citation). The `citation-` prefix is the only citation kind marker;
+ * lookup-first always wins for entries that exist on disk.
  *
  * Fixes the validator's kind-"meta" bug at
  * `scripts/validate-registry-refs.js:126` (the legacy fallback returned
@@ -98,7 +116,12 @@ function kindForId(id, entries, hintKind) {
     if (found) return found.entry_kind ?? "finding";
   }
   if (hintKind && hintKind !== "any") return hintKind;
-  return typeof id === "string" && id.startsWith("rule-") ? "rule" : "finding";
+  if (typeof id === "string") {
+    if (id.startsWith("rule-")) return "rule";
+    if (id.startsWith("loop-design-")) return "loop-design";
+    if (id.startsWith("citation-")) return "citation";
+  }
+  return "finding";
 }
 
 /**
@@ -173,10 +196,11 @@ export function inverseRefs(targetId, entries) {
 }
 
 /**
- * Mirror of `core/loop-introspect.js#buildInverseIndexes`' 6 named maps.
+ * Mirror of `core/loop-introspect.js#buildInverseIndexes`' named maps.
  * The public export shape is preserved (`addresses_inverse`,
  * `supersedes_inverse`, `origin_inverse`, `promoted_to_rule_inverse`,
- * `reopens_inverse`, `consolidated_into_inverse`).
+ * `reopens_inverse`, `consolidated_into_inverse`) AND gains a 7th map:
+ * `citations_inverse`.
  *
  * Each map is `Map<targetId, sourceId[]>` — values are entry IDs (the entry
  * whose forward ref points at the key), not kinds. Special case:
@@ -186,6 +210,17 @@ export function inverseRefs(targetId, entries) {
  * `core/loop-introspect.test.js`. Dedup is applied so a finding appearing
  * in both a change-log's `consolidates` AND its own `consolidated_into`
  * counts once.
+ *
+ * `citations_inverse` is sourced from citation entries. `forwardRefs` on a
+ * citation emits two refs (one for `source`, one for `target`); both are
+ * routed into `citations_inverse` keyed by the CITATION'S `target` value
+ * with the CITATION'S `source` value as the emitted id — NOT `entry.id`
+ * (the citation id itself is not the source — the source is the side that
+ * "cites" me). The citation id is the audit record (it carries
+ * `rationale`/`recorded_at`); the source/target field values are the
+ * relationship endpoints. This map starts empty (no writers use citations
+ * yet); subsequent work routes writes through it and empties the
+ * corresponding named maps.
  *
  * Population changes from the legacy implementation:
  *   - `promoted_to_rule_inverse` is sourced from `rule.origin` alone (1 ref,
@@ -219,8 +254,39 @@ function upsertList(map, key, val) {
 // `consolidated_into` populate `consolidated_into_inverse` from both sides;
 // the legacy `promoted_to_rule` source is skipped (canonical is `rule.origin`);
 // forwardOnly fields (`applies_to_resolution`) have no inverse map.
+//
+// Citation route: a citation's `source` and `target` field values
+// are the two relationship endpoints. The inverse map is keyed by the
+// CITATION'S `target` value, with the CITATION'S `source` value as the
+// emitted id (NOT the citation id — that would conflate the audit record
+// with the source's relationship). The `target` field's ref is the
+// load-bearing one; the `source` field is just for symmetry.
 function indexRef(indexes, ref, entry) {
   if (ref.field === "promoted_to_rule") return;
+  // Citation fields route into the generic citations_inverse. Captured
+  // from the entry directly because the citation's relationship endpoints
+  // (source/target) are field values, not entry.id.
+  if (entry.entry_kind === "citation") {
+    if (ref.field === "target") {
+      // Citations are written by entries; the "source" of a citation is the
+      // entry that emits the edge. The inverse "who cites me?" query keys
+      // on the citation's TARGET id; the value is the citation's SOURCE
+      // (NOT the citation id — that would conflate the audit row with the
+      // relationship's source endpoint).
+      pushToIndexUnique(indexes.citations_inverse, entry.target, entry.source);
+      return;
+    }
+    if (ref.field === "source") {
+      // The source side of a citation is the emitter; queryable via the
+      // inverse by asking "which target does this source cite?" — but the
+      // primary citations_inverse map is target→source. Source→target is
+      // a derived form (the same citation row, read backwards). NOT
+      // populating a second map keeps the surface single; callers iterate
+      // forwardRefs on the citation entry for source→target resolution.
+      return;
+    }
+    return;
+  }
   if (ref.field === "origin") {
     pushToIndexUnique(indexes.origin_inverse, ref.id, entry.id);
     pushToIndexUnique(indexes.promoted_to_rule_inverse, entry.id, ref.id);
@@ -286,6 +352,7 @@ function newIndexState() {
     promoted_to_rule_inverse: new Map(),
     reopens_inverse: new Map(),
     consolidated_into_inverse: new Map(),
+    citations_inverse: new Map(),
   };
 }
 
@@ -351,4 +418,6 @@ export function diffChangedRefs(newRefs, oldRefs) {
 }
 
 // Internal — exposed for tests + the legacy `loop-introspect.buildInverseIndexes` consumers.
-export const _internal = { CROSS_REFS, kindForId, newIndexState };
+export const _internal = { CROSS_REFS, newIndexState };
+
+export { kindForId };

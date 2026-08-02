@@ -51,13 +51,13 @@ export const META_STATE_FINDING_SEVERITIES = ["warning", "escalate"];
 export const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 500;
 
 /**
- * The terminal statuses `isOpen` excludes: `resolved`/`superseded` plus
- * `archived` (applied at runtime, outside the persisted enum). Mirrors the
- * terminal set in `core/meta-state.js` with `archived` added. Local to this
- * module: only `isOpen` consumes it, and other modules keep their own
+ * The terminal statuses `isOpen` excludes: `resolved`/`superseded`/`accepted`
+ * plus `archived` (applied at runtime, outside the persisted enum). Mirrors
+ * the terminal set in `core/meta-state.js` with `archived` added. Local to
+ * this module: only `isOpen` consumes it, and other modules keep their own
  * role-specific terminal sets (e.g. dispatch excludes `archived` differently).
  */
-const TERMINAL_STATUSES = new Set(["resolved", "superseded", "archived"]);
+const TERMINAL_STATUSES = new Set(["resolved", "superseded", "accepted", "archived"]);
 
 /**
  * `isOpen(entry)` — true when the entry is not in a terminal status.

@@ -2,13 +2,14 @@ import { test } from "vitest";
 import assert from "node:assert";
 import { buildInverseIndexes } from "./loop-introspect.js";
 
-test("buildInverseIndexes returns 6 inverse maps including consolidated_into_inverse", () => {
+test("buildInverseIndexes returns 7 inverse maps including consolidated_into_inverse and citations_inverse", () => {
   const entries = [];
   const inverse = buildInverseIndexes(entries);
   assert.deepStrictEqual(
     Object.keys(inverse).sort(),
     [
       "addresses_inverse",
+      "citations_inverse",
       "consolidated_into_inverse",
       "origin_inverse",
       "promoted_to_rule_inverse",

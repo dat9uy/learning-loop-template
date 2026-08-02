@@ -30,12 +30,12 @@ test("(a) meta_state_log_change accepts operation_envelope field; registry round
       target: "test-target",
       pre_count: {
         total: 3,
-        by_status: { open: 3, resolved: 0, superseded: 0, archived: 0 },
+        by_status: { open: 3, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
         by_kind: { finding: 3, "change-log": 0, rule: 0, "loop-design": 0 },
       },
       post_count: {
         total: 1,
-        by_status: { open: 1, resolved: 0, superseded: 0, archived: 0 },
+        by_status: { open: 1, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
         by_kind: { finding: 1, "change-log": 0, rule: 0, "loop-design": 0 },
       },
       content_hash: "sha256:" + "0".repeat(64),
@@ -70,12 +70,12 @@ test("(b) meta_state_log_change rejects operation_envelope with unknown kind; re
       target: "test-target",
       pre_count: {
         total: 0,
-        by_status: { open: 0, resolved: 0, superseded: 0, archived: 0 },
+        by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
         by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 },
       },
       post_count: {
         total: 0,
-        by_status: { open: 0, resolved: 0, superseded: 0, archived: 0 },
+        by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
         by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 },
       },
       content_hash: "sha256:" + "0".repeat(64),
@@ -295,8 +295,8 @@ test("(g) meta_state_batch.update with operation_envelope field is rejected with
           operation_envelope: {
             kind: "migration",
             target: "forge-attempt",
-            pre_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
-            post_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
+            pre_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
+            post_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
             content_hash: "sha256:" + "0".repeat(64),
           },
         },
@@ -336,8 +336,8 @@ test("(g-write-reject) write op with operation_envelope on change-log entry is r
             operation_envelope: {
               kind: "migration",
               target: "forge-write",
-              pre_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
-              post_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
+              pre_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
+              post_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
               content_hash: "sha256:" + "0".repeat(64),
             },
           },
@@ -441,12 +441,12 @@ test("(h-fresh-assertion) deterministic fixture: exact deepEqual on pre/post cou
     //   by_kind={finding:20, change-log:2, rule:0, loop-design:0}
     const expectedPre = {
       total: 22,
-      by_status: { open: 22, resolved: 0, superseded: 0, archived: 0 },
+      by_status: { open: 22, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
       by_kind: { finding: 20, "change-log": 2, rule: 0, "loop-design": 0 },
     };
     const expectedPost = {
       total: 22,
-      by_status: { open: 20, resolved: 0, superseded: 0, archived: 2 },
+      by_status: { open: 20, resolved: 0, superseded: 0, accepted: 0, archived: 2 },
       by_kind: { finding: 20, "change-log": 2, rule: 0, "loop-design": 0 },
     };
     assert.deepEqual(env.pre_count, expectedPre, "pre_count must match fixture");

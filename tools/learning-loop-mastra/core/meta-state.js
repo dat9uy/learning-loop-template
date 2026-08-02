@@ -108,6 +108,15 @@ const REGISTRY_FILENAME = "meta-state.jsonl";
 // are never mutated in place (enforced by the core-layer immutability guard in
 // updateEntry/archiveEntry and the `entry_kind=change-log` branch in writeEntry).
 const CHANGE_LOG_FILENAME = "change-log.jsonl";
+// The citation stream is a true-append log of immutable `entry_kind=citation`
+// entries. Citations are the asserted-relationship carrier — generic,
+// untyped verb in `rationale`, with `source`/`target` declared in
+// `core/entry/relationship-graph.js#CROSS_REFS`. Same merge=union guarantees
+// as change-log.jsonl: citations are append-only, never mutated in place.
+// Writes route via `appendCitationEntryAtomic`; reads union the third file
+// in `readRawLines`. The 3-direction `assertNoCitationLeak` guard lives in
+// `core/registry-append-atomic.js`.
+const CITATIONS_FILENAME = "citations.jsonl";
 
 function getRegistryPath(root) {
   return join(root, REGISTRY_FILENAME);
@@ -115,6 +124,10 @@ function getRegistryPath(root) {
 
 function getChangeLogPath(root) {
   return join(root, CHANGE_LOG_FILENAME);
+}
+
+function getCitationsPath(root) {
+  return join(root, CITATIONS_FILENAME);
 }
 
 function persistRegistryAtomic(entries, root) {
@@ -220,11 +233,11 @@ function appendRegistryEntryAtomic(root, entry) {
  * (typically the writeEntry wrapper at L760-803) — two concurrent MCP
  * servers calling this outside the lock can interleave byte-for-byte.
  *
- * The cache invalidation here covers BOTH files (`read-registry-cache.js`
- * keys on meta-state.jsonl mtime+size AND change-log.jsonl mtime+size); a
- * write to change-log.jsonl must bust the cache so the next read sees the
- * new entry. Without invalidation, a stale cached union could omit the
- * new change-log.
+ * The cache invalidation here covers ALL THREE files (`read-registry-cache.js`
+ * keys on meta-state.jsonl mtime+size AND change-log.jsonl mtime+size AND
+ * citations.jsonl mtime+size); a write to any of the three must bust the
+ * cache so the next read sees the new entry. Without invalidation, a stale
+ * cached union could omit the new change-log.
  *
  * Also uses `trueAppendAtomic` so the
  * change-log stream benefits from explicit fsync. Process kill mid-write
@@ -239,13 +252,45 @@ function appendChangeLogEntryAtomic(root, entry) {
   invalidateCache(root);
 }
 
+/**
+ * True-append a single citation entry to `citations.jsonl`.
+ *
+ * Mirrors `appendChangeLogEntryAtomic` exactly — same O_APPEND+fsync
+ * true-append pattern, same per-root lock requirement, same
+ * cache-invalidation effect. The 3-direction `assertNoCitationLeak` guard
+ * inside `trueAppendAtomic` ensures a citation entry can ONLY land in
+ * `citations.jsonl`, never in meta-state.jsonl or change-log.jsonl.
+ *
+ * Citations are immutable audit entries (status:"active"); the
+ * `entry_kind:"citation"` branch of `writeEntry` and the union schema's
+ * pre-state guard ensure the entry validates as a citation before the
+ * file write.
+ *
+ * Cache invalidation covers all three files because the read cache keys
+ * on every file's mtime+size; missing citations.jsonl would not crash
+ * here (O_APPEND | O_CREAT creates on first append), and the union read
+ * in `readRawLines` will pick up the new line on the next call.
+ */
+export function appendCitationEntryAtomic(root, entry) {
+  const path = getCitationsPath(root);
+  // trueAppendAtomic fires the 3-direction citation-leak guard before
+  // any bytes are written. The path passed here is citations.jsonl, so
+  // the citation→citations.jsonl direction is the only legal pair; the
+  // other two directions throw.
+  trueAppendAtomicRaw(root, path, entry);
+  invalidateCache(root);
+}
+
 // The `lifecycle-status-stale-mechanism` loop-design collapses the finding
-// status enum to `{open, resolved, superseded}` (+ `archived` runtime-applied
-// at archive time, outside the enum). `reported`/`active`/`stale`/`auto-resolved`
-// are removed from the enum — read sites use `isOpen`/`isStaleView` instead.
-// `archived` lives outside the enum because it is applied by `archiveEntry`
-// after the entry has been removed from the canonical set.
-export const TERMINAL_STATUSES = new Set(["resolved", "superseded"]);
+// status enum to `{open, resolved, superseded, accepted}` (+ `archived`
+// runtime-applied at archive time, outside the enum). `accepted` is the
+// standing-trade-off terminal; `meta_state_accept` flips `open` → `accepted`;
+// `accepted` is terminal for `isOpen`/`isStaleView`/`deriveStatus`.
+// `reported`/`active`/`stale`/`auto-resolved` are removed from the enum — read
+// sites use `isOpen`/`isStaleView` instead. `archived` lives outside the enum
+// because it is applied by `archiveEntry` after the entry has been removed
+// from the canonical set.
+export const TERMINAL_STATUSES = new Set(["resolved", "superseded", "accepted"]);
 const AFFECTED_SYSTEM_ENUM = [
   "meta",
   "gate-logic",
@@ -298,7 +343,7 @@ export { META_STATE_FINDING_CATEGORIES };
  * export names are NOT entry-id refs; a design that targets those documents
  * them in its description and leaves the cross-ref array empty.
  */
-const ENTRY_ID_REF_PREFIXES = ["meta-", "rule-", "loop-design-"];
+const ENTRY_ID_REF_PREFIXES = ["meta-", "rule-", "loop-design-", "citation-"];
 
 // fallow-ignore-next-line unused-export -- public predicate consumed by cold-tier-regression.test.js; also used internally by entryIdRefsRefine
 export function isValidEntryIdRef(ref) {
@@ -353,7 +398,7 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code location; see field_glossary.evidence_code_ref"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["open", "resolved", "superseded", "archived"]).optional()
+  status: z.enum(["open", "resolved", "superseded", "accepted", "archived"]).optional()
     .describe("Finding lifecycle; use field_glossary.status and the dedicated lifecycle tools."),
   consolidated_into: z.string().optional()
     .describe("Canonical change-log id for a superseded finding; see field_glossary.id"),
@@ -387,6 +432,17 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Whether TTL auto-resolution is allowed."),
   reopens: entryIdRefArray().optional()
     .describe("Stale finding ids re-surfaced by this entry; see field_glossary.reopens"),
+  // Accepted status stamps — set by `meta_state_accept`. Mirrors the
+  // `resolved_at`/`resolved_by` shape. `accepted` is a standing-trade-off
+  // terminal: the finding is NOT going away, but it stops being actionable
+  // (`isOpen` excludes it; `isStaleView` returns false; `deriveStatus`
+  // returns no_action). `meta_state_archive` accepts `accepted` → `archived`.
+  accepted_at: z.string().nullable().optional()
+    .describe("ISO timestamp when the entry was accepted as a standing trade-off. Set by meta_state_accept."),
+  accepted_by: z.string().nullable().optional()
+    .describe("Operator or rule id that accepted the entry. Set by meta_state_accept."),
+  accepted_reason: z.string().nullable().optional()
+    .describe("Human-readable trade-off note. Set by meta_state_accept."),
 });
 
 /**
@@ -465,6 +521,47 @@ export const metaStateChangeEntrySchema = z.object({
     content_hash: z.string().regex(/^sha256:[a-f0-9]{64}$/)
       .describe("Content-hash of kind + target + canonicalized op-list + entry-id-set; same input -> same hash. NOT a replay protection — replay detection belongs elsewhere."),
   }).optional().describe("Optional magnitude envelope for batch mutations; see loop-design-operation-envelope-on-change-log"),
+});
+
+/**
+ * Citation branch schema.
+ *
+ * Citations are the asserted-relationship carrier that replaces the bespoke
+ * on-record fields `consolidated_into`/`origin`/`supersedes`/
+ * `promoted_to_rule`. A citation entry is a kinded record in its own
+ * `citations.jsonl` (mirroring how change-logs landed in their own file
+ * during the Tier-1 split).
+ *
+ * Field model — `rationale` is REQUIRED and is the verb (e.g. "origin",
+ * "consolidated-into", "supersedes"); it is untyped prose by design: per
+ * the owner-confirmed red-team resolution, the named inverse maps that
+ * previously branched on the verb collapsed into ONE generic
+ * `citations_inverse`. The verb stays prose in `rationale`; no consumer
+ * runtime branch reads it as a tag. This is the state-3 L1
+ * (`docs/philosophy.md` § "Schema Constraints Are State-3 Artifacts"):
+ * no branch on the verb keeps the citation kind prose-honest.
+ *
+ * `source` and `target` are entry-id refs (the cross-ref table in
+ * `core/entry/relationship-graph.js#CROSS_REFS` declares both with
+ * `targetKind:"any"` so `resolveStructuralRI` validates both exist). The
+ * validation is WARN-ONLY (red-team R3 / R4 inherited from the change-log
+ * lineage) — never rejects.
+ *
+ * `status` is a `z.literal("active")` — citations are append-only audit
+ * entries; the projection's last-wins-by-max-version collapse applies to a
+ * citation's id, but a citation never transitions to "archived" or
+ * "resolved" (those are finding-side lifecycle concepts).
+ */
+export const metaStateCitationEntrySchema = z.object({
+  id: z.string().regex(/^citation-[a-z0-9-]+$/).describe("Stable citation id; see field_glossary.id"),
+  entry_kind: z.literal("citation").describe("Discriminator: citation"),
+  source: z.string().describe("Source entry id (the row that emits the edge)"),
+  target: z.string().describe("Target entry id (the row the source points at)"),
+  rationale: z.string().min(1).describe("Required verb prose (e.g. 'origin', 'consolidated-into', 'supersedes') — the verb stays prose; no runtime branch consumes it."),
+  recorded_at: z.string().describe("ISO timestamp of when the citation was emitted"),
+  recorded_by: z.string().describe("Operator or rule id that emitted the citation"),
+  status: z.literal("active").default("active").describe("Status — citation entries are always 'active' (immutable audit log)"),
+  version: z.number().default(0).describe("CAS version (not used by citation entries but consistent shape)"),
 });
 
 /**
@@ -644,6 +741,7 @@ export const metaStateEntrySchema = z.preprocess(
   z.union([
     metaStateFindingEntrySchema,
     metaStateChangeEntrySchema,
+    metaStateCitationEntrySchema,
     metaStateRuleEntrySchema,
     metaStateLoopDesignSchema,
   ]).superRefine((entry, ctx) => {
@@ -847,25 +945,38 @@ function enqueue(root, fn) {
 }
 
 /**
- * Shared dual-source read: meta-state.jsonl (mutable table) +
- * change-log.jsonl (true-append log of immutable change-logs).
+ * Shared three-source read:
+ *   - meta-state.jsonl (mutable table)
+ *   - change-log.jsonl (true-append log of immutable change-logs)
+ *   - citations.jsonl  (true-append log of immutable citations)
  *
  * Returns the parsed entry list with backward-compat coercions applied and
  * NO projection / NO sort — the two callers (`_readAndParseRegistry` and
  * `parseFnAllVersions`) differ ONLY in what they do after this step. Keep
  * it that way: if a coercion is needed, add it here, not in one caller —
  * the projected and all-versions reads MUST NOT diverge on parse semantics.
+ *
+ * Missing files are treated as empty (so the pre-citation-split state still
+ * works as a no-op dual-source read; the citation stream may be absent and
+ * the reader handles it the same way). The cache key in
+ * `read-registry-cache.js` includes citations.jsonl's mtime+size, so a
+ * first-append to that file invalidates the cache and the next read here
+ * picks it up.
  */
 function readRawLines(root) {
   const metaStatePath = getRegistryPath(root);
   const changeLogPath = getChangeLogPath(root);
+  const citationsPath = getCitationsPath(root);
   const metaStateLines = existsSync(metaStatePath)
     ? readFileSync(metaStatePath, "utf8").split("\n").filter((line) => line.trim() !== "")
     : [];
   const changeLogLines = existsSync(changeLogPath)
     ? readFileSync(changeLogPath, "utf8").split("\n").filter((line) => line.trim() !== "")
     : [];
-  const allLines = [...metaStateLines, ...changeLogLines];
+  const citationsLines = existsSync(citationsPath)
+    ? readFileSync(citationsPath, "utf8").split("\n").filter((line) => line.trim() !== "")
+    : [];
+  const allLines = [...metaStateLines, ...changeLogLines, ...citationsLines];
   return allLines.map((line) => {
     const entry = JSON.parse(line);
     if (!entry.entry_kind) {
@@ -1267,11 +1378,14 @@ export function writeEntry(root, entry) {
       warnStructuralRI(root, validation.data.id, writeRi.dangling);
       // Write dispatch by entry_kind.
       // Change-logs true-append to change-log.jsonl (merge=union safe);
-      // everything else lands in meta-state.jsonl. Runs INSIDE the
-      // withRegistryLock wrapper so concurrent MCP servers cannot interleave
-      // byte-for-byte on the change-log file.
+      // citations true-append to citations.jsonl; everything else lands in
+      // meta-state.jsonl. Runs INSIDE the withRegistryLock wrapper so
+      // concurrent MCP servers cannot interleave byte-for-byte on the
+      // change-log or citation file.
       if (validation.data.entry_kind === "change-log") {
         appendChangeLogEntryAtomic(root, validation.data);
+      } else if (validation.data.entry_kind === "citation") {
+        appendCitationEntryAtomic(root, validation.data);
       } else {
         appendRegistryEntryAtomic(root, validation.data);
       }
@@ -1473,6 +1587,145 @@ export function archiveEntry(root, id, reason, archivedBy) {
       invalidateCache(root);
       return { archived: true, id, archived_at: archivedAt };
     })
+  );
+}
+
+/**
+ * Atomically mark a finding entry as `accepted` (standing trade-off terminal).
+ *
+ * Mirrors `archiveEntry`/`restoreEntry` structure (enqueue +
+ * withRegistryLock + trueAppendAtomicRaw + invalidateCache). True-appends a
+ * new highest-version line with `status: "accepted"` + `accepted_at`/
+ * `accepted_by`/`accepted_reason`. The original line is never modified.
+ *
+ * Why a new core op (not a meta_state_resolve flavor): the lifecycle
+ * distinction matters. `resolve` = bug fixed; `accept` = bug stays as a
+ * deliberate trade-off. Both are terminal for `isOpen`/`isStaleView`/
+ * `deriveStatus`, but only `accepted` is archiveable WITHOUT a re-verify
+ * handoff (an accepted finding is the stable record of a trade-off decision;
+ * re-verify is a separate operator gesture, not part of this op).
+ *
+ * Pre-conditions (assertinvariant pre-state-only wrapper):
+ *   - entry exists (`not_found`)
+ *   - entry_kind === "finding" (`not_a_finding`)
+ *   - entry.status is NOT already in TERMINAL_STATUSES (`already_terminal`)
+ *   - entry.status is NOT "accepted" (`already_accepted`) — distinguished
+ *     from the broader terminal check so the caller can disambiguate the
+ *     outcome (re-accepting an already-accepted finding is a no-op success
+ *     in `meta_state_accept` and a structured `already_accepted` here).
+ *
+ * Wrapped with `assertinvariant` (rule `assertinvariant-at-boundary`):
+ *   the universal pre-state-only wrapper enforces the lifecycle invariants
+ *   (status must be in the open set, entry_kind must be finding) before
+ *   the mutation. Like `archiveEntry`, this op owns an agent-relevant
+ *   invariant, so it joins `MUTATION_OPS` in
+ *   `core/operation-invariant-coverage.test.js`.
+ *
+ * @param {string} root
+ * @param {string} id
+ * @param {string} acceptedBy
+ * @param {string} [reason] — operator-supplied trade-off note
+ * @returns {Promise<
+ *   | {accepted: true, id, status:"accepted", accepted_at, accepted_by, version}
+ *   | {accepted: false, reason: "not_found", id}
+ *   | {accepted: false, reason: "not_a_finding", id, entry_kind}
+ *   | {accepted: false, reason: "already_accepted", id, current_status}
+ *   | {accepted: false, reason: "already_terminal", id, current_status}
+ * >}
+ */
+export function acceptEntry(root, id, acceptedBy, reason) {
+  return enqueue(root, () =>
+    withRegistryLock(root, async () => {
+      const entries = readRegistry(root);
+      const idx = entries.findIndex((e) => e.id === id);
+      if (idx === -1) return { accepted: false, reason: "not_found", id };
+      const existingEntry = entries[idx];
+      if (existingEntry.entry_kind !== "finding") {
+        return {
+          accepted: false,
+          reason: "not_a_finding",
+          id,
+          entry_kind: existingEntry.entry_kind,
+        };
+      }
+      // Distinct already_accepted branch — `TERMINAL_STATUSES` is the broader
+      // set, but a re-accept of an already-accepted finding is a no-op-success
+      // in the tool layer (idempotent for operator convenience) and a structured
+      // `already_accepted` here (the tool layer promotes it to
+      // accepted:true-with-current-state). Keeping the two branches distinct
+      // makes the audit trail readable.
+      if (existingEntry.status === "accepted") {
+        return {
+          accepted: false,
+          reason: "already_accepted",
+          id,
+          current_status: "accepted",
+          current_version: existingEntry.version ?? 0,
+        };
+      }
+      // The universal `assertinvariant` wrapper enforces the broader
+      // terminal pre-condition (status not in TERMINAL_STATUSES). Fires
+      // before any mutation.
+      const invariantResult = await assertAcceptable({
+        entry: existingEntry,
+        id,
+      }, root);
+      if (!invariantResult.ok) {
+        return {
+          accepted: false,
+          reason: invariantResult.reason_code ?? "already_terminal",
+          id,
+          current_status: existingEntry.status ?? null,
+        };
+      }
+      const acceptedAt = new Date().toISOString();
+      const currentVersion = existingEntry.version ?? 0;
+      const accepted = {
+        ...existingEntry,
+        status: "accepted",
+        accepted_at: acceptedAt,
+        accepted_by: acceptedBy,
+        ...(reason !== undefined && reason !== null && { accepted_reason: reason }),
+        version: currentVersion + 1,
+      };
+      trueAppendAtomicRaw(root, getRegistryPath(root), accepted);
+      invalidateCache(root);
+      return {
+        accepted: true,
+        id,
+        status: "accepted",
+        accepted_at: acceptedAt,
+        accepted_by: acceptedBy,
+        ...(reason !== undefined && reason !== null && { accepted_reason: reason }),
+        version: currentVersion + 1,
+      };
+    })
+  );
+}
+
+// Module-private helper for `acceptEntry` — the universal `assertinvariant`
+// wrapper enforces the "status not in TERMINAL_STATUSES" pre-condition. The
+// helper is named `assertAcceptable` to keep it in the
+// `assertNotArchived` / `assertNotChangeLog` / `assertArchivedTombstone`
+// family (the regex in `core/operation-invariant-coverage.test.js` matches
+// `async function assertXxx` helpers). Returns the structured failure result
+// that the handler returns on the failure path (rather than a flat boolean),
+// so the wrapper audit-row is the same shape the caller surfaces.
+async function assertAcceptable({ entry, id }, root) {
+  return await assertinvariant(
+    () => Promise.resolve({ ok: true }),
+    {
+      accept: {
+        context: () => entry,
+        check: (e) => !TERMINAL_STATUSES.has(e.status ?? null),
+      },
+      returnOnFail: {
+        reason_code: "already_terminal",
+        id,
+        current_status: entry.status ?? null,
+      },
+      root,
+    }
   );
 }
 

@@ -55,6 +55,7 @@ const WRITE_TOOL_SKETCHES = {
   meta_state_archive: "{override:[id],reason,confirm?}",
   meta_state_unarchive: "{id,reason?}",
   meta_state_supersede: "{id,consolidated_into,resolution}",
+  meta_state_accept: "{id,accepted_reason,accepted_by?}",
   meta_state_propose_design: "{title,description,proposed_design_for,affected_system}",
   meta_state_ship_loop_design: "{id,shipped_in_plan}",
   meta_state_dispatch_finding: "{id,stage,issue_number?,issue_url?,repo?}",
