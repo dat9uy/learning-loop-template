@@ -39,6 +39,8 @@ export function appendDecisionLog(root, entry) {
     reason: entry.reason,
     matched_pattern: entry.matched_pattern ?? null,
     skipped_via_override: entry.skipped_via_override ?? false,
+    session_id: entry.session_id ?? null,
+    session_id_tier: entry.session_id_tier ?? null,
   });
 
   if (line.includes("\n") || line.includes("\r")) {
@@ -51,9 +53,14 @@ export function appendDecisionLog(root, entry) {
 /**
  * Read the cross-surface decision log and return deduplicated entries.
  *
+ * Note: the recurrence tracker reads the full log (no `since` filter) and
+ * relies on session-axis grouping + dedup. The `since` option is retained
+ * for callers that genuinely need a time bound; callers SHOULD omit it for
+ * scan-the-whole-log paths.
+ *
  * @param {string} root
  * @param {object} options
- * @param {string} options.since - ISO timestamp; only entries with ts >= since are returned
+ * @param {string} [options.since] - ISO timestamp; only entries with ts >= since are returned (default 0 = no filter)
  * @returns {Array}
  */
 export function readDecisionLog(root, options = {}) {

@@ -4,16 +4,14 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 export const gateCheckRecurrenceTool = {
   name: "gate_check_recurrence",
-  description: "Check the gate's decision log for recurring false-positive patterns and auto-file findings. Reads .gate-decision.log from all surfaces, groups by rule_id + normalized command prefix, and emits a meta_state finding when a pattern recurs at least 3 times within 10 minutes.",
+  description: "Check the gate's decision log for recurring false-positive patterns and auto-file findings. Reads .gate-decision.log from all surfaces, groups by (rule_id, normalized_prefix, session_id) with threshold N>=3 per session and a full-log scan (no time-window filter). Emits a meta_state finding with a hashed recurrence_key and rule-record-derived evidence_code_ref.",
   schema: {
-    threshold: z.coerce.number().int().positive().optional().describe("Minimum occurrences to emit (default 3)"),
-    window_minutes: z.coerce.number().int().positive().optional().describe("Time window in minutes (default 10)"),
+    threshold: z.coerce.number().int().positive().optional().describe("Minimum occurrences per session to emit (default 3)"),
   },
-  handler: async ({ threshold, window_minutes }) => {
+  handler: async ({ threshold }) => {
     const root = resolveRoot();
     const options = {};
     if (threshold != null) options.threshold = threshold;
-    if (window_minutes != null) options.windowMs = window_minutes * 60 * 1000;
     const result = await checkAndEmit(root, options);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
