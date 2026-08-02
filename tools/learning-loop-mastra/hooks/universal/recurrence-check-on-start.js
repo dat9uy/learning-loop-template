@@ -22,6 +22,7 @@ import { checkAndEmit } from "../../core/recurrence-tracker.js";
 import { parseInput } from "./lib/protocol-adapter.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
+// fallow-ignore-next-line complexity -- CRAP inflated by the subprocess-coverage blind spot (hook is exercised via spawnSync integration tests, invisible to Istanbul)
 async function main() {
   // SessionStart payloads are surface metadata; we do not need them.
   // Consume stdin via parseInput (per protocol-adapter-i-o audit) so the

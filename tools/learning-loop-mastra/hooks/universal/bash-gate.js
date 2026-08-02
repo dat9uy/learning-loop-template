@@ -37,6 +37,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * @param {string} root — project root
  * @returns {{ session_id: string, session_id_tier: "real" | "fallback" }}
  */
+// fallow-ignore-next-line complexity -- CRAP inflated by the subprocess-coverage blind spot (hook runs as a spawned process; exercised by hook integration tests)
 function resolveSessionId(input, root) {
   const raw = input?.session_id;
   if (typeof raw === "string" && raw.length > 0 && raw.length <= SESSION_ID_MAX_LEN && UUID_RE.test(raw)) {
@@ -70,6 +71,7 @@ function emitIfBlocked(decision, command, root, session) {
   console.log(formatHookDecision(decision, { channel: "hookSpecificOutput" }));
 }
 
+// fallow-ignore-next-line complexity -- CRAP inflated by the subprocess-coverage blind spot (hook runs as a spawned process; exercised by hook integration tests)
 function buildLogEntry(decision, command, session) {
   return {
     command_prefix: command,

@@ -34,11 +34,26 @@ export function normalizePrefix(command) {
  * @param {string} prefix
  * @returns {string} 16 hex chars (64 bits, birthday-safe far beyond registry scale)
  */
+// fallow-ignore-next-line unused-export -- public API consumed by gate-recurrence tests to assert key derivation
 export function hashRecurrenceKey(ruleId, prefix) {
   return createHash("sha256")
     .update(`${ruleId}::${prefix}`)
     .digest("hex")
     .slice(0, 16);
+}
+
+/**
+ * Fallback-tier span bound: worktree-hash buckets are lifetime-accumulating,
+ * so they fire only when the whole bucket spans <= 24h (per-worktree is a
+ * coarse session proxy, not a lifetime counter). Entries arrive ts-sorted
+ * from readDecisionLog.
+ */
+function passesFallbackSpanBound(entries) {
+  const isFallback = entries.some((e) => e.session_id_tier === "fallback");
+  if (!isFallback) return true;
+  const firstMs = new Date(entries[0].ts).getTime();
+  const lastMs = new Date(entries[entries.length - 1].ts).getTime();
+  return lastMs - firstMs <= FALLBACK_TIER_SPAN_MS;
 }
 
 /**
@@ -96,13 +111,7 @@ export function findRecurrentGroups(root, options = {}) {
   for (const group of groups.values()) {
     if (group.entries.length < threshold) continue;
     const entries = group.entries;
-    // Fallback-tier span bound: worktree-hash buckets must span <= 24h.
-    const isFallback = entries.some((e) => e.session_id_tier === "fallback");
-    if (isFallback) {
-      const firstMs = new Date(entries[0].ts).getTime();
-      const lastMs = new Date(entries[entries.length - 1].ts).getTime();
-      if (lastMs - firstMs > FALLBACK_TIER_SPAN_MS) continue;
-    }
+    if (!passesFallbackSpanBound(entries)) continue;
     recurrent.push({
       rule_id: group.rule_id,
       command_prefix_normalized: group.command_prefix_normalized,
@@ -128,6 +137,89 @@ function generateFindingId(ruleId) {
   return `meta-${ts}Z-${tail}`;
 }
 
+function recurrenceKeyFor(group) {
+  return `${group.rule_id}::${hashRecurrenceKey(group.rule_id, group.command_prefix_normalized)}`;
+}
+
+/**
+ * Build the dedup index from one registry read. Suppression rule: any
+ * non-archived recurring-false-positive suppresses. `open`, `accepted`, and
+ * `resolved` all hold; `archived` re-admits. No grace-window comparison, no
+ * `resolved_at` read. Also builds the rule-record lookup used to derive each
+ * finding's evidence_code_ref (the referent grounding co-locates with
+ * accepted-limitation findings on that file).
+ */
+function resolveDedupIndex(allEntries) {
+  const existing = allEntries.filter(
+    (e) =>
+      e.entry_kind === "finding"
+      && e.subtype === "recurring-false-positive"
+      && e.recurrence_key
+      && e.status !== "archived",
+  );
+  const ruleById = new Map();
+  for (const e of allEntries) {
+    if (e.entry_kind === "rule" && e.id && !ruleById.has(e.id)) {
+      ruleById.set(e.id, e);
+    }
+  }
+  return { existing, existingKeys: new Set(existing.map((e) => e.recurrence_key)), ruleById };
+}
+
+/**
+ * In-call dedup by recurrence_key: multiple per-session groups sharing one
+ * prefix (e.g. session A and session B both cross threshold) collapse to a
+ * single finding before the write loop. The hashed key is rule-scoped, so
+ * cross-rule collapses are impossible.
+ */
+function collapseFreshByKey(recurrent, existingKeys) {
+  const freshByKey = new Map();
+  for (const group of recurrent) {
+    const recurrenceKey = recurrenceKeyFor(group);
+    if (existingKeys.has(recurrenceKey)) continue;
+    const prior = freshByKey.get(recurrenceKey);
+    if (!prior) {
+      freshByKey.set(recurrenceKey, group);
+      continue;
+    }
+    // Same key across calls — keep the richer observation: summed count,
+    // earliest first_seen, latest last_seen, accumulated distinct sessions.
+    freshByKey.set(recurrenceKey, {
+      ...prior,
+      count: prior.count + group.count,
+      first_ts: prior.first_ts < group.first_ts ? prior.first_ts : group.first_ts,
+      last_ts: prior.last_ts > group.last_ts ? prior.last_ts : group.last_ts,
+      sessions_crossing_threshold: (prior.sessions_crossing_threshold ?? 1) + 1,
+    });
+  }
+  return Array.from(freshByKey.values());
+}
+
+function buildFinding(group, ruleById) {
+  const ruleRecord = ruleById.get(group.rule_id);
+  const evidenceCodeRef =
+    (ruleRecord?.evidence_code_ref && typeof ruleRecord.evidence_code_ref === "string")
+      ? ruleRecord.evidence_code_ref
+      : "tools/learning-loop-mastra/core/gate-logic.js";
+  return {
+    id: generateFindingId(group.rule_id),
+    entry_kind: "finding",
+    category: "gate-logic-bug",
+    severity: "warning",
+    affected_system: "gate-logic",
+    subtype: "recurring-false-positive",
+    recurrence_key: recurrenceKeyFor(group),
+    description:
+      `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) ` +
+      `(latest: ${group.session_id}) under rule ${group.rule_id}. ` +
+      `First seen: ${group.first_ts}. Last seen: ${group.last_ts}.`,
+    evidence_code_ref: evidenceCodeRef,
+    mechanism_check: true,
+    status: "open",
+    created_at: new Date().toISOString(),
+  };
+}
+
 /**
  * Check for recurrent groups and auto-file findings (deduped against existing).
  * Returns { checked_groups, findings_emitted, recurrent, entries_scanned }
@@ -143,101 +235,28 @@ export async function checkAndEmit(root, options = {}) {
   const recurrent = findRecurrentGroups(root, { ...options, out: scanOut });
 
   // One registry read covers the dedup filter AND the evidence_code_ref
-  // derivation. Suppression rule: any non-archived recurring-false-positive
-  // suppresses. `open`, `accepted`, and `resolved` all hold; `archived`
-  // re-admits. No grace-window comparison, no `resolved_at` read.
-  //
-  // Race-safety: `writeEntry` itself acquires `withRegistryLock(root)` and
-  // serializes via the per-root enqueue queue; the unlocked pre-filter is
-  // the fast path and the cross-process race window is small (it self-heals
-  // on the next session via the same filter — a duplicate finding is
-  // dedup-suppressed by the prior run's hashed recurrence_key).
-  const allEntries = readRegistry(root);
-  const existing = allEntries.filter(
-    (e) =>
-      e.entry_kind === "finding"
-      && e.subtype === "recurring-false-positive"
-      && e.recurrence_key
-      && e.status !== "archived",
-  );
-  const existingKeys = new Set(existing.map((e) => e.recurrence_key));
-  // Build a one-shot lookup of rule records by their promoted rule_id so
-  // each fresh group can resolve to the gate-rule code (the referent
-  // grounding co-locates with accepted-limitation findings on that file).
-  const ruleById = new Map();
-  for (const e of allEntries) {
-    if (e.entry_kind === "rule" && e.id && !ruleById.has(e.id)) {
-      ruleById.set(e.id, e);
-    }
-  }
+  // derivation. Race-safety: `writeEntryIfAbsent` acquires
+  // `withRegistryLock(root)` and serializes via the per-root enqueue queue;
+  // the unlocked pre-filter is the fast path and the cross-process race
+  // window self-heals on the next session via the same filter.
+  const { existing, existingKeys, ruleById } = resolveDedupIndex(readRegistry(root));
+  const fresh = collapseFreshByKey(recurrent, existingKeys);
 
-  // In-call dedup by recurrence_key: multiple per-session groups sharing
-  // one prefix (e.g. session A and session B both cross threshold) collapse
-  // to a single finding before the write loop. The hashed key is
-  // rule-scoped, so cross-rule collapses are impossible.
-  const freshByKey = new Map();
-  for (const group of recurrent) {
-    const recurrenceKey = `${group.rule_id}::${hashRecurrenceKey(group.rule_id, group.command_prefix_normalized)}`;
-    if (existingKeys.has(recurrenceKey)) continue;
-    const prior = freshByKey.get(recurrenceKey);
-    if (!prior) {
-      freshByKey.set(recurrenceKey, group);
-      continue;
-    }
-    // Same key across calls — keep the richer observation: max count,
-    // earliest first_seen, latest last_seen, accumulated distinct sessions.
-    freshByKey.set(recurrenceKey, {
-      ...prior,
-      count: prior.count + group.count,
-      first_ts: prior.first_ts < group.first_ts ? prior.first_ts : group.first_ts,
-      last_ts: prior.last_ts > group.last_ts ? prior.last_ts : group.last_ts,
-      sessions_crossing_threshold: (prior.sessions_crossing_threshold ?? 1) + 1,
-    });
-  }
-  const fresh = Array.from(freshByKey.values());
-
-  // Log per-key dedup hits BEFORE the write loop so the stderr channel
-  // carries the suppression even when the fast-path filter has already
-  // excluded the key. Skip for fresh keys (they'll log on a re-run).
   const dryRun = process.env.GATE_RECURSION_DRY_RUN === "1";
   let written = 0;
   for (const group of fresh) {
-    const recurrenceKey = `${group.rule_id}::${hashRecurrenceKey(group.rule_id, group.command_prefix_normalized)}`;
-    const ruleRecord = ruleById.get(group.rule_id);
-    const evidenceCodeRef =
-      (ruleRecord?.evidence_code_ref && typeof ruleRecord.evidence_code_ref === "string")
-        ? ruleRecord.evidence_code_ref
-        : "tools/learning-loop-mastra/core/gate-logic.js";
-    const finding = {
-      id: generateFindingId(group.rule_id),
-      entry_kind: "finding",
-      category: "gate-logic-bug",
-      severity: "warning",
-      affected_system: "gate-logic",
-      subtype: "recurring-false-positive",
-      recurrence_key: recurrenceKey,
-      description:
-        `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) ` +
-        `(latest: ${group.session_id}) under rule ${group.rule_id}. ` +
-        `First seen: ${group.first_ts}. Last seen: ${group.last_ts}.`,
-      evidence_code_ref: evidenceCodeRef,
-      mechanism_check: true,
-      status: "open",
-      created_at: new Date().toISOString(),
-    };
-    if (!dryRun) {
-      // writeEntryIfAbsent re-checks the registry inside the lock, so two
-      // concurrent SessionStart processes serialize on `withRegistryLock`
-      // and only one wins per `recurrence_key`. The unlocked pre-filter
-      // remains the fast path; this is the correctness boundary.
-      const res = await writeEntryIfAbsent(root, finding);
-      if (res.written) {
-        written++;
-      } else if (res.suppressed_by) {
-        // Locked re-check suppression — emit the stderr diagnostic so the
-        // suppression is attributable (id + hashed key), not silent.
-        console.error(`recurrence-check: suppressed ${recurrenceKey} by existing finding ${res.suppressed_by.id}`);
-      }
+    if (dryRun) continue;
+    // writeEntryIfAbsent re-checks the registry inside the lock, so two
+    // concurrent SessionStart processes serialize on `withRegistryLock`
+    // and only one wins per `recurrence_key`. The unlocked pre-filter
+    // remains the fast path; this is the correctness boundary.
+    const res = await writeEntryIfAbsent(root, buildFinding(group, ruleById));
+    if (res.written) {
+      written++;
+    } else if (res.suppressed_by) {
+      // Locked re-check suppression — emit the stderr diagnostic so the
+      // suppression is attributable (id + hashed key), not silent.
+      console.error(`recurrence-check: suppressed ${recurrenceKeyFor(group)} by existing finding ${res.suppressed_by.id}`);
     }
   }
 
@@ -248,7 +267,7 @@ export async function checkAndEmit(root, options = {}) {
   // never reach the write loop because the unlocked filter caught them
   // first.
   for (const group of recurrent) {
-    const recurrenceKey = `${group.rule_id}::${hashRecurrenceKey(group.rule_id, group.command_prefix_normalized)}`;
+    const recurrenceKey = recurrenceKeyFor(group);
     if (existingKeys.has(recurrenceKey)) {
       const sup = existing.find((e) => e.recurrence_key === recurrenceKey);
       console.error(`recurrence-check: suppressed ${recurrenceKey} by existing finding ${sup?.id ?? "(unknown)"}`);
