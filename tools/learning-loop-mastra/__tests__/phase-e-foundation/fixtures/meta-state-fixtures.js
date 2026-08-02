@@ -1,6 +1,12 @@
 // Fixture entries for meta_state_relationships snapshot tests.
 // Includes a legacy finding without promoted_to_rule to exercise
 // the dual-field migration logic.
+//
+// Phase 3: `consolidated_into` / `consolidates` were de-routed from
+// CROSS_REFS. The wire-shape test exercises the new citation-sourced
+// `cited_by` inbound map (replacing the named `consolidated_by`) and
+// the lack of outbound `consolidated_into` / `consolidates` (the live
+// edge is a citation row).
 
 export const FINDING_FIXTURE = {
   id: "meta-test-finding",
@@ -10,7 +16,6 @@ export const FINDING_FIXTURE = {
   affected_system: "meta",
   description: "Snapshot test finding fixture.",
   status: "open",
-  consolidated_into: "meta-test-changelog",
   reopens: ["meta-stale-parent"],
   promoted_to_rule: "rule-test-rule",
   created_at: "2026-06-27T00:00:00Z",
@@ -64,7 +69,21 @@ export const CHANGELOG_FIXTURE = {
   reason: "Snapshot test change-log fixture.",
   status: "active",
   created_at: "2026-06-27T00:00:00Z",
-  consolidates: ["meta-test-finding"],
+  // `consolidates` was de-routed from CROSS_REFS in Phase 3; the live
+  // consolidated edge is the citation row below.
+};
+
+// Phase 3: citation row carrying the consolidated edge
+// (source=finding, target=change-log, rationale="consolidated into…").
+export const CITATION_FIXTURE = {
+  id: "citation-test-snapshot",
+  entry_kind: "citation",
+  source: "meta-test-finding",
+  target: "meta-test-changelog",
+  rationale: "consolidated into meta-test-changelog",
+  recorded_at: "2026-06-27T00:00:00Z",
+  recorded_by: "operator",
+  status: "active",
 };
 
 export const LOOPDESIGN_FIXTURE = {
@@ -86,5 +105,6 @@ export const ALL_FIXTURES = [
   RULE_FIXTURE,
   RULE_FOR_LEGACY_FIXTURE,
   CHANGELOG_FIXTURE,
+  CITATION_FIXTURE,
   LOOPDESIGN_FIXTURE,
 ];

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "migrate origin + supersedes to citations; retire promoted_to_rule"
-status: pending
+status: completed
 priority: P1
 effort: ""
 dependencies: [2]

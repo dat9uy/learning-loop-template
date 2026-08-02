@@ -88,18 +88,21 @@ function makeLoopDesign(overrides = {}) {
 // Section 1: factories — forward `outboundRefs` per kind
 // -----------------------------------------------------------------------------
 
-test("finding.outboundRefs: consolidated_into + reopens (multi) + promoted_to_rule", () => {
+test("finding.outboundRefs: reopens (multi) only (Phase 3+4 dropped consolidated_into + promoted_to_rule)", () => {
+  // Phase 3: `consolidated_into` was de-routed from `CROSS_REFS`; the live
+  // consolidated edge is a citation row. Phase 4: `promoted_to_rule` was
+  // retired (canonical promotion edge is the origin citation). Old version
+  // lines still carry both fields (the schema accepts them), but
+  // `outboundRefs` no longer emits either.
   const entry = makeFinding({
-    consolidated_into: "meta-cl-1",
+    consolidated_into: "meta-cl-1", // inert-historical; ignored
     reopens: ["meta-stale-a", "meta-stale-b"],
-    promoted_to_rule: "rule-r1",
+    promoted_to_rule: "rule-r1", // inert-historical; ignored
   });
   const factory = factoryFor(entry);
   const refs = factory.outboundRefs();
   const fields = refs.map((r) => `${r.field}:${r.id}`).sort();
   assert.deepStrictEqual(fields, [
-    "consolidated_into:meta-cl-1",
-    "promoted_to_rule:rule-r1",
     "reopens:meta-stale-a",
     "reopens:meta-stale-b",
   ]);
@@ -111,25 +114,32 @@ test("finding.outboundRefs: omit absent multi/single fields", () => {
   assert.deepStrictEqual(factory.outboundRefs(), []);
 });
 
-test("change-log.outboundRefs: supersedes + consolidates (multi)", () => {
+test("change-log.outboundRefs: supersedes only (Phase 3 dropped consolidates)", () => {
+  // Phase 3: `consolidates` was de-routed from `CROSS_REFS`; the live
+  // consolidated edge is sourced from `citations_inverse`. Old version
+  // lines still carry the field (the schema accepts it), but
+  // `outboundRefs` no longer emits it. Phase 4: `supersedes` itself
+  // was de-routed too — outbound for change-log is empty unless the
+  // entry sets `applies_to_resolution` or other fields.
   const entry = makeChangeLog({
-    supersedes: "meta-cl-0",
-    consolidates: ["meta-f-a", "meta-f-b"],
+    supersedes: "meta-cl-0", // inert-historical (Phase 4); ignored
+    consolidates: ["meta-f-a", "meta-f-b"], // inert-historical; ignored
   });
   const factory = factoryFor(entry);
   const refs = factory.outboundRefs();
   const fields = refs.map((r) => `${r.field}:${r.id}`).sort();
-  assert.deepStrictEqual(fields, [
-    "consolidates:meta-f-a",
-    "consolidates:meta-f-b",
-    "supersedes:meta-cl-0",
-  ]);
+  assert.deepStrictEqual(fields, []);
 });
 
-test("rule.outboundRefs: origin + supersedes + applies_to_resolution", () => {
+test("rule.outboundRefs: applies_to_resolution only (Phase 4 dropped origin + supersedes)", () => {
+  // Phase 4: `origin` + `supersedes` de-routed from `CROSS_REFS`; the
+  // canonical edges are citation rows. Old version lines still carry
+  // both fields (the schema accepts them), but `outboundRefs` no
+  // longer emits them. Only `applies_to_resolution` remains as a
+  // forwardOnly field.
   const entry = makeRule({
-    origin: "meta-f1",
-    supersedes: "rule-r0",
+    origin: "meta-f1", // inert-historical; ignored
+    supersedes: "rule-r0", // inert-historical; ignored
     applies_to_resolution: "meta-f-x",
   });
   const factory = factoryFor(entry);
@@ -137,8 +147,6 @@ test("rule.outboundRefs: origin + supersedes + applies_to_resolution", () => {
   const fields = refs.map((r) => `${r.field}:${r.id}`).sort();
   assert.deepStrictEqual(fields, [
     "applies_to_resolution:meta-f-x",
-    "origin:meta-f1",
-    "supersedes:rule-r0",
   ]);
 });
 
@@ -179,60 +187,72 @@ test("finding.inboundRefs: reopens inverse from `entry.reopens` (forward source-
   assert.deepStrictEqual(reopensRefs, [{ kind: "finding", id: "meta-child", field: "reopens" }]);
 });
 
-test("rule.inboundRefs: dual-field promoted_to_rule dedups to 1 ref (canonical rule.origin)", () => {
-  // CURRENT: rule.js dedups rule.origin vs finding.promoted_to_rule via `seenPromotedFrom` Set.
-  // A dual-field finding (has promoted_to_rule AND a rule whose origin points at it)
-  // yields 1 ref here (rule.js dedups).
+test("rule.inboundRefs: dual-field promoted_to_rule is retired (Phase 4 ghost-ref removed)", () => {
+  // Phase 4 retired the dual-field ghost-ref: rule.origin + finding.promoted_to_rule
+  // are both inert-historical. The canonical promotion edge is the origin
+  // citation row. Without a citation row, the inbound set is empty.
   const finding = makeFinding({ id: "meta-f1", promoted_to_rule: "rule-r1" });
   const rule = makeRule({ id: "rule-r1", origin: "meta-f1" });
   const factory = factoryFor(rule);
   const refs = factory.inboundRefs([finding, rule]);
   const ptr = refs.filter((r) => r.field === "promoted_to_rule");
-  assert.strictEqual(ptr.length, 1, "rule.js dual-field dedup yields 1 ref");
-  assert.strictEqual(ptr[0].id, "meta-f1");
-  assert.strictEqual(ptr[0].kind, "finding");
+  assert.strictEqual(ptr.length, 0, "Phase 4: dual-field promoted_to_rule retired; inbound is empty without citation row");
 });
 
-test("rule.inboundRefs: rule.origin present even when finding.promoted_to_rule absent", () => {
+test("finding.inboundRefs: origin citation row surfaces via citations_inverse (Phase 4)", () => {
+  // Phase 4: the canonical promotion edge is a citation row
+  // (`source:rule, target:finding, rationale:"origin"`). `inverseRefs`
+  // surfaces the citing rule via the citation's `target` field
+  // substitution — emitted as `cited_by` (Phase 4 generic wire shape).
   const finding = makeFinding({ id: "meta-legacy" });
-  const rule = makeRule({ id: "rule-r1", origin: "meta-legacy" });
-  const factory = factoryFor(rule);
-  const refs = factory.inboundRefs([finding, rule]);
-  const ptr = refs.filter((r) => r.field === "promoted_to_rule");
-  assert.strictEqual(ptr.length, 1);
-  assert.strictEqual(ptr[0].id, "meta-legacy");
+  const rule = makeRule({ id: "rule-r1" });
+  const citation = {
+    id: "citation-test-rule-inbound",
+    entry_kind: "citation",
+    source: "rule-r1",
+    target: "meta-legacy",
+    rationale: "origin",
+    recorded_at: "2026-08-02T00:00:00.000Z",
+    recorded_by: "operator",
+    status: "active",
+  };
+  const factory = factoryFor(finding);
+  const refs = factory.inboundRefs([finding, rule, citation]);
+  // The citation's source (rule-r1) becomes the inbound; we filter on
+  // the target-substitution field. groupInbound maps this to
+  // `cited_by`.
+  const cites = refs.filter((r) => r.field === "target");
+  assert.ok(cites.length > 0, "Phase 4: origin citation surfaces inbound for the finding");
+  assert.strictEqual(cites[0].id, "rule-r1");
 });
 
 // -----------------------------------------------------------------------------
 // Section 3: `buildInverseIndexes` — the 6 named maps + dual-source 2-ref artifact
 // -----------------------------------------------------------------------------
 
-test("buildInverseIndexes returns the 6 named Maps", () => {
+test("buildInverseIndexes returns the 7 named Maps", () => {
   const result = buildInverseIndexes([]);
   assert.ok(result.addresses_inverse instanceof Map);
   assert.ok(result.supersedes_inverse instanceof Map);
   assert.ok(result.origin_inverse instanceof Map);
   assert.ok(result.promoted_to_rule_inverse instanceof Map);
   assert.ok(result.reopens_inverse instanceof Map);
-  assert.ok(result.consolidated_into_inverse instanceof Map);
+  assert.ok(result.consolidated_into_inverse instanceof Map); // empty post-Phase 3
+  assert.ok(result.citations_inverse instanceof Map); // 7th map
 });
 
-test("buildInverseIndexes: dual-field promoted_to_rule yields 1 ref (canonical rule.origin — was 2 pre-centralization)", () => {
-  // CURRENT (buggy) behavior pinned: rule.origin (pushUnique) + finding.promoted_to_rule
-  // (pushToIndex) both contribute → 2 refs for a single relationship.
-  // Phase 3 changes this to 1 (canonical rule.origin).
-  // Phase 3 fix (canonical): the centralization dedups the dual-field 2-ref
-  // artifact to 1 ref (sourced from rule.origin alone). The legacy
-  // `finding.promoted_to_rule` field is preserved on disk but no longer
-  // contributes to the inverse — fixes the dual-source double-count bug.
+test("buildInverseIndexes: dual-field promoted_to_rule → 0 refs (Phase 4 retired; origin is now a citation)", () => {
+  // Phase 4: the canonical promotion edge is the origin citation row;
+  // `promoted_to_rule_inverse` is empty (no on-record source). The
+  // canonical 1-ref behavior (Phase 2 / centralization) was achieved by
+  // indexing only rule.origin; Phase 4 retires rule.origin as well.
   const entries = [
     makeRule({ id: "rule-r1", origin: "meta-f1" }),
     makeFinding({ id: "meta-f1", promoted_to_rule: "rule-r1" }),
   ];
   const result = buildInverseIndexes(entries);
   const ptr = result.promoted_to_rule_inverse.get("rule-r1");
-  assert.strictEqual(ptr.length, 1, "Phase 3: canonical rule.origin → 1 ref (was 2)");
-  assert.ok(ptr.includes("meta-f1"));
+  assert.strictEqual(ptr, undefined, "Phase 4: promoted_to_rule_inverse is empty (origin is now a citation)");
 });
 
 test("buildInverseIndexes: reopens_inverse keyed by the parent (stale)", () => {
@@ -244,39 +264,62 @@ test("buildInverseIndexes: reopens_inverse keyed by the parent (stale)", () => {
   assert.deepStrictEqual(result.reopens_inverse.get("meta-stale-parent"), ["meta-child"]);
 });
 
-test("buildInverseIndexes: consolidated_into_inverse keyed by change-log id", () => {
+test("buildInverseIndexes: consolidated edge sourced from citations_inverse (Phase 3)", () => {
+  // Phase 3 collapsed `consolidated_into` + `consolidates` into citation rows.
+  // The live consolidated edge is sourced from `citations_inverse`
+  // (target=change-log, source=finding). `consolidated_into_inverse` is
+  // empty post-Phase 3 — readers iterate `citations_inverse`.
   const entries = [
-    makeChangeLog({ consolidates: ["meta-f-a", "meta-f-b"] }),
+    makeFinding({ id: "meta-f-a" }),
+    makeFinding({ id: "meta-f-b" }),
+    makeChangeLog({ id: "meta-cl-1" }),
+    {
+      id: "citation-c1",
+      entry_kind: "citation",
+      source: "meta-f-a",
+      target: "meta-cl-1",
+      rationale: "consolidated into meta-cl-1",
+      recorded_at: "2026-08-02T00:00:00.000Z",
+      recorded_by: "operator",
+      status: "active",
+    },
+    {
+      id: "citation-c2",
+      entry_kind: "citation",
+      source: "meta-f-b",
+      target: "meta-cl-1",
+      rationale: "consolidated into meta-cl-1",
+      recorded_at: "2026-08-02T00:00:00.000Z",
+      recorded_by: "operator",
+      status: "active",
+    },
   ];
   const result = buildInverseIndexes(entries);
-  const ids = result.consolidated_into_inverse.get("meta-cl-1");
-  // After Phase 3 centralization: the graph's buildInverseIndexes populates
-  // consolidated_into_inverse from the change-log's `consolidates` field
-  // (the legacy loop-introspect did the same via indexConsolidatedInto).
-  assert.ok(ids && ids.includes("meta-f-a"), `expected meta-f-a in ${JSON.stringify(ids)}`);
-  assert.ok(ids && ids.includes("meta-f-b"), `expected meta-f-b in ${JSON.stringify(ids)}`);
+  const ids = result.citations_inverse.get("meta-cl-1");
+  assert.ok(ids && ids.includes("meta-f-a"), `expected meta-f-a in citations_inverse for meta-cl-1, got ${JSON.stringify(ids)}`);
+  assert.ok(ids && ids.includes("meta-f-b"), `expected meta-f-b in citations_inverse for meta-cl-1, got ${JSON.stringify(ids)}`);
+  // consolidated_into_inverse is empty (no on-record field source).
+  assert.strictEqual(result.consolidated_into_inverse.get("meta-cl-1"), undefined);
 });
 
 // -----------------------------------------------------------------------------
 // Section 4: validator OUTBOUND_EXTRACTORS — pin CURRENT divergences (bugs)
 // -----------------------------------------------------------------------------
 
-test("validator forwardRefs.rule: emits origin + supersedes + applies_to_resolution", () => {
-  // Phase 3 fix: the validator delegates to `graph.forwardRefs`, which emits
-  // all declared cross-ref fields per kind (rule.supersedes +
-  // rule.applies_to_resolution were previously omitted by the standalone
-  // `OUTBOUND_EXTRACTORS.rule` body — Phase 1 pinned the bug, Phase 3 fixed it).
+test("validator forwardRefs.rule: emits applies_to_resolution only (Phase 4 dropped origin + supersedes)", () => {
+  // Phase 4: `origin` + `supersedes` de-routed from `CROSS_REFS`; the
+  // canonical edges are citation rows. The validator delegates to
+  // `graph.forwardRefs`, which emits only the declared cross-ref fields
+  // per kind.
   const entry = makeRule({
-    origin: "meta-f1",
-    supersedes: "rule-r0",
+    origin: "meta-f1", // inert-historical; ignored
+    supersedes: "rule-r0", // inert-historical; ignored
     applies_to_resolution: "meta-f-x",
   });
   const refs = outboundRefsOf(entry);
   const fields = refs.map((r) => `${r.field}:${r.id}`).sort();
   assert.deepStrictEqual(fields, [
     "applies_to_resolution:meta-f-x",
-    "origin:meta-f1",
-    "supersedes:rule-r0",
   ]);
 });
 
@@ -294,10 +337,10 @@ test("validator forwardRefs.loop-design: classifies non-rule target as kind `fin
 // Section 5: `computeTopReferences` / `top_references` characterization (red-team R6)
 // -----------------------------------------------------------------------------
 
-test("computeTopReferences: dual-field artifact deduped — rule-r1 cited once (canonical rule.origin)", () => {
-  // After Phase 3 centralization: `rule-r1` is a KEY of `promoted_to_rule_inverse`
-  // with 1 ref (canonical rule.origin). meta-f1 is a KEY of `origin_inverse`
-  // with 1 ref. Both are correctly cited exactly once.
+test("computeTopReferences: dual-field artifact → citations_inverse (Phase 4)", () => {
+  // Phase 4: `origin` + `supersedes` de-routed from `CROSS_REFS`; the
+  // canonical promotion edge is the origin citation row. Without a
+  // citation row, neither rule-r1 nor meta-f1 appears in top_references.
   const entries = [
     makeRule({ id: "rule-r1", origin: "meta-f1" }),
     makeFinding({ id: "meta-f1", promoted_to_rule: "rule-r1" }),
@@ -305,8 +348,6 @@ test("computeTopReferences: dual-field artifact deduped — rule-r1 cited once (
   const summary = buildRegistrySummary(entries, new Map());
   const ruleR1 = summary.top_references.find((r) => r.id === "rule-r1");
   const metaF1 = summary.top_references.find((r) => r.id === "meta-f1");
-  assert.ok(ruleR1, "top_references should include rule-r1");
-  assert.ok(metaF1, "top_references should include meta-f1");
-  assert.strictEqual(ruleR1.count, 1, "Phase 3: rule-r1 cited 1× (was 2)");
-  assert.strictEqual(metaF1.count, 1, "meta-f1 cited 1× via origin_inverse");
+  assert.strictEqual(ruleR1, undefined, "Phase 4: rule-r1 not in top_references without origin citation");
+  assert.strictEqual(metaF1, undefined, "Phase 4: meta-f1 not in top_references without origin citation");
 });
