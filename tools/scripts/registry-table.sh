@@ -52,15 +52,15 @@ set -- ${positional[@]+"${positional[@]}"}
 # Default path: both files at CWD. Post-Tier-1-split the registry is two
 # files; the JS union chokepoint reads both, and the shell-side helper
 # now matches so `registry-table.sh | tail -20` is parity-equivalent to
-# `meta_state_list`'s output (Phase A step 7 / Red Team M2). Either file
+# `meta_state_list`'s output. Either file
 # may be absent — jq's slurp tolerates the empty array.
 if [[ $# -eq 0 ]]; then
-  # Phase 2 of plan 260802-0237 added citations.jsonl — the citation log
-  # carries the canonical asserted-relationship edges (source:rule,
-  # target:finding, rationale:"origin"; etc.). The default file set now
-  # unions all three files; each is deduped by id with last-wins by
-  # max(version). Citation ids use the `citation-` prefix and never
-  # collide with `meta-` / `rule-` / `change-` / `loop-design-` ids.
+  # citations.jsonl is the citation log — it carries the canonical
+  # asserted-relationship edges (source:rule, target:finding,
+  # rationale:"origin"; etc.). The default file set now unions all three
+  # files; each is deduped by id with last-wins by max(version). Citation
+  # ids use the `citation-` prefix and never collide with `meta-` / `rule-`
+  # / `change-` / `loop-design-` ids.
   set -- meta-state.jsonl change-log.jsonl citations.jsonl
 fi
 

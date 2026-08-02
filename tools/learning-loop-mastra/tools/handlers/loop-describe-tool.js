@@ -196,7 +196,7 @@ export const loopDescribeTool = {
         result.field_glossary = listFieldGlossary();
 
         // Superseded lineage surface: group all `resolved` findings whose citation
-        // log entry points at a change-log (Phase 3 collapsed `superseded`
+        // log entry points at a change-log (`superseded` collapsed
         // into `resolved` + a citation). Orphans (citation target is a
         // non-existent change-log) are surfaced in a separate array.
         // Backward-compat: findings still carrying `consolidated_into` on

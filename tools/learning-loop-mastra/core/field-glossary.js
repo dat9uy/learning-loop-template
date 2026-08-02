@@ -67,13 +67,13 @@ const FIELD_GLOSSARY = Object.freeze({
     example: "{\"steps\":[{\"cmd\":\"pnpm test:one ...\"}]}",
   },
   reopens: {
-    // Phase 5: `reopens` writer was dropped (`meta_state_report` no
+    // `reopens` writer was dropped (`meta_state_report` no
     // longer accepts the arg). The field stays `.optional()` on the
     // finding schema (read-only historical); the 17 historical edges
     // remain queryable via `meta_state_relationships` +
     // `meta_state_relationship_validate`. New reopens edges cannot be
     // initiated; resolved is honestly terminal going forward.
-    meaning: "Read-only historical: stale finding ids re-surfaced by this entry. The Phase 5 migration dropped the `reopens` writer — `meta_state_report` no longer accepts the arg; existing on-disk values are inert-historical and queryable, but no new edges can be initiated.",
+    meaning: "Read-only historical: stale finding ids re-surfaced by this entry. The `reopens` writer was dropped — `meta_state_report` no longer accepts the arg; existing on-disk values are inert-historical and queryable, but no new edges can be initiated.",
     format: "array of meta-/rule-/loop-design- entry ids",
     example: "[\"meta-260719T2120Z-old\"]",
   },

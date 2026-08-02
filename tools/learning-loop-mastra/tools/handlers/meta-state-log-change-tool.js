@@ -82,7 +82,7 @@ export const metaStateLogChangeTool = {
       change_diff,
       reason,
       ...(applies_to && { applies_to }),
-      // Phase 4: `supersedes` is no longer stamped on the change-log. The
+      // `supersedes` is no longer stamped on the change-log. The
       // canonical supersede edge (change-log → change-log or change-log
       // → rule) is emitted as a citation row after the write lands.
       ...(consolidatesNormalized && { consolidates: consolidatesNormalized }),
@@ -100,7 +100,7 @@ export const metaStateLogChangeTool = {
 
     await writeEntry(root, entry);
 
-    // Phase 4: emit the supersedes citation row when a target was
+    // Emit the supersedes citation row when a target was
     // provided. Covers change-log → change-log and change-log → rule
     // supersession. The on-record `supersedes` field stays `.optional()`
     // (inert-historical) but is no longer written.

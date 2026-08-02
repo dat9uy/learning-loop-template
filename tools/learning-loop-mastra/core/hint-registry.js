@@ -80,7 +80,7 @@ export const HINT_REGISTRY = Object.freeze([
     slug: "status-lifecycle",
     kind: "discoverability",
     text:
-      "Findings have 4 statuses: `open` (unresolved — the canonical post-migration status), `resolved` (closed — supersede closure is a flavor of resolve + a citation row), `accepted` (standing trade-off; `meta_state_accept` flips open→accepted), and `archived` (schema-valid terminal status; registry-size trim, append-only via `archiveEntry`/`deleteEntry` with a write-boundary guard on the union `metaStateEntrySchema`; restorable via `meta_state_unarchive`). Phase 3 collapsed `superseded` into `resolved` + a citation row. `stale` is no longer a status — it is a derived evidence-freshness view (`isStaleView`: an open finding past the 7-day staleness window from `last_verified_at`/`created_at`, OR with drifted evidence in `file-index.jsonl`), surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only) and re-grounded via `meta_state_re_verify` (stamps `last_verified_at`, no status transition). The legacy `expired`/`reported`/`active`/`auto-resolved` statuses were removed; `isOpen` tolerates legacy persisted values until the migration flips them. Phase 5 dropped the `reopens` + `cascade_from` writers — new evidence appends a new finding; no operation un-closes an old one as a side-effect.",
+      "Findings have 4 statuses: `open` (unresolved — the canonical post-migration status), `resolved` (closed — supersede closure is a flavor of resolve + a citation row), `accepted` (standing trade-off; `meta_state_accept` flips open→accepted), and `archived` (schema-valid terminal status; registry-size trim, append-only via `archiveEntry`/`deleteEntry` with a write-boundary guard on the union `metaStateEntrySchema`; restorable via `meta_state_unarchive`). `superseded` collapsed into `resolved` + a citation row. `stale` is no longer a status — it is a derived evidence-freshness view (`isStaleView`: an open finding past the 7-day staleness window from `last_verified_at`/`created_at`, OR with drifted evidence in `file-index.jsonl`), surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only) and re-grounded via `meta_state_re_verify` (stamps `last_verified_at`, no status transition). The legacy `expired`/`reported`/`active`/`auto-resolved` statuses were removed; `isOpen` tolerates legacy persisted values until the migration flips them. The `reopens` + `cascade_from` writers were dropped — new evidence appends a new finding; no operation un-closes an old one as a side-effect.",
     // Corrected: this suggestion previously contradicted the current
     // status vocabulary ("use `stale` for past-TTL findings" — `stale` is no
     // longer a persisted status). The rewrite points at `meta_state_re_verify`,
@@ -93,9 +93,9 @@ export const HINT_REGISTRY = Object.freeze([
     slug: "reopens",
     kind: "discoverability",
     text:
-      "The `reopens` writer was dropped in Phase 5 of meta-state-lifecycle-migration — new findings cannot re-open a closed parent via `reopens` + cascade. The `reopens` field stays `.optional()` on the finding schema (read-only historical) and the 17 historical `reopens` edges are still queryable via `meta_state_relationships` + `meta_state_relationship_validate`. To close a stale parent, call `meta_state_resolve({ id: old_id })` on the parent directly (no cascade).",
+      "The `reopens` writer was dropped — new findings cannot re-open a closed parent via `reopens` + cascade. The `reopens` field stays `.optional()` on the finding schema (read-only historical) and the 17 historical `reopens` edges are still queryable via `meta_state_relationships` + `meta_state_relationship_validate`. To close a stale parent, call `meta_state_resolve({ id: old_id })` on the parent directly (no cascade).",
     suggestion:
-      "Phase 5: `meta_state_report` no longer accepts `reopens`; `meta_state_resolve` no longer accepts `cascade_from`. To close a stale parent, call `meta_state_resolve` on it directly. The 17 historical edges remain queryable; the read path is retained.",
+      "`meta_state_report` no longer accepts `reopens`; `meta_state_resolve` no longer accepts `cascade_from`. To close a stale parent, call `meta_state_resolve` on it directly. The 17 historical edges remain queryable; the read path is retained.",
     derived_from_rule: null,
   },
   {
@@ -129,9 +129,9 @@ export const HINT_REGISTRY = Object.freeze([
     slug: "reopens-script",
     kind: "discoverability",
     text:
-      "For 'X is related to Y' prompts: (1) `meta_state_relationship_validate` to lint the prospective edge; (2) report the new finding with `meta_state_report` (Phase 5 dropped the `reopens` arg — the cross-ref is no longer set on the new finding); (3) the orphan parent stays open until explicitly resolved. To close it, call `meta_state_resolve({ id: parent_id })` directly — no cascade step.",
+      "For 'X is related to Y' prompts: (1) `meta_state_relationship_validate` to lint the prospective edge; (2) report the new finding with `meta_state_report` (the `reopens` arg was dropped — the cross-ref is no longer set on the new finding); (3) the orphan parent stays open until explicitly resolved. To close it, call `meta_state_resolve({ id: parent_id })` directly — no cascade step.",
     suggestion:
-      "For cross-references, run `meta_state_relationship_validate`, then resolve orphan parents explicitly via `meta_state_resolve` (no cascade). Phase 5 dropped the `reopens` writer + `cascade_from` arg; the read path is retained for the 17 historical edges.",
+      "For cross-references, run `meta_state_relationship_validate`, then resolve orphan parents explicitly via `meta_state_resolve` (no cascade). The `reopens` writer + `cascade_from` arg were dropped; the read path is retained for the 17 historical edges.",
     derived_from_rule: null,
   },
   {

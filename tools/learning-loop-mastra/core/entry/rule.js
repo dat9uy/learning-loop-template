@@ -46,7 +46,7 @@ export function createRule(data) {
     },
 
     supersedes(other) {
-      // Phase 4: `rule.supersedes` predicate is now derived from the
+      // `rule.supersedes` predicate is now derived from the
       // `citations_inverse` map (the on-record `supersedes` field is
       // inert-historical). `parsed.supersedes` is retained for legacy
       // on-disk value reads; the predicate is sourced from citations
@@ -59,7 +59,7 @@ export function createRule(data) {
 
     outboundRefs(entries) {
       // Delegate to the centralized graph. Single source of truth.
-      // Phase 4: `origin` + `supersedes` were de-routed from CROSS_REFS,
+      // `origin` + `supersedes` were de-routed from CROSS_REFS,
       // so outboundRefs for a rule entry now returns [] for the
       // relationship fields (only `applies_to_resolution` remains as a
       // forwardOnly field).
@@ -67,7 +67,7 @@ export function createRule(data) {
     },
 
     inboundRefs(root) {
-      // Phase 4: the dual-field ghost-ref for `promoted_to_rule` is
+      // The dual-field ghost-ref for `promoted_to_rule` is
       // removed. The canonical promotion edge is now a citation row
       // (source:rule, target:finding, rationale:"origin"); inverseRefs
       // surfaces the citing finding via the citation's `target` field

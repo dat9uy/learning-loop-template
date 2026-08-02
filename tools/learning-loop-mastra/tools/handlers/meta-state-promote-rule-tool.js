@@ -13,7 +13,7 @@ import { matchesCliTransport } from "../../core/cli-self-match.js";
 
 export const metaStatePromoteRuleTool = {
   name: "meta_state_promote_rule",
-  description: "Promote a loop-anti-pattern finding to an active gate or agent rule. Writes a new entry_kind:\"rule\" entry AND emits a citation row `{source: rule, target: finding, rationale:\"origin\"}` (Phase 4 of meta-state-lifecycle-migration collapsed the bespoke `origin` field into the citation log; the field stays inert-historical on disk but is no longer written). Resets the finding status to `open`, and accepts agent-checklist `hint_text`/`hint_suggestion`/`hint_slug`/`hint_order`.",
+  description: "Promote a loop-anti-pattern finding to an active gate or agent rule. Writes a new entry_kind:\"rule\" entry AND emits a citation row `{source: rule, target: finding, rationale:\"origin\"}` (the bespoke `origin` field was collapsed into the citation log; the field stays inert-historical on disk but is no longer written). Resets the finding status to `open`, and accepts agent-checklist `hint_text`/`hint_suggestion`/`hint_slug`/`hint_order`.",
   schema: {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
@@ -344,8 +344,8 @@ export const metaStatePromoteRuleTool = {
       }
     }
 
-    // Write a new entry_kind: "rule" entry (not a mutated finding). Phase 4
-    // removes `origin` from the on-record schema — the canonical edge
+    // Write a new entry_kind: "rule" entry (not a mutated finding). The
+    // on-record `origin` field is removed from the write path — the canonical edge
     // (rule → finding) is now a citation row appended via
     // `appendCitationEntryAtomic` after the rule write lands.
     const ruleEntry = {
@@ -369,7 +369,7 @@ export const metaStatePromoteRuleTool = {
 
     await writeEntry(root, ruleEntry);
 
-    // Phase 4: emit the origin citation row. `source: rule, target:
+    // Emit the origin citation row. `source: rule, target:
     // finding, rationale:"origin"` is the canonical promotion edge.
     // Read sites source from `citations_inverse`. The on-record `origin`
     // field stays `.optional()` (inert-historical) but is no longer

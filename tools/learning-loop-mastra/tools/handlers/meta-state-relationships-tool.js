@@ -11,7 +11,7 @@ import { isStaleView, buildDriftSignals } from "../../core/stale-view.js";
  * Group an array of {kind, id, field} refs by field name, collapsing
  * multi-valued fields (reopens) into arrays.
  *
- * Phase 3: `consolidates` was de-routed from `CROSS_REFS`. The
+ * `consolidates` was de-routed from `CROSS_REFS`. The
  * consolidated edge is sourced from `citations_inverse` and surfaced as
  * `cited_by` (generic) instead of `consolidated_by` (named).
  */
@@ -35,9 +35,9 @@ function groupOutbound(refs) {
 
 /**
  * Map factory inbound field names to the wire-shape key names used by
- * the current tool. Phase 3 collapsed the consolidated edge into a
- * citation row (generic `cited_by`). Phase 4 collapses origin /
- * supersedes / promoted_to_rule into the same citation row — they
+ * the current tool. The consolidated edge collapsed into a
+ * citation row (generic `cited_by`). origin /
+ * supersedes / promoted_to_rule collapse into the same citation row — they
  * surface as `cited_by` (generic) alongside consolidated. The other 3
  * named inbound keys (reopens, addresses, proposed_design_for) are
  * unchanged.
@@ -50,15 +50,15 @@ const INBOUND_KEY_MAP = {
 function groupInbound(refs) {
   const result = {};
   for (const ref of refs) {
-    // Phase 3+4: citation rows surface as `cited_by` (generic, sourced
+    // Citation rows surface as `cited_by` (generic, sourced
     // from `citations_inverse`). A citation entry's `forwardRefs` emits
     // `source` (skip — `cited_by` is target-keyed) and `target`
     // (the edge that says "this target was cited by source"). Only the
     // `target` ref maps to `cited_by`; the `source` ref is the
     // emitting side and would conflate with the emitter's own id on
     // inbound queries. This subsumes the named `consolidated_by` /
-    // `superseded_by` / `origin_of` / `promoted_from` keys retired in
-    // Phases 3+4.
+    // `superseded_by` / `origin_of` / `promoted_from` keys retired
+    // alongside the de-routing.
     let key;
     if (ref.field === "target") {
       key = "cited_by";
@@ -157,7 +157,7 @@ function computeDanglingRefs(refs, entries, signals = {}) {
  */
 export const metaStateRelationshipsTool = {
   name: "meta_state_relationships",
-  description: "Query the relationship graph for a single meta-state entry. Returns inbound, outbound, or both directions of cross-references (1-hop traversal only). The `dangling_refs` derived field surfaces outbound refs whose target is stale, missing, or resolved — replacing the old stale-ref follow-up emission (Phase 3 collapsed `superseded` into `resolved` + a citation; `superseded` reason retired). Read-only, no operator gate required.",
+  description: "Query the relationship graph for a single meta-state entry. Returns inbound, outbound, or both directions of cross-references (1-hop traversal only). The `dangling_refs` derived field surfaces outbound refs whose target is stale, missing, or resolved — replacing the old stale-ref follow-up emission (`superseded` collapsed into `resolved` + a citation; `superseded` reason retired). Read-only, no operator gate required.",
   schema: {
     id: z.string().min(1).describe("Entry id to query relationships for"),
     direction: z.enum(["inbound", "outbound", "both"]).optional().default("both")
@@ -203,10 +203,10 @@ export const metaStateRelationshipsTool = {
   },
 };
 
-// Resolve outbound refs for the entry. Phase 4 removes the dual-field
-// `promoted_to_rule` fallback: the canonical promotion edge is now a
+// Resolve outbound refs for the entry. The dual-field
+// `promoted_to_rule` fallback is removed: the canonical promotion edge is now a
 // citation row emitted by `meta_state_promote_rule`. The fallback no
-// longer resolves — findings queryable via `cited_by` (Phase 4 generic)
+// longer resolves — findings queryable via `cited_by` (the generic citation view)
 // surface the citing rule through the inbound path. Outbound retains
 // the non-relationship fields (`reopens`, `addresses`, `proposed_design_for`).
 function resolveOutboundRefs(factory, entry, id, entries) {

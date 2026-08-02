@@ -64,7 +64,7 @@ export const KIND_OP_COMPATIBILITY = Object.freeze({
 /**
  * Canonical by_status keys. Constrained enum (not open dict) so the envelope
  * shape is testable by exact equality. `accepted` is the standing-trade-off
- * terminal. Phase 3 collapsed `superseded` into `resolved` + a citation row;
+ * terminal. `superseded` collapsed into `resolved` + a citation row;
  * the canonical enum no longer lists `superseded`.
  */
 export const CANONICAL_STATUS_KEYS = Object.freeze([
@@ -100,7 +100,7 @@ export function normalizeLegacyStatus(status) {
   if (status === "active" || status === "reported" || status === "stale") {
     return "open";
   }
-  // Phase 3: pre-migration `superseded` lines map to `resolved`
+  // Pre-migration `superseded` lines map to `resolved`
   // (the canonical closure is `resolved` + a citation row).
   if (status === "superseded") {
     return "resolved";

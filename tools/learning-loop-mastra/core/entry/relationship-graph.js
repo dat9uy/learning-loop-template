@@ -56,7 +56,7 @@ function parseConsolidates(cl) {
  */
 const CROSS_REFS = {
   finding: [
-    // Phase 3: `consolidated_into` collapsed into a citation row. The
+    // `consolidated_into` collapsed into a citation row. The
     // field stays `.optional()` on the schema (inert-historical; old
     // version lines still parse) but is de-routed from `CROSS_REFS` so
     // `forwardRefs`/`buildInverseIndexes` stop indexing it. The canonical
@@ -64,7 +64,7 @@ const CROSS_REFS = {
     // `meta_state_supersede` citation emissions, target=change-log,
     // source=finding).
     //
-    // Phase 4: `promoted_to_rule` (the legacy dual-field ghost-ref that
+    // `promoted_to_rule` (the legacy dual-field ghost-ref that
     // mirrored `rule.origin`) is also retired. The canonical promotion
     // edge is now the origin citation row emitted by
     // `meta_state_promote_rule`. The field stays `.optional()` on the
@@ -72,13 +72,13 @@ const CROSS_REFS = {
     { field: "reopens",            targetKind: "finding",    multi: true  },
   ],
   "change-log": [
-    // Phase 4: `supersedes` was de-routed from `CROSS_REFS`; the
+    // `supersedes` was de-routed from `CROSS_REFS`; the
     // canonical change-log→change-log / change-log→rule supersession
     // edge is now a citation row emitted by `meta_state_log_change`
     // (and `meta_state_patch` for rule→rule). The field stays
     // `.optional()` on the schema (inert-historical) but is no longer
-    // indexed. Phase 3 retired `consolidates` (the symmetric
-    // counterpart of `consolidated_into`) — both fields are
+    // indexed. `consolidates` (the symmetric
+    // counterpart of `consolidated_into`) is also retired — both fields are
     // inert-historical; the edge is sourced from `citations_inverse`.
   ],
   // Citation kind: the asserted-relationship carrier that replaces the
@@ -95,14 +95,14 @@ const CROSS_REFS = {
     { field: "target",             targetKind: "any",        multi: false },
   ],
   rule: [
-    // Phase 4: `origin` + `supersedes` de-routed from `CROSS_REFS`. The
+    // `origin` + `supersedes` de-routed from `CROSS_REFS`. The
     // canonical promotion / supersession edges are now citation rows
     // (`source:rule, target:finding, rationale:"origin"` /
     // `source:rule, target:prior-rule, rationale:"supersedes"`). The
     // fields stay `.optional()` on the schema (inert-historical; old
     // version lines still parse) but are no longer indexed by the
     // inverse maps. The promoted_to_rule ghost-ref retired with origin
-    // (Phase 4 follow-through).
+    // (the same de-routing).
     // red-team R4/R10: `applies_to_resolution` is `z.string()` (not
     // `entryIdRefArray`); its real contract is "finding id OR a determinism-
     // checklist pattern". RI-EXEMPT; forwardOnly (no inverse map). The
@@ -196,7 +196,7 @@ export function forwardRefs(entry, entries) {
  * is handled in `buildInverseIndexes` (which restricts the
  * `promoted_to_rule_inverse` map to the canonical `rule.origin` source).
  *
- * Post Phase 3: `consolidates` was de-routed from `CROSS_REFS`; the
+ * After the de-routing: `consolidates` was de-routed from `CROSS_REFS`; the
  * consolidated edge is sourced from `citations_inverse` (citation
  * `source:finding, target:change-log, rationale:"consolidated into…"`).
  *
@@ -288,8 +288,8 @@ function upsertList(map, key, val) {
 // `promoted_to_rule` source is skipped (canonical edge is now a citation);
 // forwardOnly fields (`applies_to_resolution`) have no inverse map.
 //
-// `consolidated_into`/`consolidates` (Phase 3) and `origin`/`supersedes`
-// (Phase 4) were de-routed from `CROSS_REFS`; the canonical edges
+// `consolidated_into`/`consolidates` and `origin`/`supersedes`
+// were de-routed from `CROSS_REFS`; the canonical edges
 // (consolidated, origin, supersedes) now live in `citations_inverse`
 // (sourced from citation emissions by `meta_state_supersede` /
 // `meta_state_promote_rule` / `meta_state_log_change` / `meta_state_patch`).
@@ -336,7 +336,7 @@ function indexRef(indexes, ref, entry) {
 
 export function buildInverseIndexes(entries) {
   const indexes = newIndexState();
-  // Phase 3: `consolidated_into` and `consolidates` were de-routed from
+  // `consolidated_into` and `consolidates` were de-routed from
   // `CROSS_REFS`. The legacy `consolidated_into_inverse` pre-population
   // (for change-logs with an empty `consolidates` array) is dropped; the
   // consolidated edge is sourced from `citations_inverse` going forward.
