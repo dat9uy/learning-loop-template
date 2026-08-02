@@ -561,6 +561,7 @@ export const metaStateChangeEntrySchema = z.object({
  * citation's id, but a citation never transitions to "archived" or
  * "resolved" (those are finding-side lifecycle concepts).
  */
+// fallow-ignore-next-line unused-export -- public API consumed by core citation-substrate tests
 export const metaStateCitationEntrySchema = z.object({
   id: z.string().regex(/^citation-[a-z0-9-]+$/).describe("Stable citation id; see field_glossary.id"),
   entry_kind: z.literal("citation").describe("Discriminator: citation"),
@@ -1344,70 +1345,148 @@ async function assertArchivedTombstone(entries, idx, root, id) {
 export function writeEntry(root, entry) {
   return enqueue(root, () =>
     withRegistryLock(root, async () => {
-      // The universal `assertinvariant`
-      // pre-state-only wrapper at the writeEntry boundary. The wrapper
-      // enforces general identity pre-conditions (entry has an id; entry
-      // has a recognized entry_kind). The forge-vector guard for
-      // caller-supplied envelopes on `meta_state_batch` case "write" lives
-      // at metaStateBatch (the only caller that opens the forge surface;
-      // meta_state_log_change legitimately writes change-logs with
-      // operation_envelope via the auto-emit path).
-      const invariantResult = await assertinvariant(
-        () => Promise.resolve({ entry }),
-        {
-          accept: {
-            context: () => entry,
-            check: (e) =>
-              Boolean(e) && typeof e.id === "string" && typeof e.entry_kind === "string",
-          },
-          returnOnFail: {
-            reason_code: "write_entry_identity_precondition_failed",
-          },
-          root,
-        }
-      );
-      if (!invariantResult.ok) {
-        throw new Error("invalid_entry: write_entry_identity_precondition_failed");
-      }
-
-      // Schema-version-skew gate. Reject writes whose
-      // entry_kind is not in the current worktree's schema_branches BEFORE the
-      // validation pass (clearer error path) and BEFORE any registry mutation.
-      // Lazy .loop-version creation happens inside readLoopVersion.
-      if (entry && entry.entry_kind && !isSchemaBranchSupported(root, entry.entry_kind)) {
-        throw new SchemaVersionSkewError(root, entry.entry_kind, readLoopVersion(root));
-      }
-      const validation = metaStateEntrySchema.safeParse(entry);
-      if (!validation.success) {
-        throw new InvalidEntryError(validation.error);
-      }
-      // Write-time structural RI (WARN-ONLY — id-existence). Computes the
-      // dangling cross-ref targets and emits a gate-log advisory; it does
-      // NOT reject the append. The CI gate `meta-state-refs-check.yml` is the
-      // hard enforcer (catches within-PR orphans). Warn-only lets the
-      // `dangling_refs` view and the cold-tier `orphans` feature create the
-      // ref orphans they exist to surface. Tombstones count as present
-      // (liveness out of scope); kind-match is NOT checked (Set<string>,
-      // no kind); `applies_to_resolution` is RI-exempt (z.string(), not an
-      // entry-id ref); `forwardRefs` already skips the generic `"*"` wildcard.
-      // Historical entries read fine (RI is advisory; the read/projection
-      // path runs no RI).
-      const existenceSet = new Set(readRegistry(root).map((e) => e.id));
-      const writeRi = graphResolveStructuralRI(validation.data, existenceSet);
-      warnStructuralRI(root, validation.data.id, writeRi.dangling);
+      // Identity pre-conditions + skew gate + validation + warn-only RI run
+      // in the shared prologue. The forge-vector guard for caller-supplied
+      // envelopes on `meta_state_batch` case "write" lives at metaStateBatch
+      // (the only caller that opens the forge surface; meta_state_log_change
+      // legitimately writes change-logs with operation_envelope via the
+      // auto-emit path).
+      const data = await prepareWriteEntry(root, entry, {
+        reasonCode: "write_entry_identity_precondition_failed",
+      });
       // Write dispatch by entry_kind.
       // Change-logs true-append to change-log.jsonl (merge=union safe);
       // citations true-append to citations.jsonl; everything else lands in
       // meta-state.jsonl. Runs INSIDE the withRegistryLock wrapper so
       // concurrent MCP servers cannot interleave byte-for-byte on the
       // change-log or citation file.
-      if (validation.data.entry_kind === "change-log") {
-        appendChangeLogEntryAtomic(root, validation.data);
-      } else if (validation.data.entry_kind === "citation") {
-        appendCitationEntryAtomic(root, validation.data);
+      if (data.entry_kind === "change-log") {
+        appendChangeLogEntryAtomic(root, data);
+      } else if (data.entry_kind === "citation") {
+        appendCitationEntryAtomic(root, data);
       } else {
-        appendRegistryEntryAtomic(root, validation.data);
+        appendRegistryEntryAtomic(root, data);
       }
+    })
+  );
+}
+
+/**
+ * Shared write-path prologue for append-style mutation ops (writeEntry,
+ * writeEntryIfAbsent). Runs INSIDE the caller's registry lock and returns the
+ * schema-validated entry on success; throws on any failure.
+ *
+ * Order matters: universal `assertinvariant` identity pre-conditions first,
+ * then the schema-version-skew gate, then zod validation, then the warn-only
+ * structural RI advisory (the CI gate `meta-state-refs-check.yml` is the hard
+ * enforcer for cross-ref orphans).
+ *
+ * @param {string} root
+ * @param {object} entry
+ * @param {object} options
+ * @param {boolean} [options.requireRecurrenceKey] — also require a non-empty
+ *   `recurrence_key` (the writeEntryIfAbsent dedup-key guard)
+ * @param {string} options.reasonCode — invariant failure reason code
+ * @returns {Promise<object>} the validated entry
+ */
+async function prepareWriteEntry(root, entry, { requireRecurrenceKey = false, reasonCode }) {
+  const invariantResult = await assertinvariant(
+    () => Promise.resolve({ entry }),
+    {
+      accept: {
+        context: () => entry,
+        check: (e) =>
+          Boolean(e)
+          && typeof e.id === "string"
+          && typeof e.entry_kind === "string"
+          && (!requireRecurrenceKey
+            || (typeof e.recurrence_key === "string" && e.recurrence_key.length > 0)),
+      },
+      returnOnFail: {
+        reason_code: reasonCode,
+      },
+      root,
+    }
+  );
+  if (!invariantResult.ok) {
+    throw new Error(`invalid_entry: ${reasonCode}`);
+  }
+
+  // Schema-version-skew gate. Reject writes whose
+  // entry_kind is not in the current worktree's schema_branches BEFORE the
+  // validation pass (clearer error path) and BEFORE any registry mutation.
+  // Lazy .loop-version creation happens inside readLoopVersion.
+  if (entry && entry.entry_kind && !isSchemaBranchSupported(root, entry.entry_kind)) {
+    throw new SchemaVersionSkewError(root, entry.entry_kind, readLoopVersion(root));
+  }
+  const validation = metaStateEntrySchema.safeParse(entry);
+  if (!validation.success) {
+    throw new InvalidEntryError(validation.error);
+  }
+  // Write-time structural RI (WARN-ONLY — id-existence). Tombstones count as
+  // present (liveness out of scope); kind-match is NOT checked (Set<string>,
+  // no kind); `applies_to_resolution` is RI-exempt (z.string(), not an
+  // entry-id ref); `forwardRefs` already skips the generic `"*"` wildcard.
+  // Historical entries read fine (RI is advisory; the read/projection
+  // path runs no RI).
+  const existenceSet = new Set(readRegistry(root).map((e) => e.id));
+  const writeRi = graphResolveStructuralRI(validation.data, existenceSet);
+  warnStructuralRI(root, validation.data.id, writeRi.dangling);
+  return validation.data;
+}
+
+/**
+ * Atomically check for an existing recurring-false-positive key and append
+ * the finding only if no non-archived existing entry holds the key.
+ *
+ * Race-safety: holds `withRegistryLock(root)` for the read + append cycle.
+ * This is the single-key dedup path used by the SessionStart recurrence
+ * trigger — without the locked re-check, two concurrent SessionStart
+ * processes both pass the unlocked pre-filter and both write duplicate
+ * findings (verified by the gate-recurrence race test).
+ *
+ * Same lock discipline as `writeEntry` (enqueue + withRegistryLock + true
+ * append + cache invalidation). The unlocked pre-filter in callers remains
+ * the fast path; this helper is the correctness boundary.
+ *
+ * Finding-only helper: the append path is hardcoded to
+ * `appendRegistryEntryAtomic` (no change-log/citation dispatch), and the
+ * entry MUST carry a non-empty `recurrence_key` — a missing key would match
+ * every keyless recurring-false-positive and silently suppress the write.
+ *
+ * @param {string} root
+ * @param {object} entry — the prepared finding (must carry `recurrence_key`)
+ * @returns {Promise<{ written: boolean, suppressed_by?: object }>}
+ *   - `{ written: true }` on append
+ *   - `{ written: false, suppressed_by: <existing-finding> }` on dedup hit
+ *   - rejects with `InvalidEntryError` / `SchemaVersionSkewError` on bad input
+ *   (delegated to writeEntry's validation path)
+ */
+export function writeEntryIfAbsent(root, entry) {
+  return enqueue(root, () =>
+    withRegistryLock(root, async () => {
+      const data = await prepareWriteEntry(root, entry, {
+        requireRecurrenceKey: true,
+        reasonCode: "write_entry_if_absent_identity_precondition_failed",
+      });
+      // Locked re-check: an unlocked pre-filter can race with a concurrent
+      // writeEntry that landed between our read and our writeEntry call.
+      // Reading the registry INSIDE the lock sees the canonical post-write
+      // state (writeEntry's true-append + invalidateCache complete before
+      // lock release).
+      const key = data.recurrence_key;
+      const existing = readRegistry(root).find(
+        (e) =>
+          e.entry_kind === "finding"
+          && e.subtype === "recurring-false-positive"
+          && e.recurrence_key === key
+          && e.status !== "archived",
+      );
+      if (existing) {
+        return { written: false, suppressed_by: existing };
+      }
+      appendRegistryEntryAtomic(root, data);
+      return { written: true };
     })
   );
 }
