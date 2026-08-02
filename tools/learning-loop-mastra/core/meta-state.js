@@ -1413,6 +1413,66 @@ export function writeEntry(root, entry) {
 }
 
 /**
+ * Atomically check for an existing recurring-false-positive key and append
+ * the finding only if no non-archived existing entry holds the key.
+ *
+ * Race-safety: holds `withRegistryLock(root)` for the read + append cycle.
+ * This is the single-key dedup path used by the SessionStart recurrence
+ * trigger — without the locked re-check, two concurrent SessionStart
+ * processes both pass the unlocked pre-filter and both write duplicate
+ * findings (verified by the gate-recurrence race test).
+ *
+ * Same lock discipline as `writeEntry` (enqueue + withRegistryLock + true
+ * append + cache invalidation). The unlocked pre-filter in callers remains
+ * the fast path; this helper is the correctness boundary.
+ *
+ * @param {string} root
+ * @param {object} entry — the prepared finding (must carry `recurrence_key`)
+ * @returns {Promise<{ written: boolean, suppressed_by?: object }>}
+ *   - `{ written: true }` on append
+ *   - `{ written: false, suppressed_by: <existing-finding> }` on dedup hit
+ *   - rejects with `InvalidEntryError` / `SchemaVersionSkewError` on bad input
+ *   (delegated to writeEntry's validation path)
+ */
+export function writeEntryIfAbsent(root, entry) {
+  return enqueue(root, () =>
+    withRegistryLock(root, async () => {
+      // Schema-version-skew gate: mirror writeEntry's behavior.
+      if (entry && entry.entry_kind && !isSchemaBranchSupported(root, entry.entry_kind)) {
+        throw new SchemaVersionSkewError(root, entry.entry_kind, readLoopVersion(root));
+      }
+      const validation = metaStateEntrySchema.safeParse(entry);
+      if (!validation.success) {
+        throw new InvalidEntryError(validation.error);
+      }
+      // Locked re-check: an unlocked pre-filter can race with a concurrent
+      // writeEntry that landed between our read and our writeEntry call.
+      // Reading the registry INSIDE the lock sees the canonical post-write
+      // state (writeEntry's true-append + invalidateCache complete before
+      // lock release).
+      const key = validation.data.recurrence_key;
+      const existing = readRegistry(root).find(
+        (e) =>
+          e.entry_kind === "finding"
+          && e.subtype === "recurring-false-positive"
+          && e.recurrence_key === key
+          && e.status !== "archived",
+      );
+      if (existing) {
+        return { written: false, suppressed_by: existing };
+      }
+      // RI (warn-only, identical to writeEntry) — the CI gate is the
+      // hard enforcer for cross-ref orphans; this is advisory.
+      const existenceSet = new Set(readRegistry(root).map((e) => e.id));
+      const writeRi = graphResolveStructuralRI(validation.data, existenceSet);
+      warnStructuralRI(root, validation.data.id, writeRi.dangling);
+      appendRegistryEntryAtomic(root, validation.data);
+      return { written: true };
+    })
+  );
+}
+
+/**
  * Atomically update an entry by id, applying a patch object.
  * True-append (no full rewrite). The patch
  * is applied to a COPY of the existing entry; if the patched copy is

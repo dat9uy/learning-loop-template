@@ -240,7 +240,7 @@ export function readJsonlFromAllSurfaces(root, subpath, options = {}) {
       }
       if (sinceMs && new Date(parsed.ts).getTime() < sinceMs) continue;
       if (dedupe) {
-        const key = `${parsed.ts}::${parsed.command_prefix ?? ""}::${parsed.rule_id ?? ""}::${parsed.decision ?? ""}`;
+        const key = `${parsed.ts}::${parsed.command_prefix ?? ""}::${parsed.rule_id ?? ""}::${parsed.decision ?? ""}::${parsed.session_id ?? ""}`;
         if (seen.has(key)) continue;
         seen.add(key);
       }
