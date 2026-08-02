@@ -402,11 +402,11 @@ export const metaStateFindingEntrySchema = z.object({
   status: z.enum(["open", "resolved", "accepted", "archived"]).optional()
     .describe("Finding lifecycle; use field_glossary.status and the dedicated lifecycle tools."),
   // Inert-historical: old version lines still carry these so the schema
-  // accepts them on read; the write path no longer stamps them (Phase 3
-  // collapse). `consolidated_into` + `superseded_at` + `superseded_by` are
-  // the `superseded` closure fields; the canonical supersede edge is now
-  // a citation row in `citations.jsonl`. De-routed from `CROSS_REFS` so
-  // they are no longer indexed by the inverse maps.
+  // accepts them on read; the write path no longer stamps them. The
+  // superseded-closure fields `consolidated_into` + `superseded_at` +
+  // `superseded_by` are inert-historical; the canonical supersede edge is
+  // now a citation row in `citations.jsonl`. De-routed from `CROSS_REFS`
+  // so they are no longer indexed by the inverse maps.
   consolidated_into: z.string().optional()
     .describe("Inert-historical: canonical change-log id of the prior `superseded` closure; the live edge is a citation row."),
   verification: z.object({}).passthrough().optional()
@@ -626,9 +626,9 @@ const metaStateRuleEntryObject = z.object({
   entry_kind: z.literal("rule").default("rule"),
   id: z.string().regex(/^rule-[a-z0-9-]+$/).describe("Stable rule id; see field_glossary.id"),
   origin: z.string().optional()
-    .describe("Inert-historical: Finding id that originated this rule. Phase 4 retired the on-record field; the canonical promotion edge is the origin citation row emitted by meta_state_promote_rule."),
+    .describe("Inert-historical: Finding id that originated this rule. The on-record field is retired; the canonical promotion edge is the origin citation row emitted by meta_state_promote_rule."),
   supersedes: z.string().optional()
-    .describe("Prior rule id refined by this rule (inert-historical; Phase 4 collapsed the on-record field into a rule→rule citation row)"),
+    .describe("Prior rule id refined by this rule (inert-historical; the on-record field collapsed into a rule→rule citation row)"),
   enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced"),
   pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language"),
   pattern: z.string().describe("The pattern (regex body, glob path, or session_id)"),
@@ -637,7 +637,7 @@ const metaStateRuleEntryObject = z.object({
   applies_to_resolution: z.string().optional()
     .describe("Finding id gated by a determinism checklist"),
   supersedes: z.string().optional()
-    .describe("Inert-historical: prior rule id refined by this rule. Phase 4 collapsed the on-record field into a rule→rule citation row emitted by meta_state_patch."),
+    .describe("Inert-historical: prior rule id refined by this rule. The on-record field collapsed into a rule→rule citation row emitted by meta_state_patch."),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   status: z.enum(["active", "inactive", "archived"]).default("active")
     .describe("Rule lifecycle; inactive rules are not enforced; archived tombstones are appended by deleteEntry"),
@@ -803,6 +803,14 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "resolved_at",
   "resolved_by",
   "resolution",
+  // Accepted-status stamps are produced only by `meta_state_accept`. Patching
+  // them onto an open finding would forge the accept audit trail without
+  // flipping `status` (which is itself denied above), leaving a contradictory
+  // open finding carrying `accepted_*` stamps. The dedicated lifecycle tool
+  // is the only sanctioned path.
+  "accepted_at",
+  "accepted_by",
+  "accepted_reason",
   "entry_kind",  // identity — stopgap until the universal assertinvariant wrapper (Impl 3)
   "status",      // lifecycle identity — stopgap (rule/loop-design deactivation/ship is operator-decided)
   "operation_envelope",  // Auto-emit ONLY (meta_state_batch); replace via patch is a forge vector. Stopgap until universal wrapper (Impl 3).
@@ -1671,6 +1679,23 @@ export function acceptEntry(root, id, acceptedBy, reason) {
           reason: "already_accepted",
           id,
           current_status: "accepted",
+          current_version: existingEntry.version ?? 0,
+        };
+      }
+      // `archived` is a terminal tombstone applied by `archiveEntry`. The
+      // module-local `TERMINAL_STATUSES` ({resolved, accepted}) intentionally
+      // omits `archived` (it is runtime-applied outside the persisted enum),
+      // so the `assertinvariant` wrapper below would NOT catch it — without
+      // this guard, `acceptEntry` would flip `archived → accepted`,
+      // un-archiving a finding. `restoreEntry` is the dedicated revival path;
+      // `accept` must not revive. Mirrors the `already_accepted` early-return
+      // shape so the audit trail stays readable.
+      if (existingEntry.status === "archived") {
+        return {
+          accepted: false,
+          reason: "already_terminal",
+          id,
+          current_status: "archived",
           current_version: existingEntry.version ?? 0,
         };
       }

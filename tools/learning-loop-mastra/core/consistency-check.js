@@ -12,10 +12,9 @@
 // Invariant set: F-1, F-2, F-3. Finding statuses are keyed on the
 // post-migration enum {open, resolved, accepted, archived} (write
 // schema at core/meta-state.js). `superseded` was collapsed into
-// `resolved` + a citation row in `citations.jsonl` (Phase 3 of
-// `meta-state-lifecycle-migration`); F-4 (which required
+// `resolved` + a citation row in `citations.jsonl`; F-4 (which required
 // `consolidated_into` on `superseded` findings) is removed as a dead
-// detector. F-1 is updated to drop `consolidated_into` + `superseded_at`
+// detector. F-1 drops `consolidated_into` + `superseded_at`
 // from the open-finding forbid list — those fields are inert-historical
 // on disk (old version lines still carry them) but are no longer
 // stamped by the write path.
@@ -24,11 +23,16 @@ export const META_STATE_CONSISTENCY_INVARIANTS = [
   // F-1: an open finding must not carry terminal audit fields. The
   // forbid list is drawn from the fields stamped by the resolve,
   // accept, and archive handlers in core/meta-state.js.
-  // `consolidated_into` + `superseded_at` removed (inert-historical;
-  // not stamped by the live write path).
+  // `accepted_at`/`accepted_by`/`accepted_reason` are stamped only by
+  // `meta_state_accept`; an open finding carrying them has a forged or
+  // contradictory accept audit trail (status stays open → no accept happened
+  // through the sanctioned lifecycle tool). `consolidated_into` +
+  // `superseded_at` removed (inert-historical; not stamped by the live
+  // write path).
   { id: "F-1", status: "open", kind: "finding",
     forbid: ["resolved_at", "resolved_by", "resolution",
-             "archived_at", "archived_by", "archived_reason"] },
+             "archived_at", "archived_by", "archived_reason",
+             "accepted_at", "accepted_by", "accepted_reason"] },
   { id: "F-2", status: "archived", kind: "finding",
     require: ["archived_at", "archived_by", "archived_reason"] },
   { id: "F-3", status: "resolved", kind: "finding",

@@ -1,5 +1,5 @@
 /**
- * Phase 1 of `meta-state-lifecycle-migration` plan:
+ * `accepted` status — terminal-set harmonization and lifecycle guards:
  *  - `accepted` is a terminal finding status
  *  - isOpen excludes `accepted`
  *  - isStaleView treats `accepted` as terminal
@@ -7,6 +7,7 @@
  *  - The six terminal-set copies agree (characterization test)
  *  - meta_state_accept flips `open` → `accepted` via true-append v+1
  *  - meta_state_resolve on accepted → `already_terminal`
+ *  - meta_state_accept on archived → `already_terminal` (accept must not revive)
  *  - meta_state_archive accepts `accepted` → `archived`
  *  - meta_state_list({status:"accepted"}) returns the accepted set
  *  - tryClaimSessionId does NOT match `accepted` (lifecycle terminal)
@@ -33,7 +34,7 @@ beforeEach(() => {
   tmp = mkdtempSync(join(tmpdir(), "ll-accepted-"));
   root = tmp;
   // canonical 4-key structure: meta-state.jsonl + change-log.jsonl
-  // (citations.jsonl is added in Phase 2)
+  // (citations.jsonl is added separately by the citation path)
   writeFileSync(join(root, "meta-state.jsonl"), "");
   invalidateCache(root);
 });
@@ -140,11 +141,34 @@ describe("acceptEntry — core op", () => {
     assert.equal(result.reason, "already_accepted");
   });
 
-  test("rejects already-terminal finding (resolved/archived)", async () => {
+  test("rejects already-terminal finding (resolved)", async () => {
     seedFinding("meta-test-resolved", "resolved");
     const result = await acceptEntry(root, "meta-test-resolved", "operator", "should fail");
     assert.equal(result.accepted, false);
     assert.equal(result.reason, "already_terminal");
+  });
+
+  test("rejects already-terminal finding (archived) — accept must not revive", async () => {
+    // `archived` is a terminal tombstone applied by `archiveEntry`. The
+    // module-local TERMINAL_STATUSES ({resolved, accepted}) intentionally
+    // omits `archived` (runtime-applied outside the persisted enum), so
+    // without an explicit guard `acceptEntry` would flip `archived → accepted`
+    // and un-archive the finding. `restoreEntry` is the dedicated revival
+    // path; `accept` must not revive.
+    seedFinding("meta-test-archived", "archived", {
+      archived_at: "2026-06-01T00:00:00.000Z",
+      archived_by: "operator",
+      archived_reason: "compaction",
+    });
+    const result = await acceptEntry(root, "meta-test-archived", "operator", "should fail");
+    assert.equal(result.accepted, false);
+    assert.equal(result.reason, "already_terminal");
+    assert.equal(result.current_status, "archived");
+    // Confirm no new `accepted` version line was appended.
+    const entries = readRegistry(root).filter((e) => e.id === "meta-test-archived");
+    assert.equal(entries.length, 1, "acceptEntry must not append a new version line for archived");
+    assert.equal(entries[0].status, "archived");
+    assert.equal(entries[0].accepted_by, undefined);
   });
 
   test("rejects non-findings (rule, change-log, loop-design)", async () => {
@@ -220,8 +244,8 @@ describe("meta_state_list — accepted is filterable, not claimable", () => {
 
   test("tryClaimSessionId does NOT match accepted findings", async () => {
     // An existing `accepted` finding with the same session_id/subtype MUST NOT
-    // be returned as the existing match — `accepted` is terminal (Phase 1
-    // invariant), so the dedup predicate excludes it. A fresh claim with the
+    // be returned as the existing match — `accepted` is terminal, so the
+    // dedup predicate excludes it. A fresh claim with the
     // same key proceeds (claims=true, not claimed=false-with-existing).
     seedFinding("meta-claim-test", "accepted");
     const result = await tryClaimSessionId(
