@@ -34,6 +34,7 @@ const EXPECTED_WRITE_TOOLS = [
   "meta_state_patch",
   "meta_state_batch",
   "meta_state_archive",
+  "meta_state_accept",
   "meta_state_supersede",
   "meta_state_propose_design",
   "meta_state_ship_loop_design",

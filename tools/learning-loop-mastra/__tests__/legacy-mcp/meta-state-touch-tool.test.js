@@ -4,10 +4,9 @@
  * re-verify path requires steps; touch accepts "evidence hash still
  * matches the stored baseline" as the verification signal).
  *
- * Contract (plans/260724-1931-meta-state-touch-grounding-guarded-re-grounding-for-aged-findings
- * phase 1):
+ * Contract:
  *   1. `not_found` for unknown id.
- *   2. `wrong_status` for terminal (resolved/superseded) entries.
+ *   2. `wrong_status` for terminal (resolved/superseded/archived/accepted) entries.
  *   3. `wrong_kind` for non-finding entries (rule/change-log/loop-design).
  *   4. Allow + stamp `last_verified_at` when grounding is grounded / skipped / null.
  *   5. Reject `drifted` when file bytes changed after baseline (hash_match:false).
@@ -97,12 +96,31 @@ describe("meta_state_touch — grounding-guarded re-grounding for aged findings"
     assert.strictEqual(parsed.current_status, "resolved");
   });
 
+  // Historical `superseded` is no longer in the persisted finding status enum
+  // (collapsed into `resolved` + a citation), but old version lines on disk
+  // still carry it. The handler must classify any terminal status — including
+  // historical `superseded` — as `wrong_status` via the terminal-set check in
+  // `core/constants.js#isOpen`, NOT via zod re-validation. Seed the fixture via
+  // a raw JSONL append (bypassing `writeEntry`'s union-schema validation, which
+  // would throw on `superseded`) — mirrors the `writeRawLine` pattern used for
+  // the `wrong_kind` fixtures below.
   test("wrong_status for superseded entry", async () => {
-    await setupEntry("meta-touch-superseded", { status: "superseded" });
+    writeRawLine("meta-touch-superseded", {
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Historical superseded fixture for touch wrong_status",
+      status: "superseded",
+      verification: { steps: [], history: [] },
+      created_at: new Date().toISOString(),
+    });
     const r = await touchHandler({ id: "meta-touch-superseded" });
     const parsed = parse(r);
     assert.strictEqual(parsed.touched, false);
     assert.strictEqual(parsed.reason, "wrong_status");
+    assert.strictEqual(parsed.id, "meta-touch-superseded");
+    assert.strictEqual(parsed.current_status, "superseded");
   });
 
   // ─── 3. wrong_kind ─────────────────────────────────────────────────────

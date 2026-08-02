@@ -6,8 +6,12 @@ import {
 } from "../../core/meta-state.js";
 
 describe("meta-state schema stale-only", () => {
-  test("finding status enum is {open, resolved, superseded}; legacy statuses rejected", () => {
-    for (const status of ["open", "resolved", "superseded"]) {
+  test("finding status enum is {open, resolved, accepted, archived}; legacy + superseded rejected", () => {
+    // `superseded` collapsed into `resolved` + a citation; it is no longer in
+    // the writeable enum. Historical on-disk `superseded` is read-tolerant
+    // (JSON.parse) and treated as terminal by `constants.TERMINAL_STATUSES`,
+    // but the schema enum rejects it on the write path.
+    for (const status of ["open", "resolved", "accepted", "archived"]) {
       const result = metaStateFindingEntrySchema.safeParse({
         category: "loop-anti-pattern",
         severity: "warning",
@@ -18,30 +22,35 @@ describe("meta-state schema stale-only", () => {
       assert.strictEqual(result.success, true, `status "${status}" should be accepted`);
     }
 
-    for (const status of ["reported", "active", "stale", "auto-resolved", "expired"]) {
+    for (const status of ["reported", "active", "stale", "auto-resolved", "expired", "superseded"]) {
       const result = metaStateFindingEntrySchema.safeParse({
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "gate-logic",
-        description: "Probe entry used to assert that a legacy status string is rejected by the schema.",
+        description: "Probe entry used to assert that a legacy or retired status string is rejected by the schema.",
         status,
       });
-      assert.strictEqual(result.success, false, `legacy status "${status}" should be rejected (enum collapsed in plan 260707-0812)`);
+      assert.strictEqual(result.success, false, `status "${status}" should be rejected by the writeable enum`);
     }
   });
 
-  test("TERMINAL_STATUSES is {resolved, superseded}; legacy statuses absent", () => {
+  test("TERMINAL_STATUSES is {resolved, accepted}; legacy + superseded-from-this-set absent", () => {
+    // `core/meta-state.js` TERMINAL_STATUSES is {resolved, accepted}.
+    // `superseded` is NOT in this set (it collapsed to `resolved`); the
+    // historical `superseded` read-tolerance lives in `core/constants.js`
+    // TERMINAL_STATUSES (which keeps it for backward-compat with on-disk data).
     assert.strictEqual(TERMINAL_STATUSES.has("resolved"), true);
-    assert.strictEqual(TERMINAL_STATUSES.has("superseded"), true);
-    assert.strictEqual(TERMINAL_STATUSES.has("expired"), false, "'expired' removed in plan 260611-1000");
-    assert.strictEqual(TERMINAL_STATUSES.has("auto-resolved"), false, "'auto-resolved' removed in plan 260707-0812");
+    assert.strictEqual(TERMINAL_STATUSES.has("accepted"), true);
+    assert.strictEqual(TERMINAL_STATUSES.has("superseded"), false, "'superseded' collapsed to 'resolved' in this set");
+    assert.strictEqual(TERMINAL_STATUSES.has("expired"), false, "'expired' is not a terminal status");
+    assert.strictEqual(TERMINAL_STATUSES.has("auto-resolved"), false, "'auto-resolved' is not a terminal status");
   });
 
   test("'stale' is not a status (derived view, not in TERMINAL_STATUSES)", () => {
     assert.strictEqual(
       TERMINAL_STATUSES.has("stale"),
       false,
-      "'stale' is a derived evidence-freshness view (plan 260707-0812), not a persisted status",
+      "'stale' is a derived evidence-freshness view, not a persisted status",
     );
   });
 });

@@ -1,7 +1,7 @@
 import { test } from "vitest";
 import assert from "node:assert";
 import {
-  factoryFor, validateCrossRefs, findOrphans, outboundRefsAll, deepFreeze,
+  factoryFor, deepFreeze,
   createFinding, createRule, createChangeLog, createLoopDesign,
 } from "./index.js";
 import {
@@ -61,41 +61,6 @@ test("factoryFor defaults to 'finding' for legacy entries missing entry_kind", (
 
 test("factoryFor throws on unknown entry_kind", () => {
   assert.throws(() => factoryFor({ entry_kind: "unknown" }), /Unknown entry_kind/);
-});
-
-// --- validateCrossRefs ---
-
-test("validateCrossRefs returns empty orphans for a clean registry", () => {
-  const { orphans } = validateCrossRefs(REGISTRY);
-  assert.deepStrictEqual(orphans, []);
-});
-
-test("validateCrossRefs surfaces missing outbound refs", () => {
-  // Strip promoted_to_rule so only consolidated_into is an orphan
-  const { promoted_to_rule, ...base } = FINDING;
-  const orphanFinding = { ...base, consolidated_into: "meta-does-not-exist" };
-  const { orphans } = validateCrossRefs([orphanFinding]);
-  assert.strictEqual(orphans.length, 1);
-  assert.deepStrictEqual(orphans[0], {
-    from: orphanFinding.id, to: "meta-does-not-exist", field: "consolidated_into",
-  });
-});
-
-// --- findOrphans ---
-
-test("findOrphans is an alias for validateCrossRefs.orphans", () => {
-  const orphans = findOrphans(REGISTRY);
-  assert.deepStrictEqual(orphans, validateCrossRefs(REGISTRY).orphans);
-});
-
-// --- outboundRefsAll ---
-
-test("outboundRefsAll returns a Map of id → refs", () => {
-  const graph = outboundRefsAll(REGISTRY);
-  for (const entry of REGISTRY) {
-    assert.ok(graph.has(entry.id));
-    assert.ok(Array.isArray(graph.get(entry.id)));
-  }
 });
 
 // --- deepFreeze ---

@@ -2,9 +2,9 @@
  * Shared cross-walking constants for the four manifests in the mastra package.
  *
  * Source of truth for the sizes asserted by:
- *   - __tests__/manifest-arithmetic.test.cjs          (tools: 32, total: 44, workflow: 11, groups: 6)
- *   - __tests__/cold-session-enumerate-mastra.test.cjs (declared: 44, groups: 6)
- *   - __tests__/legacy-mcp/cold-session-discoverability.test.cjs (total: 44, groups: 6)
+ *   - __tests__/manifest-arithmetic.test.cjs          (tools: 44, total: 50, workflow: 11, groups: 6)
+ *   - __tests__/cold-session-enumerate-mastra.test.cjs (declared: 50, groups: 6)
+ *   - __tests__/legacy-mcp/cold-session-discoverability.test.cjs (total: 50, groups: 6)
  *   - __tests__/legacy-mcp/mastra-code-smoke.test.cjs (live MCP residue: 8)
  *
  * WHY: prior removal (meta_state_ack + intake_orient + intake_plan) and
@@ -17,9 +17,9 @@
  * constant here AND verify the comments in each consumer file remain accurate.
  */
 module.exports = {
-  AGENT_MANIFEST_TOTAL_TOOLS: 49,
+  AGENT_MANIFEST_TOTAL_TOOLS: 50,
   AGENT_MANIFEST_GROUPS: 6,
-  TOOLS_MANIFEST_ENTRIES: 43,
+  TOOLS_MANIFEST_ENTRIES: 44,
   WORKFLOW_GROUP_TOOLS: 11,
   // MCP residue when a runtime sets LOOP_RECORDS_VIA_CLI=1 (all three wired
   // runtimes do): the full record surface rides the stateless CLI, so MCP

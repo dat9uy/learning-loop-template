@@ -24,8 +24,9 @@ export const META_STATE_RECOMMENDATIONS = [
  *  if the entry is already in a terminal state (the agent's claim is consistent).
  *  `stale` and `auto-resolved` are removed — `stale` is
  *  a derived view, and `auto-resolved` was a dead write-path removed by the enum
- *  collapse. `superseded` is closed via a change-log. */
-const TERMINAL_RAW_STATUSES = new Set(["resolved", "superseded"]);
+ *  collapse. `superseded` is closed via a change-log. `accepted` is the
+ *  standing-trade-off terminal. */
+const TERMINAL_RAW_STATUSES = new Set(["resolved", "superseded", "accepted"]);
 
 /**
  * Derive the effective status of a meta-state finding entry.

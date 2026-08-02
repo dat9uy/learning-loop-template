@@ -46,33 +46,35 @@ export function createRule(data) {
     },
 
     supersedes(other) {
-      return parsed.supersedes === other.data?.id;
+      // `rule.supersedes` predicate is now derived from the
+      // `citations_inverse` map (the on-record `supersedes` field is
+      // inert-historical). `parsed.supersedes` is retained for legacy
+      // on-disk value reads; the predicate is sourced from citations
+      // via the graph layer (see `inverseRefs`).
+      // Legacy predicate (preserved for callers that pass the on-record
+      // field): if a value is present, it still matches.
+      if (parsed.supersedes && parsed.supersedes === other.data?.id) return true;
+      return false;
     },
 
     outboundRefs(entries) {
       // Delegate to the centralized graph. Single source of truth.
+      // `origin` + `supersedes` were de-routed from CROSS_REFS,
+      // so outboundRefs for a rule entry now returns [] for the
+      // relationship fields (only `applies_to_resolution` remains as a
+      // forwardOnly field).
       return forwardRefs(parsed, entries);
     },
 
     inboundRefs(root) {
-      // Inverse via the graph. Replaces the previous bespoke dual-field
-      // dedup loop (seenPromotedFrom Set + manual entry-kind dispatch).
-      const refs = inverseRefs(parsed.id, root);
-      // Dual-field migration ghost-ref: rule.origin is the canonical
-      // promoted_to_rule ref. Always emit it even when the finding no
-      // longer exists in root (matches the legacy behavior locked by
-      // `meta-state-relationships-snapshot.test.js`). Dedup against the
-      // graph's inverseRefs result so a finding that IS in root AND has
-      // promoted_to_rule is counted once.
-      if (parsed.origin) {
-        const seen = new Set(
-          refs.filter((r) => r.field === "promoted_to_rule").map((r) => r.id)
-        );
-        if (!seen.has(parsed.origin)) {
-          refs.push({ kind: "finding", id: parsed.origin, field: "promoted_to_rule" });
-        }
-      }
-      return refs;
+      // The dual-field ghost-ref for `promoted_to_rule` is
+      // removed. The canonical promotion edge is now a citation row
+      // (source:rule, target:finding, rationale:"origin"); inverseRefs
+      // surfaces the citing finding via the citation's `target` field
+      // substitution. The rule's on-record `origin` field is
+      // inert-historical; `promoted_to_rule_inverse` is also retired
+      // (its only source was rule.origin, which is now a citation).
+      return inverseRefs(parsed.id, root);
     },
   });
 }

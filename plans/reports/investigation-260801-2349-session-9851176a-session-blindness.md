@@ -1,5 +1,10 @@
 # Session Autopsy II — 9851176a: session-blindness (own session not treated as evidence)
 
+> **STATUS: SUPERSEDED / OUTDATED (2026-08-02).**
+> The **problem diagnosis** (§The episode, §Root cause, §Why priority should be higher) is retained as correct.
+> The **proposals P1–P4 are outdated** — they re-build machinery the loop already ships (`core/recurrence-tracker.js` already does push capture + aggregation + auto-file into the registry; `hooks/universal/recurrence-check-on-start.cjs` already fires it at SessionStart) and reach for new substrate (a recurrence log, a derivation field, a commit summary printer) instead of the loop's existing primitives (the `recurring-false-positive` finding + `reopens`/cascade-resolve lifecycle). The only real gap is a broken window semantic (10-min double-duty as burst definition + scan range) that makes the wired trigger dead for human-paced cadence.
+> **See instead:** `investigation-260802-0052-recurrence-trigger-design.md` — refuted proposals, loop-native fix (window → session grouping + reopen linkage), trigger-mechanism decision (keep SessionStart, silent-write channel; reject push-inline / SessionEnd / commit-msg), and the token/context category-error resolution.
+
 **Source:** same transcript as the friction autopsy (`9851176a-0eec-4c8b-ab34-3db6c1c17177.jsonl`).
 **Companion:** `investigation-260801-2340-session-9851176a-loop-tooling-friction.md` (tooling friction; this report is about *awareness*, not tooling).
 

@@ -14,14 +14,17 @@ The L1 doc (`docs/loop-engine.md`) names five exit roles for a finding. Each is 
 
 | L1 exit role (from `docs/loop-engine.md`) | Mechanism tool (L2) | Effect on finding |
 |---|---|---|
-| **promote** | `meta_state_promote_rule` | `finding` becomes the origin of a new `rule` entry; `promoted_to_rule` back-pointer set |
-| **resolve** | `meta_state_resolve` | `status` → `resolved`; `resolved_at`, `resolved_by`, `resolution` recorded |
+| **accept** | `meta_state_accept` | `open` → `accepted`; standing trade-off terminal. `accepted_at`, `accepted_by`, `accepted_reason` recorded. `isOpen` excludes `accepted`; `meta_state_archive` accepts `accepted` → `archived`. |
+| **promote** | `meta_state_promote_rule` | `finding` becomes the source of a new `rule` entry; the canonical promotion edge is the citation row `{source: rule, target: finding, rationale:"origin"}` emitted after the write lands (Phase 4). |
+| **resolve** | `meta_state_resolve` | `status` → `resolved`; `resolved_at`, `resolved_by`, `resolution` recorded. Phase 5 dropped the `cascade_from` arg. |
 | **re-verify** | `meta_state_re_verify` | `open` → `open` on passing verification (stamps `last_verified_at`, no transition); used to re-ground `stale`-view findings with re-runnable `verification.steps` |
 | **re-ground (no steps)** | `meta_state_touch` | `open` → `open` (stamps `last_verified_at`, no transition); re-grounds an aged finding whose `verification.steps` is empty via operator attestation guarded by `checkGrounding` |
-| **supersede** | `meta_state_supersede` | `status` → `superseded`; `consolidated_into` points at the absorbing change-log |
+| **supersede** | `meta_state_supersede` | `status` → `resolved` (Phase 3 collapse) AND emits a citation row `{source: finding, target: change-log, rationale:"consolidated into <change-log id>"}`. The on-record `consolidated_into` / `superseded_at` / `superseded_by` fields stay `.optional()` (inert-historical) but are no longer written. |
 | **dispatch** | `meta_state_dispatch_finding` | Non-terminal routing action — ledger event + `ledger_ref` back-pointer; finding stays in its current status until resolve/promote |
 
 **Dispatch is not a terminal status** — it is a routing action that lets the finding stay in its current state while a fix happens in an external issue-tracker substrate. The finding resolves when the fix ships.
+
+**Closure is a flavor of resolve.** Phase 3 collapsed `superseded` into `resolved` + a citation row. The supersede closure is now a flavor of resolve (the `meta_state_supersede` tool stamps `resolved_at`/`resolved_by`/`resolution` AND emits a citation row to the change-log). The 4-status enum for findings is `{open, accepted, resolved, archived}`.
 
 The rest of this document describes the lifecycle status model + the L2 tools in detail.
 
@@ -43,14 +46,15 @@ Getting this boundary wrong produces two failure modes: the gate enforcing domai
 
 The registry is a discriminated union on `entry_kind`. Each kind has its own status model and durability rules. The union definition lives in `AGENTS.md` §1; this doc owns the lifecycle and status transitions.
 
-The registry is append-only: `meta-state.jsonl` is multi-record-per-id (versioned-append; the default read collapses to one entry per id via `max_by(version)`), and `change-log` rows live in a **separate `change-log.jsonl`**. The union read is `tools/scripts/registry-table.sh` (reads both files, dedupes by id, emits one-line-per-id); `meta_state_list({ id, include_all_versions: true, include_archived: true })` is the tool-side equivalent. Both read and write tools ride the stateless CLI `bin/loop.mjs` on all runtimes; the MCP server keeps only a residue.
+The registry is append-only: `meta-state.jsonl` is multi-record-per-id (versioned-append; the default read collapses to one entry per id via `max_by(version)`), and `change-log` rows live in a **separate `change-log.jsonl`**. Citation rows live in `citations.jsonl` (Phase 2 of `meta-state-lifecycle-migration`). The union read is `tools/scripts/registry-table.sh` (reads all three files, dedupes by id, emits one-line-per-id); `meta_state_list({ id, include_all_versions: true, include_archived: true })` is the tool-side equivalent. Both read and write tools ride the stateless CLI `bin/loop.mjs` on all runtimes; the MCP server keeps only a residue.
 
 | Entry Kind | Purpose | Status Model | Durability |
 |---|---|---|---|
-| `finding` | Bug reports, design gaps, observed anti-patterns | 4-status: `open \| resolved \| superseded \| archived`; `stale` is a derived view, not a status | No TTL (`expires_at` vestigial); operator/agent-managed; `stale`-view re-verifiable |
+| `finding` | Bug reports, design gaps, observed anti-patterns | 4-status: `open \| accepted \| resolved \| archived`; `stale` is a derived view, not a status; `superseded` collapsed into `resolved` + a citation row (Phase 3) | No TTL (`expires_at` vestigial); operator/agent-managed; `stale`-view re-verifiable |
 | `change-log` | Immutable audit log of system changes | Always `active` | Permanent: no TTL, no auto-resolve; cannot be archived |
 | `rule` | Promoted findings that enforce invariants | Binary `active / inactive` (+ `archived` tombstone from deleteEntry) | Permanent: operator-managed |
 | `loop-design` | Deferred designs (not yet shipped) | Binary `active / inactive` (+ `archived` tombstone from deleteEntry) | Permanent: operator-managed |
+| `citation` | Asserted-relationship carrier for the collapsed edges (`origin`, `supersedes`, `consolidated_into`) | Always `active`; immutable audit row | Permanent: never archived |
 
 ---
 
@@ -63,36 +67,36 @@ Findings are the only entry kind with a multi-state lifecycle. The canonical sta
 | Status | Meaning | How It Is Entered |
 |---|---|---|
 | `open` | Unresolved (canonical post-migration status; replaces legacy `reported`/`active`/`stale`) | `meta_state_report` creates `open`; `meta_state_re_verify` re-grounds (stamps `last_verified_at`, no transition) |
-| `resolved` | Closed by operator/agent with resolution note | `meta_state_resolve` (consult-gate `rule-no-orphaned-evidence` may block on drift; cascade closes `stale`-view parents) |
-| `superseded` | Consolidated into a change-log | `meta_state_supersede` |
+| `accepted` | Standing trade-off: the finding is intentionally NOT going away but is no longer actionable. The terminal set includes `accepted`. | `meta_state_accept` flips `open` → `accepted` |
+| `resolved` | Closed by operator/agent with resolution note. The supersede closure is a flavor of resolve + a citation row (Phase 3). | `meta_state_resolve`; `meta_state_supersede` emits `resolved` + a citation row to the change-log |
 | `archived` | Schema-valid terminal status; registry-size trim. Append-only via `archiveEntry`/`deleteEntry` (write-boundary guard on the union rejects caller-supplied `status:"archived"`); restorable via `meta_state_unarchive`. | `meta_state_archive` / `meta_state_batch` op:`archive` / `meta_state_batch` op:`delete`; `meta_state_unarchive` reverses |
 
-Note: `stale` is **not** a status. It is the `isStaleView` derived view: an `open` finding past the 7-day staleness window (from `last_verified_at` or `created_at`) or with drifted evidence in `file-index.jsonl`. Surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only); re-grounded via `meta_state_re_verify`. The legacy `reported`/`active`/`auto-resolved` statuses were removed; `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.
+Note: `stale` is **not** a status. It is the `isStaleView` derived view: an `open` finding past the 7-day staleness window (from `last_verified_at` or `created_at`) or with drifted evidence in `file-index.jsonl`. Surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only); re-grounded via `meta_state_re_verify`. The legacy `reported`/`active`/`auto-resolved` statuses were removed; `isOpen` tolerates legacy persisted values until the migration flips them. Phase 3 collapsed `superseded` into `resolved` + a citation row; Phase 5 dropped the `reopens` writer (no new `reopens` edges; closing a stale parent is an explicit `meta_state_resolve` on the parent).
 
 ### Status Transitions
 
 ```
+open      --[meta_state_accept]-->               accepted   (standing trade-off; terminal)
 open      --[meta_state_resolve]-->              resolved
-open      --[meta_state_supersede]-->            superseded
-open      --[meta_state_dispatch_finding]-->     open  (non-terminal routing; ledger_ref set)
-open      --[meta_state_re_verify pass]-->       open  (stamps last_verified_at; no transition)
+open      --[meta_state_supersede]-->            resolved + citation row (Phase 3)
+open      --[meta_state_dispatch_finding]-->     open       (non-terminal routing; ledger_ref set)
+open      --[meta_state_re_verify pass]-->       open       (stamps last_verified_at; no transition)
+accepted  --[meta_state_archive]-->              archived
 resolved  --[meta_state_archive]-->              archived
-superseded--[meta_state_archive]-->              archived
 archived  --[meta_state_unarchive]-->            <pre-archive status>  (true-append supersedes tombstone)
-stale-view parent --[meta_state_resolve(cascade_from=[child])]--> resolved  (1-step cascade)
 ```
 
 `stale` is not a node — it is a derived property of `open`. The legacy `reported --[ack]--> active` and `--TTL--> stale` edges are removed (`meta_state_ack` gone, no TTL).
 
-The `expired` status was removed; the stale-flag redesign replaced auto-resolve-by-clock with `isStaleView` (derived) plus explicit re-verification; the schema enum shrink to `{open, resolved, superseded}` completed the migration.
+The `expired` status was removed; the stale-flag redesign replaced auto-resolve-by-clock with `isStaleView` (derived) plus explicit re-verification; the schema enum shrink to `{open, accepted, resolved, archived}` (with `superseded` collapsed into `resolved` in Phase 3) completed the migration. The legacy `reopens` + `cascade_from` write path was retired in Phase 5 — closing a stale parent is now an explicit `meta_state_resolve` on the parent, not a side-effect of opening a child.
 
 ### Terminal vs Non-Terminal
 
-**Terminal** (single set): `{resolved, superseded, archived}`. The Zod enum on `status` includes `archived`; the schema-enum terminal set and the predicate-effective terminal set (`core/constants.js`, consumed by `isOpen`) are identical.
+**Terminal** (single set): `{accepted, resolved, archived}`. The Zod enum on `status` includes `archived`; the schema-enum terminal set and the predicate-effective terminal set (`core/constants.js`, consumed by `isOpen`) are identical.
 
-**Non-terminal**: `open`. It has **staleness pressure** as a derived view (`isStaleView`), not a status: a stale-view `open` finding is re-verifiable via `meta_state_re_verify` and cascade-closeable to `resolved` in 1 step. There is no `auto-resolved` status (removed).
+**Non-terminal**: `open`. It has **staleness pressure** as a derived view (`isStaleView`), not a status: a stale-view `open` finding is re-verifiable via `meta_state_re_verify`. There is no `auto-resolved` status (removed).
 
-Note: `core/meta-state.js` has a local `TERMINAL_STATUSES = {resolved, superseded}` (without `archived`) used internally as the open-predicate helper for the write path. It is NOT the schema-enum terminal set — do not conflate the two.
+Note: `core/meta-state.js` has a local `TERMINAL_STATUSES = {resolved, accepted}` (without `archived`) used internally as the open-predicate helper for the write path. It is NOT the schema-enum terminal set — do not conflate the two.
 
 ---
 
@@ -160,18 +164,19 @@ These three kinds have simpler, binary or fixed status models.
 
 | Tool | Entry Kinds | Transition | Notes |
 |---|---|---|---|
-| `meta_state_report` | finding | -> `open` | Creates finding `open`; no TTL (`expires_at` vestigial) |
-| `meta_state_resolve` | finding | -> `resolved` | Consult-gate `rule-no-orphaned-evidence` may block if drift detected. Rejects rules, loop-designs, and change-logs. Cascade closes a `stale`-view parent in 1 step via `cascade_from`. |
-| `meta_state_supersede` | finding | -> `superseded` | Sets `consolidated_into`, `superseded_at`, `superseded_by` |
+| `meta_state_report` | finding | -> `open` | Creates finding `open`; no TTL (`expires_at` vestigial). Phase 5 dropped the `reopens` arg — new findings cannot re-open a closed parent. |
+| `meta_state_accept` | finding | `open` -> `accepted` | Standing trade-off terminal. `accepted` is a terminal status (replaces an "open forever" anti-pattern); `meta_state_archive` accepts `accepted` → `archived`. |
+| `meta_state_resolve` | finding | -> `resolved` | Consult-gate `rule-no-orphaned-evidence` may block if drift detected. Rejects rules, loop-designs, and change-logs. Phase 5 dropped `cascade_from` (no new cascades). |
+| `meta_state_supersede` | finding | -> `resolved` (Phase 3) + citation row | Sets `resolved_at`, `resolved_by`, `resolution` AND emits a citation row `{source: finding, target: change-log, rationale:"consolidated into <change-log id>"}`. The supersede closure is a flavor of resolve. |
 | `meta_state_re_verify` | finding | `open` -> `open` (no transition) | Runs `verification.steps`; stamps `last_verified_at` on pass; no status transition |
 | `meta_state_sweep` | finding | read-only (derived stale-view report) | Dry-run report of the `isStaleView` set; no status writes (apply mode removed) |
 | `meta_state_archive` | finding | -> `archived` | Decision rule + operator override; rejects rules, change-logs, and loop-designs |
 | `meta_state_unarchive` | finding, rule, loop-design | `archived` -> `<pre-archive status>` | True-append supersedes tombstone via `readRegistryAllVersions`; rejects already-active (`not_archived`), change-logs (`not_archived`), and delete-tombstones (`delete_not_restorable`); no `allow_delete_restore` flag |
-| `meta_state_log_change` | change-log | -> `active` | Immutable; no transitions after creation |
-| `meta_state_promote_rule` | finding -> rule | finding promoted; rule `active` | Extracts rule from finding |
+| `meta_state_log_change` | change-log | -> `active` | Immutable; no transitions after creation. Phase 4: `supersedes` no longer stamped on the record — the canonical edge is the citation row `{source: new, target: prior, rationale:"supersedes"}` emitted after the write lands. |
+| `meta_state_promote_rule` | finding -> rule | finding promoted; rule `active` | Extracts rule from finding. Phase 4: no longer stamps `origin` on the new rule — emits a citation row `{source: rule, target: finding, rationale:"origin"}` after the write lands. |
 | `meta_state_propose_design` | loop-design | -> `active` | Idempotent by `addresses` + `proposed_design_for` set equality |
 | `meta_state_ship_loop_design` | loop-design | `active` -> `inactive` | Atomically stamps `shipped_in_plan` + `shipped_at`; idempotent on `already_shipped` |
-| `meta_state_patch` | finding, rule, loop-design, change-log | Update existing fields | CAS via `_expected_version` |
+| `meta_state_patch` | finding, rule, loop-design, change-log | Update existing fields | CAS via `_expected_version`. Phase 4: a rule patch with a `supersedes` arg emits a rule→rule citation row instead of setting the field (preserves rule→rule supersession). Phase 4: `origin` on a rule patch is rejected (`origin_inert_historical`). |
 | `meta_state_batch` | any | write / update / delete / archive | Atomic; cap 500 ops; rollback on failure; auto-emits an `operation_envelope`-annotated change-log after the ops loop (see the Change-Log section above) |
 
 ---
@@ -238,17 +243,17 @@ The inter-entry relationship model grew across decentralized sites and conflated
 
 The boundary:
 
-1. **File-index — findings-on-a-file.** Every finding with `evidence_code_ref` is grounded via `file-index.jsonl` (the canonical `meta_state_refresh_file_index` source). `meta_state_check_grounding`, `meta_state_query_drift`, and `meta_state_refresh_file_index` answer "which findings touch this file". **Not a relationship edge.**
+1. **File-index — findings-on-a-file (grounding only).** Every finding with `evidence_code_ref` is grounded via `file-index.jsonl` (the canonical `meta_state_refresh_file_index` source). `meta_state_check_grounding`, `meta_state_query_drift`, and `meta_state_refresh_file_index` answer "which findings touch this file". **Not a relationship edge** — a `file-index.jsonl` row is path → fingerprint, not entry → entry. The investigation's earlier premise that file-index could serve as a co-citation layer was false (Phase 2's scout correction).
 
-2. **Typed lifecycle edges — relationship model.** The cross-ref fields (`reopens`, `consolidated_into`, `promoted_to_rule`, `supersedes`, `consolidates`, `origin`, `addresses`, `proposed_design_for`) carry kind-pair-typed lineage. **Centralized in `core/entry/relationship-graph.js`** (single source of truth for the cross-ref table per kind, forward + inverse resolution, write-time structural RI). The wire shape (`groupOutbound` / `groupInbound` / `INBOUND_KEY_MAP` + `computeDanglingRefs`) stays in `tools/handlers/meta-state-relationships-tool.js` because it needs `stale-view` and is presentation logic.
+2. **Typed lifecycle edges — relationship model.** The cross-ref fields carry kind-pair-typed lineage. Post-Phase 4 (Phase 3+4 of `meta-state-lifecycle-migration`): the bespoke relationship fields `consolidated_into` / `consolidates` (Phase 3) + `origin` / `supersedes` / `promoted_to_rule` (Phase 4) were collapsed into the **`citation` kind** in its own `citations.jsonl`. The citation's `source` / `target` are the two relationship endpoints; the verb stays prose in `rationale` (no runtime branch consumes it). The 3 named inverse maps (`consolidated_into_inverse` / `origin_inverse` / `supersedes_inverse` / `promoted_to_rule_inverse`) collapse into the generic `citations_inverse`; the wire shape's named keys (`consolidated_by` / `superseded_by` / `origin_of` / `promoted_from`) collapse into the generic `cited_by`. The remaining typed cross-ref fields (`reopens`, `addresses`, `proposed_design_for`) stay on-record and named. **Centralized in `core/entry/relationship-graph.js`** (single source of truth for the cross-ref table per kind, forward + inverse resolution, write-time structural RI). The wire shape (`groupOutbound` / `groupInbound` + `computeDanglingRefs`) stays in `tools/handlers/meta-state-relationships-tool.js` because it needs `stale-view` and is presentation logic.
 
-3. **Cascade — closure policy.** "Solve one → resolve other" is a **state transition** (resolve with `cascade_from: [childId, …]`), not a relationship type. The cascade is glued to the `reopens` edge via the transient input `cascade_from` (NOT persisted; consumed by `meta_state_resolve`'s cascade branch + `validateCascadeChildren`).
+3. **Closure policy — explicit resolve.** "Solve one → resolve other" was previously a **state-transition side-effect** (`reopens` writer + `meta_state_resolve({cascade_from})`). Phase 5 dropped both writers: new findings cannot re-open a closed parent, and `meta_state_resolve` no longer accepts `cascade_from`. Closing a stale parent is now an explicit `meta_state_resolve({id: parent_id})` on the parent. The 17 historical `reopens` edges and the cascade path are **retained read-only** (the `reopens` field stays `.optional()` on the schema, the `reopens_inverse` map stays in the named-maps shape, and `validateCascadeChildren` + `meta_state_relationship_validate`'s orphan-claim keep reading it).
 
-**Non-decision — no `related_to` field.** A generic `related_to: string[]` is the natural "just link them" instinct, but it's optional + semantically empty: one agent links `related_to` for "same subsystem", another for "same symptom", another for "fixes-like". The field becomes inconsistent, then unqueryable, then ignored. The typed edges (`supersedes` = "this replaces that", `addresses` = "this design fixes that finding") carry meaning, so they query. The answer to "how do I link X to Y?" is: use the typed edge that means what you mean, or `reopens` for stale-succession, or free-text in `description` for soft context.
+**Non-decision — no `related_to` field.** A generic `related_to: string[]` is the natural "just link them" instinct, but it's optional + semantically empty: one agent links `related_to` for "same subsystem", another for "same symptom", another for "fixes-like". The field becomes inconsistent, then unqueryable, then ignored. The citation log (verb in `rationale`) and the typed edges (`addresses` = "this design fixes that finding", `reopens` for stale-succession) carry meaning, so they query. The answer to "how do I link X to Y?" is: use a citation row for asserted relationships (the untyped verb is prose — `"origin"`, `"consolidated into"`, `"addresses"`-equivalent, `"supersedes"`), the typed edge that means what you mean (`addresses`, `proposed_design_for`, `reopens`), or free-text in `description` for soft context.
 
-**Write-time structural RI is WARN-ONLY.** `writeEntry`/`updateEntry`/`metaStateBatch` check id-existence of structural cross-ref targets at the boundary but never reject: a dangling ref emits a gate-log advisory (`dangling_structural_ref`, naming the dangling `{field, id}`) and the append continues. Hard enforcement lives in CI (`meta-state-refs-check.yml`), which catches within-PR orphans. Write-time RI's marginal benefit is immediate operator feedback + cross-PR orphan surfacing, not correctness rejection — a hard reject regressed the full suite (16 test files) because two features deliberately create ref orphans at write time: the `dangling_refs` "missing" view (a finding whose `reopens` targets a never-existent id) and the cold-tier `orphans` array (`consolidated_into` → a missing change-log). `metaStateBatch` seeds an in-batch id accumulator so intra-batch write-then-reference does not false-warn. Do not reintroduce write-time hard rejection; the deliberate-orphan features depend on the append continuing.
+**Write-time structural RI is WARN-ONLY.** `writeEntry`/`updateEntry`/`metaStateBatch` / `appendCitationEntryAtomic` check id-existence of structural cross-ref targets at the boundary but never reject: a dangling citation or ref emits a gate-log advisory (`dangling_structural_ref` or `dangling_citation`, naming the dangling `{field, id}`) and the append continues. Hard enforcement lives in CI (`meta-state-refs-check.yml`), which catches within-PR orphans. Write-time RI's marginal benefit is immediate operator feedback + cross-PR orphan surfacing, not correctness rejection — a hard reject regressed the full suite because two features deliberately create ref orphans at write time: the `dangling_refs` "missing" view (a citation whose `target` is a never-existent id) and the cold-tier `orphans` array (a citation → a missing change-log). `metaStateBatch` seeds an in-batch id accumulator so intra-batch write-then-reference does not false-warn. Do not reintroduce write-time hard rejection; the deliberate-orphan features depend on the append continuing.
 
-**`reopens` / `cascade_from` deferral.** Both are KEPT (2 hint slugs `reopens` + `reopens-script` in `core/hint-registry.js`; 4 live `reopens` edges — all terminal). The structural drop waits on the YAGNI gate defined by finding meta-260717T1004Z (a real >2 recurrence cluster). Dropping requires a sustained recurrence cluster — when that fires, revisit and drop with migration of the 4 edges. Today, the mechanism is more used than the audit predicted, but the deferred drop is the right call to avoid speculative simplification.
+**`reopens` / `cascade_from` writers dropped (Phase 5); read path retained.** The `reopens` field + `reopens_inverse` map + `validateCascadeChildren` + `meta_state_relationship_validate`'s orphan-claim remain — the 17 historical edges are still queryable, and existing cascade relationships still resolve for already-seeded data. The write surface is gone; new evidence appends a new finding; no operation un-closes an old one as a side-effect. This makes resolved honestly terminal going forward.
 
 ---
 

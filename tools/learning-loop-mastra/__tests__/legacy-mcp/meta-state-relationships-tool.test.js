@@ -14,6 +14,11 @@ function writeRegistry(root, entries) {
   writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 }
 
+function writeCitations(root, entries) {
+  const lines = entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
+  writeFileSync(join(root, "citations.jsonl"), lines, "utf8");
+}
+
 describe("meta_state_relationships consolidated_into traversal", () => {
   let root;
   let originalGateRoot;
@@ -23,11 +28,18 @@ describe("meta_state_relationships consolidated_into traversal", () => {
     originalGateRoot = process.env.GATE_ROOT;
     process.env.GATE_ROOT = root;
 
+    // The consolidated edge (finding → change-log) is now a citation row
+    // (source=finding, target=change-log, rationale="consolidated-into").
+    // The on-record `consolidated_into` (finding) and `consolidates`
+    // (change-log) fields are inert-historical: still on disk, still parse,
+    // but de-routed from CROSS_REFS so they are no longer indexed in outbound
+    // or the named inverse maps. The canonical edge surfaces via inbound
+    // `cited_by` (sourced from `citations_inverse`).
     writeRegistry(root, [
       {
         id: "consolidated-finding",
         entry_kind: "finding",
-        status: "superseded",
+        status: "resolved",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -47,6 +59,19 @@ describe("meta_state_relationships consolidated_into traversal", () => {
         created_at: new Date().toISOString(),
       },
     ]);
+    writeCitations(root, [
+      {
+        id: "citation-consolidated-finding-into-change-log",
+        entry_kind: "citation",
+        source: "consolidated-finding",
+        target: "consolidating-change-log",
+        rationale: "consolidated-into",
+        recorded_at: new Date().toISOString(),
+        recorded_by: "operator",
+        status: "active",
+        version: 0,
+      },
+    ]);
   });
 
   afterAll(() => {
@@ -58,7 +83,7 @@ describe("meta_state_relationships consolidated_into traversal", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  test("inbound direction exposes consolidated_by from change-log consolidates", async () => {
+  test("inbound direction exposes cited_by from the consolidated citation", async () => {
     const result = await metaStateRelationshipsTool.handler({
       id: "consolidating-change-log",
       direction: "inbound",
@@ -66,34 +91,30 @@ describe("meta_state_relationships consolidated_into traversal", () => {
     const text = JSON.parse(result.content[0].text);
     assert.ok(text.inbound, "inbound should be present");
     assert.deepStrictEqual(
-      text.inbound.consolidated_by,
+      text.inbound.cited_by,
       ["consolidated-finding"]
     );
   });
 
-  test("outbound direction still exposes consolidated_into from finding", async () => {
+  test("outbound direction no longer exposes inert-historical consolidated_into", async () => {
     const result = await metaStateRelationshipsTool.handler({
       id: "consolidated-finding",
       direction: "outbound",
     });
     const text = JSON.parse(result.content[0].text);
-    assert.ok(text.outbound, "outbound should be present");
-    assert.strictEqual(
-      text.outbound.consolidated_into,
-      "consolidating-change-log"
-    );
+    // `consolidated_into` is de-routed from CROSS_REFS; the finding has no
+    // other forward refs, so outbound is null. The canonical edge is the
+    // citation row surfaced via inbound `cited_by`.
+    assert.strictEqual(text.outbound, null, "outbound must not surface inert-historical consolidated_into");
   });
 
-  test("both direction exposes consolidated_by and consolidated_into", async () => {
+  test("both direction exposes cited_by and omits inert-historical outbound", async () => {
     const result = await metaStateRelationshipsTool.handler({
       id: "consolidating-change-log",
       direction: "both",
     });
     const text = JSON.parse(result.content[0].text);
-    assert.ok(text.inbound, "inbound should be present");
-    assert.deepStrictEqual(
-      text.inbound.consolidated_by,
-      ["consolidated-finding"]
-    );
+    assert.ok(text.inbound, "inbound should be present (cited_by from citation)");
+    assert.deepStrictEqual(text.inbound.cited_by, ["consolidated-finding"]);
   });
 });

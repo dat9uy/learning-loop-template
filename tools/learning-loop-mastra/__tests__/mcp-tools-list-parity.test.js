@@ -41,7 +41,7 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
   });
 
   // Test 2 (per-tool — read-only sweep): meta_state_sweep lost its `apply`
-  // mode in Plan 260707-0812 Phase 3. The schema is now `{}` (empty). This test
+  // mode. The schema is now `{}` (empty). This test
   // locks the read-only contract: no `apply` property means sweep cannot
   // mutate the registry. Replaces the old guarded-boolean pipe-collapse proof
   // (the schema-parity.js pipe-collapse branch is still exercised by the
@@ -76,7 +76,7 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
       `sweep inputSchema must have no properties (got ${JSON.stringify(Object.keys(t.inputSchema.properties))})`,
     );
     assert.strictEqual(t.inputSchema.properties.apply, undefined,
-      "apply property must NOT exist — sweep is read-only (Plan 260707-0812 Phase 3 removed apply mode)");
+      "apply property must NOT exist — sweep is read-only (apply mode removed)");
   });
 
   // Test 3 (per-tool — preprocess + default([])): meta_state_archive.candidates
@@ -92,19 +92,24 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
     assert.strictEqual(candidates.items?.type, "string", "candidates.items.type must be string");
   });
 
-  // Test 4 (per-tool — preprocess inside z.object): meta_state_resolve.cascade_from
-  // must be array of string. This is the load-bearing proof that schema-parity.js
-  // lines 62-77 (recursive object rebuild) ran.
-  test("meta_state_resolve.cascade_from is array of string (preprocess inside z.object)", { timeout: 5000 }, () => {
-    const t = byName.get("mastra_meta_state_resolve");
-    assert.ok(t, "mastra_meta_state_resolve must be registered");
-    const cascade = t.inputSchema.properties.cascade_from;
-    assert.ok(cascade, "cascade_from property must exist");
-    assert.strictEqual(cascade.type, "array", "cascade_from.type must be array");
-    assert.strictEqual(cascade.items?.type, "string", "cascade_from.items.type must be string");
+  // Test 4 (per-tool — migration-touched schemas): `meta_state_resolve` lost
+  // `cascade_from` (the cascade writer was removed; close a stale parent by
+  // calling `meta_state_resolve` on it directly). `meta_state_accept` was
+  // added (flips open→accepted). Pin the CURRENT shipped schemas so a future
+  // drift that re-adds `cascade_from` or drops `meta_state_accept` fails loud.
+  test("meta_state_resolve.cascade_from removed; meta_state_accept registered (migration-touched schemas)", { timeout: 5000 }, () => {
+    const resolve = byName.get("mastra_meta_state_resolve");
+    assert.ok(resolve, "mastra_meta_state_resolve must be registered");
+    assert.strictEqual(
+      resolve.inputSchema.properties.cascade_from, undefined,
+      "cascade_from was removed from meta_state_resolve (cascade writer dropped)",
+    );
+    const accept = byName.get("mastra_meta_state_accept");
+    assert.ok(accept, "mastra_meta_state_accept must be registered (added by the migration)");
+    assert.ok(accept.inputSchema.properties.id, "meta_state_accept must declare an id property");
   });
 
-  // Test 5 (per-tool — Plan 260717-1145 Phase 2): meta_state_patch.patch must
+  // Test 5 (per-tool — steering layer): meta_state_patch.patch must
   // declare minProperties >= 1 on the model-visible JSON schema so the empty-{}
   // safe emission (verified root cause: union of four .partial().strict() branches)
   // is rejected pre-invocation. Generation-only: .parse({}) still succeeds at the
@@ -135,7 +140,7 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
     }
   });
 
-  // Test 7 (separation invariant, plan 260717-1145 Phase 2 step 3): the
+  // Test 7 (separation invariant): the
   // generation-only override is on the parity JSON-schema side. The runtime
   // Zod schema must still parse({}) successfully — the empty_patch runtime
   // check is the safety net, not the schema. This pins steering (schema)

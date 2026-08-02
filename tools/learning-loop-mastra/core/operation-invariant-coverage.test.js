@@ -29,11 +29,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "meta-state.js"), "utf8");
 
 // The five mutation surfaces named by rule-assertinvariant-at-boundary.
+// `acceptEntry` is added as a sixth — it owns an agent-relevant invariant
+// (status flip open → accepted, with the "not already terminal"
+// pre-condition).
 const MUTATION_OPS = [
   "writeEntry",
   "updateEntry",
   "archiveEntry",
   "deleteEntry",
+  "acceptEntry",
   "metaStateBatch",
 ];
 

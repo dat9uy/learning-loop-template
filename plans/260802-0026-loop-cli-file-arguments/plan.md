@@ -1,7 +1,7 @@
 ---
 title: "Loop CLI file arguments"
 description: "Allow loop.mjs tool payloads to be read from a file so gate-sensitive prose does not need to travel in shell argv, and make the meta_state_report category contract visible in the SessionStart sketch."
-status: pending
+status: completed
 priority: P1
 effort: "2-4h"
 tags: [cli-transport, discoverability, meta-state]
@@ -34,18 +34,18 @@ Operators and agents can invoke any CLI-portable loop tool with JSON loaded from
 
 | # | Phase | Status | Depends on |
 |---|-------|--------|------------|
-| 1 | [File-backed CLI arguments and discoverability](./phase-01-start.md) | Pending | None |
+| 1 | [File-backed CLI arguments and discoverability](./phase-01-start.md) | Completed | None |
 
 ## Acceptance Criteria
 
-- [ ] `loop.mjs <tool> --args-file <path>` executes a valid payload through the same tool path as inline JSON.
-- [ ] Missing path, unreadable file, malformed JSON, extra arguments, and incompatible flag combinations fail as caller-configuration errors with exit 2 and no handler execution.
-- [ ] Existing inline JSON, `list`, and `--schema` behavior remains compatible.
-- [ ] CLI usage comments and SessionStart transport guidance advertise the file form.
-- [ ] The `meta_state_report` sketch names all accepted required `category` values without weakening required-key drift checks.
-- [ ] Focused CLI and SessionStart tests pass; broader changed tests pass.
-- [ ] Runtime-agnostic audit passes for the touched feature surface.
-- [ ] The originating finding is derived, verified, and resolved only after implementation evidence is green.
+- [x] `loop.mjs <tool> --args-file <path>` executes a valid payload through the same tool path as inline JSON.
+- [x] Missing path, unreadable file, malformed JSON, extra arguments, and incompatible flag combinations fail as caller-configuration errors with exit 2 and no handler execution.
+- [x] Existing inline JSON, `list`, and `--schema` behavior remains compatible.
+- [x] CLI usage comments and SessionStart transport guidance advertise the file form.
+- [x] The `meta_state_report` sketch names all accepted required `category` values without weakening required-key drift checks.
+- [x] Focused CLI and SessionStart tests pass; broader changed tests pass.
+- [x] Runtime-agnostic audit passes for the touched feature surface.
+- [x] The originating finding is derived, verified, and resolved only after implementation evidence is green.
 
 ## Risks and Rollback
 

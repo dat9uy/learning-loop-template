@@ -130,20 +130,31 @@ test("writeEntry accepts reopens pointing at an existing id (no advisory)", asyn
     "an existing-target ref must not emit an advisory");
 });
 
-test("writeEntry accepts consolidated_into to a never-existent change-log and logs a warn-only advisory (preserves the cold-tier orphan feature)", async () => {
+test("writeEntry accepts consolidated_into to a never-existent change-log (inert-historical, unindexed; no RI advisory)", async () => {
   const root = makeTempRoot();
   await writeEntry(root, makeFinding());
   const entry = makeFinding({
     id: "meta-f2",
     consolidated_into: "meta-missing-changelog",
   });
-  // WARN-ONLY: the cold-tier `orphans` feature surfaces exactly such a
-  // dangling consolidated_into pointer; RI must let it be written.
+  // `consolidated_into` is inert-historical: still schema-optional (parses),
+  // but de-routed from CROSS_REFS so forwardRefs/resolveStructuralRI no longer
+  // index it. writeEntry still ACCEPTS the field (the append proceeds) but
+  // emits NO warn-only RI advisory for it — the canonical consolidated edge
+  // must come from a citation row now. The cold-tier `orphans` feature is
+  // preserved via the citation graph, not via on-record RI.
   await writeEntry(root, entry);
   const entries = readRegistry(root);
-  assert.strictEqual(entries.length, 2, "append proceeds under warn-only RI");
-  assert.ok(warnedOn(root, "consolidated_into", "meta-missing-changelog"),
-    "gate log must record the dangling consolidated_into ref");
+  assert.strictEqual(entries.length, 2, "append proceeds (field is schema-optional)");
+  assert.strictEqual(
+    warnedOn(root, "consolidated_into", "meta-missing-changelog"),
+    false,
+    "no RI advisory: consolidated_into is de-routed from the RI check (unindexed)",
+  );
+  // The field is still persisted on disk (schema-optional, still parses).
+  const persisted = entries.find((e) => e.id === "meta-f2");
+  assert.strictEqual(persisted.consolidated_into, "meta-missing-changelog",
+    "inert-historical field is still written to disk");
 });
 
 test("writeEntry RI-EXEMPTS applies_to_resolution (no advisory)", async () => {

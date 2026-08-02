@@ -2,10 +2,16 @@
 /**
  * Post-merge registry-ref validator.
  *
- * Scans the union of `meta-state.jsonl` + `change-log.jsonl` for real
- * dangling refs (target id missing, stale-view, superseded, resolved).
- * Used as the BLOCK signal in `.github/workflows/meta-state-refs-check.yml`
- * on `push: main`.
+ * Scans the union of `meta-state.jsonl` + `change-log.jsonl` +
+ * `citations.jsonl` for real dangling refs (target id missing, stale-view,
+ * superseded, resolved). Used as the BLOCK signal in
+ * `.github/workflows/meta-state-refs-check.yml` on `push: main`.
+ *
+ * Citations are the canonical carrier for the migrated relationship edges
+ * (consolidated_into / origin / supersedes / promoted_to_rule / consolidates
+ * were de-routed from `CROSS_REFS` and now live as citation rows). Omitting
+ * `citations.jsonl` left the gate blind to dangling citation targets; it is
+ * now unioned in alongside meta-state + change-log.
  *
  * Why post-merge: at push-to-main the full union is visible, so every dangling
  * ref is real (cross-PR orphans either self-healed on merge or never existed).
@@ -40,7 +46,7 @@
  * `dangling_refs` retains the legacy flat reasons (missing/stale/superseded/
  * resolved) — its `computeDanglingRefs(refs, entries)` signature omits the
  * source entry, so adding `historical` would require a signature refactor
- * (YAGNI per red-team F2). The `historical` label
+ * (YAGNI — the divergence is intentional). The `historical` label
  * lives only in this post-merge validator.
  */
 
@@ -51,6 +57,12 @@ import { forwardRefs } from "../core/entry/relationship-graph.js";
 
 const META_STATE_FILENAME = "meta-state.jsonl";
 const CHANGE_LOG_FILENAME = "change-log.jsonl";
+// Mirrors `core/meta-state.js#CITATIONS_FILENAME` (not exported there).
+// Citations are the canonical carrier for the migrated relationship edges;
+// unioning them in re-sources the gate after consolidated_into / origin /
+// supersedes / promoted_to_rule / consolidates were de-routed from
+// `CROSS_REFS` into citation rows.
+const CITATIONS_FILENAME = "citations.jsonl";
 
 export function readJsonl(filePath) {
   if (!existsSync(filePath)) return [];
@@ -68,7 +80,7 @@ export function readJsonl(filePath) {
 // Post-merge on main the registry is the source of truth and runtime drift is
 // handled by `meta_state_check_grounding`, not by this validator — coupling the
 // validator to the canonical stale-view predicate would re-introduce drift
-// coupling. See red-team F3.
+// coupling.
 export function isStaleViewLike(entry) {
   if (!entry || typeof entry !== "object") return false;
   if (entry.status === "resolved" || entry.status === "superseded" || entry.status === "archived") return false;
@@ -144,7 +156,7 @@ function classifyRef(entry, sourceKind, ref, target) {
 // `informational` are counted but never block.
 //
 // Duplicate-id guard: block only CROSS-KIND id collisions. The masking
-// vector (red-team F8) is a line that reuses an
+// vector is a line that reuses an
 // existing id but carries a DIFFERENT entry_kind — e.g. a change-log
 // reusing a finding's id — which the `entryById` last-write-wins Map in
 // computeDanglingRefs would silently resolve to one branch, masking the
@@ -236,6 +248,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     const metaPath = join(root, META_STATE_FILENAME);
     const changeLogPath = join(root, CHANGE_LOG_FILENAME);
+    const citationsPath = join(root, CITATIONS_FILENAME);
     if (!existsSync(metaPath)) {
       console.error(`validate-registry-refs: meta-state.jsonl not found at ${metaPath}`);
       process.exit(2);
@@ -243,6 +256,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const allEntries = [
       ...readJsonl(metaPath),
       ...readJsonl(changeLogPath),
+      ...readJsonl(citationsPath),
     ];
     // Project to one row per id (max version) so ref-corruption is evaluated
     // on LIVE state, not audit history. Cross-kind id collisions are still
@@ -260,7 +274,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.log(`validate-registry-refs: ${informational.length} ref(s) to terminal-status/stale entries (informational, no BLOCK).`);
     }
     if (blocking.length === 0) {
-      console.log(`validate-registry-refs: 0 blocking orphan(s) across ${projected.length} live entries (${allEntries.length} rows, meta-state + change-log union).`);
+      console.log(`validate-registry-refs: 0 blocking orphan(s) across ${projected.length} live entries (${allEntries.length} rows, meta-state + change-log + citations union).`);
       process.exit(0);
     }
     console.error(`validate-registry-refs: BLOCK — ${blocking.length} real orphan(s) on main:`);

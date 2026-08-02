@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { writeEntry, generateId, metaStateChangeEntrySchema } from "../../core/meta-state.js";
+import { writeEntry, generateId, metaStateChangeEntrySchema, appendCitationEntryAtomic } from "../../core/meta-state.js";
 import { slugify } from "../../core/slugify.js";
 import { assertWriteVisible, WriteNotVisibleError } from "../../core/update-entry-helpers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
@@ -82,7 +82,9 @@ export const metaStateLogChangeTool = {
       change_diff,
       reason,
       ...(applies_to && { applies_to }),
-      ...(supersedes && { supersedes }),
+      // `supersedes` is no longer stamped on the change-log. The
+      // canonical supersede edge (change-log → change-log or change-log
+      // → rule) is emitted as a citation row after the write lands.
       ...(consolidatesNormalized && { consolidates: consolidatesNormalized }),
       ...(evidence_code_ref && { evidence_code_ref }),
       ...(evidence_journal && { evidence_journal }),
@@ -97,6 +99,23 @@ export const metaStateLogChangeTool = {
     };
 
     await writeEntry(root, entry);
+
+    // Emit the supersedes citation row when a target was
+    // provided. Covers change-log → change-log and change-log → rule
+    // supersession. The on-record `supersedes` field stays `.optional()`
+    // (inert-historical) but is no longer written.
+    if (supersedes) {
+      appendCitationEntryAtomic(root, {
+        id: `citation-supersedes-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        entry_kind: "citation",
+        source: id,
+        target: supersedes,
+        rationale: "supersedes",
+        recorded_at: now.toISOString(),
+        recorded_by: "operator",
+        status: "active",
+      });
+    }
 
 // post-write visibility re-read. Closes T4
     // (silent-persistence-fail class). If the entry is not visible after

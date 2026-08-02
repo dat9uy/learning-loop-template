@@ -130,8 +130,9 @@ describe("meta_state_consistency_check tool", () => {
     }
   });
 
-  // T-6: Mixed findings + change-logs with 3 breaches → 3 events in stable order
-  test("T-6: mixed registry with 3 breaches returns 3 events sorted by (entry_kind, id, invariant_id)", async () => {
+  // T-6: Mixed findings + change-logs with 2 breaches → 2 events in stable order.
+  // Phase 3 retired F-4 (`superseded` collapsed into `resolved` + citation).
+  test("T-6: mixed registry with 2 breaches returns 2 events sorted by (entry_kind, id, invariant_id)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "consistency-check-tool-6-"));
     process.env.GATE_ROOT = tempDir;
     const entries = [
@@ -140,8 +141,6 @@ describe("meta_state_consistency_check tool", () => {
         resolved_at: "2026-06-01T00:00:00.000Z", resolved_by: "op" },
       // F-3 breach on a finding (resolved without resolved_by)
       { id: "meta-260601T0000Z-f3", entry_kind: "finding", status: "resolved" },
-      // F-4 breach on a finding (superseded without consolidated_into)
-      { id: "meta-260601T0000Z-f4", entry_kind: "finding", status: "superseded" },
       // Clean finding (should NOT appear)
       { id: "meta-260601T0000Z-clean", entry_kind: "finding", status: "resolved",
         resolved_at: "2026-06-01T00:00:00.000Z", resolved_by: "op" },
@@ -153,16 +152,15 @@ describe("meta_state_consistency_check tool", () => {
     try {
       const result = await metaStateConsistencyCheckTool.handler({});
       const parsed = JSON.parse(result.content[0].text);
-      assert.strictEqual(parsed.drift_count, 3);
-      // All 3 entries share entry_kind=finding, so they're sorted by id
+      assert.strictEqual(parsed.drift_count, 2);
+      // All entries share entry_kind=finding, so they're sorted by id
       const ids = parsed.drift_events.map((e) => e.id);
       assert.deepStrictEqual(ids, [
         "meta-260601T0000Z-f1",
         "meta-260601T0000Z-f3",
-        "meta-260601T0000Z-f4",
       ]);
       const invariantIds = parsed.drift_events.map((e) => e.invariant_id);
-      assert.deepStrictEqual(invariantIds, ["F-1", "F-3", "F-4"]);
+      assert.deepStrictEqual(invariantIds, ["F-1", "F-3"]);
     } finally {
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;

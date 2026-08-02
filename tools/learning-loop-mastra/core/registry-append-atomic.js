@@ -16,10 +16,19 @@
 // new path silently leaks the change-log into `meta-state.jsonl`. The guard
 // fires before any file write.
 //
-// Shared between `appendRegistryEntryAtomic` (meta-state.jsonl) and
-// `appendChangeLogEntryAtomic` (change-log.jsonl). Both currently use
+// Citation leak guard: `assertNoCitationLeak` is a 3-direction leak guard
+// covering the third registry file (`citations.jsonl`). A citation entry
+// belongs in citations.jsonl and NEVER in meta-state.jsonl or
+// change-log.jsonl; conversely, non-citation entries never land in
+// citations.jsonl. Three path checks — not the single suffix match
+// `assertNoChangeLogLeak` uses — because citations.jsonl is the destination
+// of one kind, not the source of a guard against itself.
+//
+// Shared between `appendRegistryEntryAtomic` (meta-state.jsonl),
+// `appendChangeLogEntryAtomic` (change-log.jsonl), and
+// `appendCitationEntryAtomic` (citations.jsonl). All three use
 // `appendFileSync` (line 163 / line 79) without fsync — this helper migrates
-// both paths so the change-log stream also benefits from crash-safety.
+// all paths so the citation stream also benefits from crash-safety.
 
 import { openSync, writeSync, fsyncSync, closeSync } from "node:fs";
 import { existsSync } from "node:fs";
@@ -39,13 +48,14 @@ const CHANGE_LOG_FILENAME = "change-log.jsonl";
  * Pre-condition: caller MUST hold `withRegistryLock(root)`. Concurrent
  * appends without the lock can interleave byte-for-byte.
  *
- * @param {string} root - project root (used to enforce change-log leak guard)
+ * @param {string} root - project root (used to enforce leak guards)
  * @param {string} path - absolute filesystem path to append to
  * @param {object} entry - object to JSON-serialize; must have entry_kind set
  * @returns {void}
  */
 function trueAppendAtomic(root, path, entry) {
   assertNoChangeLogLeak(root, [entry], path);
+  assertNoCitationLeak(root, [entry], path);
   const fd = openSync(path, "a"); // O_APPEND | O_CREAT
   try {
     const line = JSON.stringify(entry) + "\n";
@@ -91,4 +101,60 @@ function assertNoChangeLogLeak(root, entries, path) {
   }
 }
 
-export { trueAppendAtomic, assertNoChangeLogLeak };
+/**
+ * Defensive 3-direction leak guard for the citation kind. The citation kind
+ * lives in its own `citations.jsonl` — the destination of
+ * `entry_kind:"citation"` writes, and the ONLY legal destination. Three
+ * illegal pairs must throw:
+ *
+ *   1. citation entry → meta-state.jsonl  (would merge-duplicate on next
+ *      `merge=union`; the projection collapses on max-version, but the
+ *      change-log dedup rule is not safe here because citations don't
+ *      participate in the `isOpen`/deriveStatus projection the way
+ *      findings/rules do)
+ *   2. citation entry → change-log.jsonl  (same merge-duplicate concern;
+ *      would also make citation rows invisible to the `citations.jsonl`
+ *      reader and break `inverseRefs`/`buildInverseIndexes` reconstruction)
+ *   3. non-citation entry → citations.jsonl  (would corrupt the citation
+ *      log; the union read in `readRawLines` would surface a finding/rule/
+ *      change-log/loop-design line in a file where readers only expect
+ *      citations, breaking `kindForId`-based dispatch and the new
+ *      `citations_inverse` map population)
+ *
+ * The exit-2 / "internal" distinction intentionally collapses here — any
+ * leak is a forge vector that the post-merge validator would surface later,
+ * and failing loud at the write boundary is the cheaper failure path.
+ *
+ * Pre-split (no citations.jsonl in the root): guard is active for the
+ * meta-state/citation cross-direction regardless of the file's existence —
+ * the canonical destination is fixed regardless of the file's on-disk state.
+ * The citation→citations.jsonl direction needs no file-existence check (the
+ * file is created on first legal append).
+ */
+function assertNoCitationLeak(root, entries, path) {
+  // Match by suffix (not `path.split("/").pop()`) so the guard is robust on
+  // path separators that differ from `"/"` (e.g. Windows backslash). Mirrors
+  // the suffix style used by `assertNoChangeLogLeak`.
+  for (const entry of entries) {
+    if (entry.entry_kind === "citation") {
+      if (path.endsWith("meta-state.jsonl") || path.endsWith("change-log.jsonl")) {
+        throw new Error(
+          "citation_leak: trueAppendAtomic received a citation entry while targeting meta-state.jsonl or change-log.jsonl. " +
+          "Route citation entries to citations.jsonl via appendCitationEntryAtomic instead. " +
+          "See core/meta-state.js#appendCitationEntryAtomic and core/registry-append-atomic.js#assertNoCitationLeak for the contract.",
+        );
+      }
+    } else {
+      if (path.endsWith("citations.jsonl")) {
+        throw new Error(
+          "citation_leak: trueAppendAtomic received a non-citation entry while targeting citations.jsonl. " +
+          "The citations.jsonl stream is exclusively for citation entries. " +
+          "Route meta-state/change-log/rule/loop-design entries to their canonical files instead. " +
+          "See core/meta-state.js and core/registry-append-atomic.js#assertNoCitationLeak for the contract.",
+        );
+      }
+    }
+  }
+}
+
+export { trueAppendAtomic, assertNoChangeLogLeak, assertNoCitationLeak };

@@ -34,31 +34,42 @@ test("createChangeLog rejects invalid data", () => {
 test("createChangeLog.outboundRefs returns correct refs", () => {
   const c = createChangeLog(FIXTURE);
   const refs = c.outboundRefs();
-  const fields = refs.map((f) => f.field).sort();
-  assert.ok(fields.includes("supersedes"));
-  assert.ok(fields.includes("consolidates"));
-
-  const supersedesRef = refs.find((f) => f.field === "supersedes");
-  assert.strictEqual(supersedesRef.id, "meta-old-changelog");
-  assert.strictEqual(supersedesRef.kind, "change-log");
-
-  const consolidateRefs = refs.filter((f) => f.field === "consolidates");
-  assert.strictEqual(consolidateRefs.length, 2);
-  assert.strictEqual(consolidateRefs[0].id, "meta-finding-a");
-  assert.strictEqual(consolidateRefs[0].kind, "finding");
+  // Both `supersedes` and `consolidates` were de-routed from CROSS_REFS; their
+  // canonical edges now live as citation rows. A change-log has no remaining
+  // outbound cross-ref fields.
+  assert.deepStrictEqual(refs, []);
 });
 
 test("createChangeLog.inboundRefs scans registry", () => {
   const c = createChangeLog(FIXTURE);
+  // The migrated on-record `finding.consolidated_into` field is de-routed
+  // from CROSS_REFS, so it no longer produces an inbound ref to the change-log.
+  // The canonical consolidated edge is now a citation (source:finding,
+  // target:change-log, rationale:"consolidated into"); inverseRefs surfaces it
+  // via the citation's `target` field substitution (cited_by).
   const findingWithConsolidated = {
     id: "meta-finding-a",
     entry_kind: "finding",
     consolidated_into: "meta-test-changelog",
   };
-  const root = [FIXTURE, findingWithConsolidated];
-  const refs = c.inboundRefs(root);
-  const consolidatedRef = refs.find((f) => f.field === "consolidated_into");
-  assert.ok(consolidatedRef, "expected inbound ref from finding via consolidated_into");
-  assert.strictEqual(consolidatedRef.id, "meta-finding-a");
-  assert.strictEqual(consolidatedRef.kind, "finding");
+  const refsFromField = c.inboundRefs([FIXTURE, findingWithConsolidated]);
+  assert.deepStrictEqual(refsFromField, [],
+    "consolidated_into on-record field alone must not produce an inbound ref to the change-log");
+
+  const consolidatedCitation = {
+    id: "citation-consolidated-meta-finding-a",
+    entry_kind: "citation",
+    source: "meta-finding-a",
+    target: "meta-test-changelog",
+    rationale: "consolidated into",
+    recorded_at: "2026-06-27T00:00:00Z",
+    recorded_by: "operator",
+    status: "active",
+    version: 0,
+  };
+  const refs = c.inboundRefs([FIXTURE, findingWithConsolidated, consolidatedCitation]);
+  const citedBy = refs.find((ref) => ref.field === "target");
+  assert.ok(citedBy, "expected a cited_by inbound ref from the consolidated citation");
+  assert.strictEqual(citedBy.id, "meta-finding-a");
+  assert.strictEqual(citedBy.kind, "finding");
 });

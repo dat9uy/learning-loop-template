@@ -42,7 +42,8 @@
         "meta_state_relationships",
         "meta_state_re_verify",
         "meta_state_touch",
-        "meta_state_supersede"
+        "meta_state_supersede",
+        "meta_state_accept"
       ],
       "ordering": "any"
     },

@@ -168,12 +168,23 @@ describe("integration: promoted rule end-to-end", () => {
       });
       const listText = JSON.parse(listResult.content[0].text);
       assert.strictEqual(listText.count, 1);
-      // After Phase 2 migration, promoted_to_rule is no longer written on findings.
-      // The rule entry's origin field is the canonical inverse reference.
+      // The on-record `origin` field is inert-historical: `meta_state_promote_rule`
+      // no longer stamps it on the rule. The canonical promotion edge is an
+      // origin citation row (source=rule, target=finding, rationale="origin")
+      // in citations.jsonl, surfaced via inbound `cited_by` on the finding.
       const entries = readRegistry(tempDir);
       const ruleEntry = entries.find((e) => e.entry_kind === "rule" && e.id === "rule-test-list");
       assert.ok(ruleEntry, "Rule entry should exist in registry");
-      assert.strictEqual(ruleEntry.origin, listText.entries[0].id);
+      assert.strictEqual(ruleEntry.origin, undefined,
+        "origin is no longer stamped on the rule (inert-historical; citation is canonical)");
+      const originCitation = entries.find(
+        (e) => e.entry_kind === "citation"
+          && e.source === "rule-test-list"
+          && e.target === listText.entries[0].id
+          && e.rationale === "origin",
+      );
+      assert.ok(originCitation, "promotion edge emitted as an origin citation row");
+      assert.strictEqual(originCitation.status, "active");
     } finally {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
@@ -246,7 +257,7 @@ describe("integration: promoted rule end-to-end", () => {
         rule_id: "rule-test-recovery",
         enforcement: "gate",
         pattern_type: "regex",
-        // Plan 260722-1343 Phase 1: `.*` would self-match the CLI invocation
+        // `.*` would self-match the CLI invocation
         // shape and is rejected by the activation guard. Use a specific,
         // non-self-matching pattern for the recovery-flow fixture.
         pattern: "^forbidden-test-pattern$",
@@ -256,7 +267,7 @@ describe("integration: promoted rule end-to-end", () => {
       let rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 1);
 
-      // Disable the rule (Phase 1: rule is now a separate entry_kind: "rule" entry)
+      // Disable the rule (rule is now a separate entry_kind: "rule" entry)
       await updateEntry(tempDir, "rule-test-recovery", { status: "inactive" });
 
       // Verify rule is no longer loaded

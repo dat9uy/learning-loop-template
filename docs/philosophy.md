@@ -48,6 +48,12 @@ The escape-hatch gradient and the skill-migration ordering are engine invariants
 
 See "Pillar 4 — Skill Authority vs. Loop Authority" below for the dependency-balance convention and the migration path.
 
+### Schema Constraints Are State-3 Artifacts
+
+A strict enum or validated field is machine-enforced, so it is a state-3 artifact by nature. But enforcement is only half the test. The *distinction among values* earns its keep **only when deterministic code branches on it** (state-3 consumption): a gate fires differently, a status derives differently, a tool routes by the value. If no code branches on the value, the distinction is consumed *agenticly* — the model reads the records and the rationale and interprets (state-2 or state-1). Then the distinction belongs in **prose**, not a validated field. A strict enum whose values no runtime branches on is decorative weight: a validation surface and a maintenance contract for zero deterministic payoff.
+
+Test before adding a strict field: *what deterministic code consumes this value, and does it branch on it?* If the answer is "none — the agent reads the records and decides," the value is prose. Encode the distinction only when you can name the branch.
+
 ## Four Philosophical Pillars
 
 ### 1. Verification Is Dimensional, Not Binary

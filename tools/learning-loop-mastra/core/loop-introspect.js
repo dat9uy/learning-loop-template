@@ -235,13 +235,18 @@ export function buildProcessPointers({ rulesById } = {} = {}) {
  * @param {Set<string>} [dispatchIds] — finding ids that have a `dispatch-<id>` ledger row
  * @returns {{ fixable_candidates: object[], orphan_findings: object[], dispatch_protocol_prompt: string }}
  */
-// terminal Set collapses to {resolved, superseded}
-// (+archived runtime-applied). The 4-member version mirrored the legacy enum;
-// `auto-resolved` is gone (dead write path) and the open-set lives in
-// `isOpen`/`isStaleView` instead of literal status equality.
-const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
+// terminal Set collapses to {resolved, superseded, accepted}
+// (+archived runtime-applied). `accepted` is the standing-trade-off terminal;
+// it is excluded from the stale-dispatch candidate set. The 4-member version
+// mirrored the legacy enum; `auto-resolved` is gone (dead write path) and the
+// open-set lives in `isOpen`/`isStaleView` instead of literal status equality.
+// Exported so the acceptance-status characterization test
+// (`core/__tests__/meta-state-accepted-status.test.js`) can pin the
+// agreement between this constant and the other five terminal-set copies.
+export const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
   "resolved",
   "superseded",
+  "accepted",
   "archived",
 ]);
 
@@ -516,9 +521,13 @@ export function listActiveFindings(root, { categories } = {}) {
 export function listAntiPatterns(root, { categories } = {}) {
   const entries = readRegistry(root);
   // Anti-patterns are surfaced in open states; filter out closed statuses so
-  // the list does not include resolved/superseded findings. `archived` is
-  // excluded by the `isOpen` check (it tolerates null but not `archived`).
-  const CLOSED_STATUSES = new Set(["resolved", "superseded"]);
+  // the list does not include resolved/accepted/superseded findings.
+  // `archived` is excluded by the `isOpen` check (it tolerates null but not
+  // `archived`). `superseded` is kept here for backward compatibility with
+  // un-migrated or historical on-disk findings: the writeable enum no longer
+  // accepts it (it collapses to `resolved` + a citation), but `isOpen`
+  // already treats it as terminal, so the default list must exclude it too.
+  const CLOSED_STATUSES = new Set(["resolved", "superseded", "accepted"]);
   return filterByCategories(
     entries.filter(
       (e) => e.category === "loop-anti-pattern" && !CLOSED_STATUSES.has(e.status)
@@ -650,7 +659,11 @@ function computeCounts(entries) {
 
 // Coverage = mechanism_check adoption on resolved findings + broken refs
 // (loop-design.proposed_design_for pointing to non-existent ids) + orphan
-// findings (no consolidated_into, no promoted_to_rule, no addressing design).
+// findings (no addressing design). The consolidated edge is
+// sourced from `citations_inverse`, not from the on-record
+// `consolidated_into` field. The origin / promoted_to_rule edges
+// are sourced from `citations_inverse`; the orphan detection no longer
+// filters on `promoted_to_rule` (the field is inert-historical).
 function computeCoverage(entries) {
   const resolved = entries.filter((e) => e.entry_kind === "finding" && e.status === "resolved");
   const mechanismCheckCount = resolved.filter((e) => e.mechanism_check === true).length;
@@ -681,15 +694,20 @@ function countOrphanFindings(entries, loopDesigns) {
   let count = 0;
   for (const entry of entries) {
     if (entry.entry_kind !== "finding") continue;
-    if (entry.consolidated_into || entry.promoted_to_rule) continue;
+    // `promoted_to_rule` is inert-historical; the canonical
+    // promotion edge is a citation row. Orphan detection no longer
+    // filters on this field (it's no longer indexed).
     const hasDesign = loopDesigns.some((d) => d.addresses?.includes(entry.id));
     if (!hasDesign) count++;
   }
   return count;
 }
 
-// Top 5 most-cited entry ids across all 6 inverse-index maps. Citation = sum
-// of inverse-index sizes for the entry.
+// Top 5 most-cited entry ids across all 7 inverse-index maps. Citation = sum
+// of inverse-index sizes for the entry. `citations_inverse` is
+// added to the survey; `consolidated_into_inverse` stays in the named-maps
+// shape (kept empty; the live consolidated edge is sourced from
+// `citations_inverse`).
 function computeTopReferences(entries) {
   const inverse = buildInverseIndexes(entries);
   const citationCounts = new Map();
@@ -700,6 +718,7 @@ function computeTopReferences(entries) {
     inverse.promoted_to_rule_inverse,
     inverse.reopens_inverse,
     inverse.consolidated_into_inverse,
+    inverse.citations_inverse,
   ]) {
     for (const [id, refs] of map.entries()) {
       citationCounts.set(id, (citationCounts.get(id) || 0) + refs.length);
@@ -746,11 +765,11 @@ export function summarize(entry) {
   if (entry.version !== undefined && entry.version !== null) compact.version = entry.version;
 
   // Relationship fields
-  if (entry.origin) compact.origin = entry.origin;
+  // `origin`/`supersedes`/`promoted_to_rule`/`consolidated_into`
+  // collapsed into citation rows. The live edges are queryable via
+  // `meta_state_relationships` (cited_by) or `citations_inverse`. The
+  // on-record fields stay inert-historical on disk.
   if (entry.addresses) compact.addresses = entry.addresses;
-  if (entry.consolidated_into) compact.consolidated_into = entry.consolidated_into;
-  if (entry.supersedes) compact.supersedes = entry.supersedes;
-  if (entry.promoted_to_rule) compact.promoted_to_rule = entry.promoted_to_rule;
   if (entry.proposed_design_for) compact.proposed_design_for = entry.proposed_design_for;
 
   // Metadata fields

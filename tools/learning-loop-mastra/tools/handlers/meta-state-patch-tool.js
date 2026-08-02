@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   readRegistry,
   updateEntry,
+  appendCitationEntryAtomic,
   buildPatchSchemaFor,
   PATCH_KINDS,
   IMMUTABLE_PATCH_FIELDS,
@@ -103,6 +104,29 @@ export const metaStatePatchTool = {
       }
     }
 
+    // `supersedes` on a rule patch is the rule→rule supersession edge.
+    // Strip it from the patch (the on-record field is inert-historical;
+    // the live edge is a citation row) and emit the citation post-write.
+    // `origin` on a rule patch is rejected outright — the canonical
+    // promotion edge is the citation emitted by `meta_state_promote_rule`.
+    let supersedesEmitted = null;
+    if (entry_kind === "rule") {
+      if (effectivePatch && Object.prototype.hasOwnProperty.call(effectivePatch, "origin")) {
+        return reject(root, {
+          patched: false,
+          reason: "origin_inert_historical",
+          id,
+          entry_kind,
+          message: "`origin` is inert-historical on rule entries. The canonical promotion edge is a citation row emitted by meta_state_promote_rule. Migrate via meta_state_promote_rule, not meta_state_patch.",
+        });
+      }
+      if (effectivePatch && typeof effectivePatch.supersedes === "string" && effectivePatch.supersedes.length > 0) {
+        supersedesEmitted = effectivePatch.supersedes;
+        const { supersedes: _drop, ...rest } = effectivePatch;
+        effectivePatch = rest;
+      }
+    }
+
     const deniedFields = Object.keys(effectivePatch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
     if (deniedFields.length > 0) {
       return reject(root, {
@@ -181,6 +205,11 @@ export const metaStatePatchTool = {
 
     const updateResult = await updateEntry(root, id, patchWithCAS);
 
+    // CAS / validation guards fire BEFORE any citation is emitted. A
+    // version_mismatch means the supersession never landed, so writing a
+    // `supersedes` citation here would pollute citations_inverse/cited_by
+    // for the target rule with a lineage that does not exist. Mirror the
+    // ordering in meta_state_supersede: reject first, emit only on success.
     if (updateResult === "version_mismatch") {
       const freshEntries = readRegistry(root);
       const fresh = freshEntries.find((e) => e.id === id);
@@ -200,6 +229,25 @@ export const metaStatePatchTool = {
       throw new Error(
         `meta_state_patch: unexpected updateEntry result for ${id}: ${JSON.stringify(updateResult)}`
       );
+    }
+
+    // Emit the rule→rule supersedes citation only after the patch lands.
+    // Atomic append + cache invalidation (handled by
+    // appendCitationEntryAtomic). The citation follows the locked
+    // updateEntry; O_APPEND keeps the byte-level write safe, and a
+    // mismatched CAS above has already early-returned.
+    if (supersedesEmitted) {
+      const now = new Date().toISOString();
+      appendCitationEntryAtomic(root, {
+        id: `citation-rule-supersedes-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        entry_kind: "citation",
+        source: id,
+        target: supersedesEmitted,
+        rationale: "supersedes",
+        recorded_at: now,
+        recorded_by: "operator",
+        status: "active",
+      });
     }
 
     const updatedEntries = readRegistry(root);
@@ -260,5 +308,5 @@ function buildEmptyPatchHint(entryKind) {
     entryKind,
     "see the per-kind patch schema for the full field list",
   );
-  return `patch must contain at least one mutable field for entry_kind=${entryKind}. Mutable content fields: ${fieldList}. For status / consolidated_into use meta_state_supersede; for resolved use meta_state_resolve; for schema / rule / tool / policy / surface changes use meta_state_log_change.`;
+  return `patch must contain at least one mutable field for entry_kind=${entryKind}. Mutable content fields: ${fieldList}. For status / closure use meta_state_supersede (emits a citation) or meta_state_resolve; for schema / rule / tool / policy / surface changes use meta_state_log_change. consolidated_into is inert-historical; use meta_state_supersede to emit a citation.`;
 }

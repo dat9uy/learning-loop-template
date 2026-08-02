@@ -72,6 +72,7 @@ export const CLI_WRITE_TOOLS = new Set([
   "meta_state_re_verify",
   "meta_state_refresh_file_index",
   "meta_state_touch",
+  "meta_state_accept", // standing-trade-off terminal flip
   "runtime_state_record",
   "runtime_state_pause",
   "runtime_state_resume",

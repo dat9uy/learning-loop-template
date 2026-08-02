@@ -52,12 +52,15 @@ describe("loop_describe warm tier discoverability_hints", () => {
     assert.ok(statusLifecycle.includes("active"));
     assert.ok(statusLifecycle.includes("resolved"));
     assert.ok(statusLifecycle.includes("superseded"));
-    // Plan 260611-1000 phase 4 removes "expired" from the statusLifecycle
-    // hint (the legacy 'expired' status was removed). The string still
-    // mentions 6 statuses but no longer enumerates 'expired'.
+    // The legacy 'expired' status was removed; the hint no longer enumerates
+    // 'expired'. `superseded` is still mentioned (collapsed into `resolved` +
+    // a citation row) so the hint documents the migration.
 
     assert.ok(reopensHint.includes("reopens"));
-    assert.ok(reopensHint.includes("cascade-resolve"));
+    // The `reopens` writer was dropped; the hint now documents explicit
+    // `meta_state_resolve` (no cascade) instead of the legacy cascade-resolve.
+    assert.ok(reopensHint.includes("meta_state_resolve"));
+    assert.ok(reopensHint.includes("no cascade"));
 
     assert.ok(ruleLifecycle.includes("meta_state_list"));
     assert.ok(ruleLifecycle.includes("loop_describe"));
@@ -71,11 +74,11 @@ describe("loop_describe warm tier discoverability_hints", () => {
 
     assert.ok(relationshipScript.includes("relationship_validate"));
     assert.ok(relationshipScript.includes("meta_state_report"));
-    // Plan 260611-1000-remove-expired-status retargeted the cascade to a
-    // 1-step path. The legacy 2-step 'migrate then resolve' script was
-    // removed; the canonical script is now lint -> report -> resolve.
+    // The canonical 'X is related to Y' script: lint -> report -> resolve
+    // the orphan parent explicitly (no cascade — the `reopens` writer +
+    // `cascade_from` arg were dropped).
     assert.ok(relationshipScript.includes("meta_state_resolve"));
-    assert.ok(relationshipScript.includes("1 step"));
+    assert.ok(relationshipScript.includes("no cascade"));
 
     assert.ok(onDemandLookup.includes("loop_get_instruction"));
     assert.ok(onDemandLookup.includes("product/**"));

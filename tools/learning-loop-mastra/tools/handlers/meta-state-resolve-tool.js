@@ -1,29 +1,26 @@
-import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { z } from "zod";
 import { readRegistry } from "../../core/meta-state.js";
 import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { loadPromotedRules, checkResolutionEvidence } from "../../core/gate-logic.js";
-import { isOpen } from "../../core/stale-view.js";
 
-// TERMINAL_STATUSES collapses to {resolved, superseded}.
+// TERMINAL_STATUSES collapses to {resolved, accepted}
+// (`superseded` was folded into `resolved` + a citation row).
 // `archived` is runtime-applied and excluded from the short-circuit (an
 // already-archived entry is filtered upstream by the entry_kind check; this set
-// only gates the resolved/superseded branch).
-const TERMINAL_STATUSES = new Set(["resolved", "superseded"]);
+// only gates the resolved/accepted branch).
+const TERMINAL_STATUSES = new Set(["resolved", "accepted"]);
 
 export const metaStateResolveTool = {
   name: "meta_state_resolve",
-  description: "Mark a meta-state finding resolved. Only finding entries can be resolved; rules, designs, and change-logs are rejected. Resolution evidence and cascade_from are gate-checked.",
+  description: "Mark a meta-state finding resolved. Only finding entries can be resolved; rules, designs, and change-logs are rejected. Resolution evidence is gate-checked. The `cascade_from` writer was removed — new cascades cannot be initiated; close a stale parent by calling meta_state_resolve on it directly. The `reopens` field + read path are retained for the 17 historical edges.",
   schema: {
     id: z.string().describe("Exact entry id to resolve"),
     resolution: z.string().optional().describe("How it was resolved"),
     resolved_by: z.enum(["operator", "auto-resolve"]).optional().default("operator").describe("Who resolved it"),
-    cascade_from: z.preprocess(stripEnvelope, z.array(z.string())).optional()
-      .describe("Optional child finding ids; each must reopen this parent and be open or resolved."),
   },
-  handler: async ({ id, resolution, resolved_by, cascade_from }) => {
+  handler: async ({ id, resolution, resolved_by }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
@@ -117,37 +114,12 @@ export const metaStateResolveTool = {
       }
     }
 
-    // Cascade branch: when cascade_from is provided, validate children, then
-    // close the parent in 1 step. Lifecycle-collapse invariant (red-team C3):
-    // the reported-cascade block is removed — `meta_state_ack` is gone, so
-    // legacy `reported` parents are isOpen and cascade-closeable like every
-    // other open parent. The parent must be isOpen; terminal parents hit the
-    // early-return above. `expires_at`/`acked_at` writes were dropped with
-    // the enum collapse.
-    if (cascade_from?.length > 0) {
-      const childValidation = validateCascadeChildren(root, entry, cascade_from, entries);
-      if (!childValidation.valid) {
-        appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_resolve", id: entry.id, ...childValidation });
-        return { content: [{ type: "text", text: JSON.stringify({ resolved: false, ...childValidation }) }] };
-      }
-
-      if (!isOpen(entry)) {
-        const result = {
-          resolved: false,
-          reason: "cascade_parent_not_open",
-          id: entry.id,
-          current_status: entry.status ?? null,
-        };
-        appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_resolve", ...result });
-        return { content: [{ type: "text", text: JSON.stringify(result) }] };
-      }
-
-      // Parent is open (open/active/reported/stale) — fall through to the
-      // normal resolve path below. The consult-gate was already consulted
-      // above (it does not gate on `cascade_from`). The patch sets
-      // `status: "resolved"`, `resolved_at`, `resolved_by`, optional
-      // `resolution` in 1 call.
-    }
+    // The cascade branch was removed. The cascade was the one mutation
+    // that un-closed a record as a side-effect of opening another. New
+    // cascades cannot be initiated; closing a stale parent is now an
+    // explicit `meta_state_resolve` on the parent. The 17 historical
+    // edges + the read path are retained for historical reads via
+    // `meta_state_relationship_validate`.
 
     const now = new Date().toISOString();
     const patch = {
@@ -191,61 +163,3 @@ export const metaStateResolveTool = {
     };
   },
 };
-
-/**
- * Validate cascade children. Returns { valid, valid_children } on success,
- * or { valid: false, reason, ... } on failure. Does NOT apply any patch.
- * Each child must exist, have `reopens` containing the parent id, and be
- * in `active` or `resolved` status. Superseded children are rejected.
- *
- * retargeted the cascade to operate on `stale` parents
- * (the legacy `expired` status was removed). The cascade is reachable
- * today via stale or active parents only.
- */
-function validateCascadeChildren(root, parent, childIds, entries) {
-  const validChildren = [];
-  const missingIds = [];
-  const badChildren = [];
-
-  for (const childId of childIds) {
-    const child = entries.find((e) => e.id === childId);
-    if (!child) {
-      missingIds.push(childId);
-      continue;
-    }
-    if (!Array.isArray(child.reopens) || !child.reopens.includes(parent.id)) {
-      badChildren.push({
-        child_id: childId,
-        reason: "not_reopening",
-        expected_reopens: parent.id,
-        actual_reopens: child.reopens ?? null,
-      });
-      continue;
-    }
-// child status check uses
-    // isOpen (covers open/active/reported/stale) instead of literal active
-    // and `child.status !== "resolved"`. This is the resolved+any-open
-    // cascade invariant — same shape, sourced from the predicate.
-    if (!isOpen(child) && child.status !== "resolved") {
-      badChildren.push({
-        child_id: childId,
-        reason: "unresolved",
-        child_status: child.status,
-      });
-      continue;
-    }
-    validChildren.push(childId);
-  }
-
-  if (missingIds.length > 0) {
-    return { valid: false, reason: "cascade_child_not_found", id: parent.id, missing_ids: missingIds };
-  }
-  if (badChildren.length > 0) {
-    const reason = badChildren[0].reason === "not_reopening"
-      ? "cascade_child_not_reopening"
-      : "cascade_child_unresolved";
-    return { valid: false, reason, id: parent.id, bad_children: badChildren };
-  }
-
-  return { valid: true, valid_children: validChildren };
-}

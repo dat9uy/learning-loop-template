@@ -2,13 +2,21 @@ import { test } from "vitest";
 import assert from "node:assert";
 import { buildInverseIndexes } from "./loop-introspect.js";
 
-test("buildInverseIndexes returns 6 inverse maps including consolidated_into_inverse", () => {
+test("buildInverseIndexes returns the named inverse maps (Phase 4 collapsed shape)", () => {
+  // Phase 3+4: the named maps retained for backward compat
+  // (consolidated_into_inverse, origin_inverse, supersedes_inverse,
+  // promoted_to_rule_inverse) are kept empty in the named-maps shape.
+  // The live edges all flow through `citations_inverse`. Final shape:
+  // addresses_inverse + reopens_inverse (named, unchanged) +
+  // consolidated_into_inverse (kept for backward compat) +
+  // citations_inverse (generic carrier for all migrated edges).
   const entries = [];
   const inverse = buildInverseIndexes(entries);
   assert.deepStrictEqual(
     Object.keys(inverse).sort(),
     [
       "addresses_inverse",
+      "citations_inverse",
       "consolidated_into_inverse",
       "origin_inverse",
       "promoted_to_rule_inverse",
@@ -18,28 +26,34 @@ test("buildInverseIndexes returns 6 inverse maps including consolidated_into_inv
   );
 });
 
-test("buildInverseIndexes populates consolidated_into_inverse from change-log consolidates (CSV)", () => {
+// Phase 3: `consolidated_into` + `consolidates` were de-routed from
+// `CROSS_REFS`. The canonical consolidated edge is now a citation row
+// (`source:finding, target:change-log, rationale:"consolidated into…"`).
+// `citations_inverse` populates target→sources from the citation log.
+test("buildInverseIndexes populates citations_inverse from citation rows (Phase 3 consolidated edge)", () => {
   const entries = [
     {
       id: "finding-1",
       entry_kind: "finding",
-      status: "superseded",
+      status: "resolved",
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "mcp-tools",
-      description: "Finding one for consolidated_into inverse test (min 20 chars)",
-      consolidated_into: "change-log-1",
+      description: "Finding one for citations inverse test (min 20 chars)",
+      resolved_at: "2026-06-01T00:00:00.000Z",
+      resolved_by: "operator",
       created_at: new Date().toISOString(),
     },
     {
       id: "finding-2",
       entry_kind: "finding",
-      status: "superseded",
+      status: "resolved",
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "mcp-tools",
-      description: "Finding two for consolidated_into inverse test (min 20 chars)",
-      consolidated_into: "change-log-1",
+      description: "Finding two for citations inverse test (min 20 chars)",
+      resolved_at: "2026-06-01T00:00:00.000Z",
+      resolved_by: "operator",
       created_at: new Date().toISOString(),
     },
     {
@@ -49,30 +63,50 @@ test("buildInverseIndexes populates consolidated_into_inverse from change-log co
       change_dimension: "semantic",
       change_target: "tools/test.js",
       change_diff: { added: [], removed: [], changed: [] },
-      consolidates: ["finding-1", "finding-2"],
-      reason: "Change log consolidating two findings (min 20 chars)",
+      reason: "Change log that absorbs the two findings (min 20 chars)",
       created_at: new Date().toISOString(),
+    },
+    {
+      id: "citation-1",
+      entry_kind: "citation",
+      source: "finding-1",
+      target: "change-log-1",
+      rationale: "consolidated into change-log-1",
+      recorded_at: new Date().toISOString(),
+      recorded_by: "operator",
+      status: "active",
+    },
+    {
+      id: "citation-2",
+      entry_kind: "citation",
+      source: "finding-2",
+      target: "change-log-1",
+      rationale: "consolidated into change-log-1",
+      recorded_at: new Date().toISOString(),
+      recorded_by: "operator",
+      status: "active",
     },
   ];
 
   const inverse = buildInverseIndexes(entries);
   assert.deepStrictEqual(
-    inverse.consolidated_into_inverse.get("change-log-1"),
+    inverse.citations_inverse.get("change-log-1"),
     ["finding-1", "finding-2"]
   );
 });
 
-test("buildInverseIndexes populates consolidated_into_inverse from change-log consolidates (array)", () => {
+test("buildInverseIndexes populates citations_inverse from a single citation (Phase 3 array form)", () => {
   const entries = [
     {
       id: "finding-array",
       entry_kind: "finding",
-      status: "superseded",
+      status: "resolved",
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "mcp-tools",
-      description: "Finding for array consolidates inverse test (min 20 chars)",
-      consolidated_into: "change-log-array",
+      description: "Finding for array citations inverse test (min 20 chars)",
+      resolved_at: "2026-06-01T00:00:00.000Z",
+      resolved_by: "operator",
       created_at: new Date().toISOString(),
     },
     {
@@ -82,30 +116,40 @@ test("buildInverseIndexes populates consolidated_into_inverse from change-log co
       change_dimension: "semantic",
       change_target: "tools/test.js",
       change_diff: { added: [], removed: [], changed: [] },
-      consolidates: ["finding-array"],
-      reason: "Change log with array consolidates field (min 20 chars)",
+      reason: "Change log cited by single finding (min 20 chars)",
       created_at: new Date().toISOString(),
+    },
+    {
+      id: "citation-array",
+      entry_kind: "citation",
+      source: "finding-array",
+      target: "change-log-array",
+      rationale: "consolidated into change-log-array",
+      recorded_at: new Date().toISOString(),
+      recorded_by: "operator",
+      status: "active",
     },
   ];
 
   const inverse = buildInverseIndexes(entries);
   assert.deepStrictEqual(
-    inverse.consolidated_into_inverse.get("change-log-array"),
+    inverse.citations_inverse.get("change-log-array"),
     ["finding-array"]
   );
 });
 
-test("buildInverseIndexes handles one finding consolidated by multiple change-logs", () => {
+test("buildInverseIndexes handles one finding cited by multiple change-logs (Phase 3)", () => {
   const entries = [
     {
       id: "finding-shared",
       entry_kind: "finding",
-      status: "superseded",
+      status: "resolved",
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "mcp-tools",
-      description: "Finding shared by two change-logs for inverse test (min 20 chars)",
-      consolidated_into: "change-log-a",
+      description: "Finding cited by two change-logs for inverse test (min 20 chars)",
+      resolved_at: "2026-06-01T00:00:00.000Z",
+      resolved_by: "operator",
       created_at: new Date().toISOString(),
     },
     {
@@ -115,8 +159,7 @@ test("buildInverseIndexes handles one finding consolidated by multiple change-lo
       change_dimension: "semantic",
       change_target: "tools/test-a.js",
       change_diff: { added: [], removed: [], changed: [] },
-      consolidates: ["finding-shared"],
-      reason: "Change log A referencing shared finding (min 20 chars)",
+      reason: "Change log A citing the shared finding (min 20 chars)",
       created_at: new Date().toISOString(),
     },
     {
@@ -126,24 +169,47 @@ test("buildInverseIndexes handles one finding consolidated by multiple change-lo
       change_dimension: "semantic",
       change_target: "tools/test-b.js",
       change_diff: { added: [], removed: [], changed: [] },
-      consolidates: ["finding-shared"],
-      reason: "Change log B referencing shared finding (min 20 chars)",
+      reason: "Change log B citing the shared finding (min 20 chars)",
       created_at: new Date().toISOString(),
+    },
+    {
+      id: "citation-a",
+      entry_kind: "citation",
+      source: "finding-shared",
+      target: "change-log-a",
+      rationale: "consolidated into change-log-a",
+      recorded_at: new Date().toISOString(),
+      recorded_by: "operator",
+      status: "active",
+    },
+    {
+      id: "citation-b",
+      entry_kind: "citation",
+      source: "finding-shared",
+      target: "change-log-b",
+      rationale: "consolidated into change-log-b",
+      recorded_at: new Date().toISOString(),
+      recorded_by: "operator",
+      status: "active",
     },
   ];
 
   const inverse = buildInverseIndexes(entries);
   assert.deepStrictEqual(
-    inverse.consolidated_into_inverse.get("change-log-a"),
+    inverse.citations_inverse.get("change-log-a"),
     ["finding-shared"]
   );
   assert.deepStrictEqual(
-    inverse.consolidated_into_inverse.get("change-log-b"),
+    inverse.citations_inverse.get("change-log-b"),
     ["finding-shared"]
   );
 });
 
-test("buildInverseIndexes returns an empty array for an empty consolidates string", () => {
+// Phase 3: `consolidates` was de-routed from CROSS_REFS; the legacy
+// pre-population of `consolidated_into_inverse` for change-logs with
+// an empty `consolidates` array is removed. Without a citation row, no
+// entry is created in `citations_inverse`.
+test("buildInverseIndexes returns undefined for a change-log with no citation rows", () => {
   const entries = [
     {
       id: "change-log-empty",
@@ -152,30 +218,32 @@ test("buildInverseIndexes returns an empty array for an empty consolidates strin
       change_dimension: "semantic",
       change_target: "tools/test-empty.js",
       change_diff: { added: [], removed: [], changed: [] },
-      consolidates: [],
-      reason: "Change log with empty consolidates string (min 20 chars)",
+      reason: "Change log with no citations (min 20 chars)",
       created_at: new Date().toISOString(),
     },
   ];
 
   const inverse = buildInverseIndexes(entries);
-  assert.deepStrictEqual(
-    inverse.consolidated_into_inverse.get("change-log-empty"),
-    []
-  );
+  assert.strictEqual(inverse.citations_inverse.get("change-log-empty"), undefined);
+  // consolidated_into_inverse stays empty (no on-record field source).
+  assert.strictEqual(inverse.consolidated_into_inverse.get("change-log-empty"), undefined);
 });
 
-test("buildInverseIndexes dedupes duplicate ids in a consolidates CSV", () => {
+// Phase 3: dedup is preserved in `citations_inverse`. A single finding
+// referenced by the same change-log via multiple citations is deduped to
+// one entry — `pushToIndexUnique` is the dedup primitive.
+test("buildInverseIndexes dedupes duplicate citation rows from a single finding", () => {
   const entries = [
     {
       id: "finding-dup",
       entry_kind: "finding",
-      status: "superseded",
+      status: "resolved",
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "mcp-tools",
-      description: "Finding with duplicate consolidates references (min 20 chars)",
-      consolidated_into: "change-log-dup",
+      description: "Finding with duplicate citation references (min 20 chars)",
+      resolved_at: "2026-06-01T00:00:00.000Z",
+      resolved_by: "operator",
       created_at: new Date().toISOString(),
     },
     {
@@ -185,15 +253,34 @@ test("buildInverseIndexes dedupes duplicate ids in a consolidates CSV", () => {
       change_dimension: "semantic",
       change_target: "tools/test-dup.js",
       change_diff: { added: [], removed: [], changed: [] },
-      consolidates: ["finding-dup", "finding-dup", "finding-dup"],
-      reason: "Change log with duplicate ids in consolidates CSV (min 20 chars)",
+      reason: "Change log with duplicate citations (min 20 chars)",
       created_at: new Date().toISOString(),
+    },
+    {
+      id: "citation-dup-1",
+      entry_kind: "citation",
+      source: "finding-dup",
+      target: "change-log-dup",
+      rationale: "consolidated into change-log-dup",
+      recorded_at: new Date().toISOString(),
+      recorded_by: "operator",
+      status: "active",
+    },
+    {
+      id: "citation-dup-2",
+      entry_kind: "citation",
+      source: "finding-dup",
+      target: "change-log-dup",
+      rationale: "consolidated into change-log-dup",
+      recorded_at: new Date().toISOString(),
+      recorded_by: "operator",
+      status: "active",
     },
   ];
 
   const inverse = buildInverseIndexes(entries);
   assert.deepStrictEqual(
-    inverse.consolidated_into_inverse.get("change-log-dup"),
+    inverse.citations_inverse.get("change-log-dup"),
     ["finding-dup"]
   );
 });

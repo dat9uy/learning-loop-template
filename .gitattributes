@@ -38,3 +38,10 @@
 runtime-state.jsonl merge=union
 change-log.jsonl merge=union
 meta-state.jsonl merge=union
+# citations.jsonl is the citation log. It is
+# true-append-only (`appendCitationEntryAtomic` rejects in-place mutation;
+# `assertNoCitationLeak` rejects cross-file leakage in 3 directions). Same
+# `merge=union` rationale as change-log.jsonl + meta-state.jsonl above.
+# The per-clone `git config merge.union.driver` setup (see AGENTS.md §8)
+# covers this file too.
+citations.jsonl merge=union

@@ -225,5 +225,5 @@ function buildPatchSchemaPayload(entryKind) {
 // content fields and notes the inline placement (no nested patch:{} on the op).
 function buildNoContentHint(kind) {
   const fieldList = listMutableFieldsCsv(kind, "see the patch schema for the full field list");
-  return `update op must contain at least one mutable field for entry_kind=${kind} (content goes inline on the op, not in a nested patch:{}). Mutable fields: ${fieldList}. For status/consolidated_into use meta_state_supersede; for resolved use meta_state_resolve; for schema/rule/tool/policy/surface changes use meta_state_log_change.`;
+  return `update op must contain at least one mutable field for entry_kind=${kind} (content goes inline on the op, not in a nested patch:{}). Mutable fields: ${fieldList}. For status/closure (resolved + citation) use meta_state_supersede or meta_state_resolve; for schema/rule/tool/policy/surface changes use meta_state_log_change. consolidated_into is inert-historical; use meta_state_supersede to emit a citation.`;
 }

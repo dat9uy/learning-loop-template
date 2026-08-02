@@ -240,8 +240,13 @@ describe("metaStateReportTool mechanism_check extension", () => {
 describe("meta_state_report reopens field", () => {
   const originalEnv = process.env.GATE_ROOT;
 
-  // T11: round-trip with valid array
-  test("persists reopens when passed as array", async () => {
+  // The `reopens` writer was removed from `meta_state_report`. The field stays
+  // `.optional()` on the finding schema (inert-historical; the read path + the
+  // 17 historical edges are retained for `meta_state_relationships` +
+  // `meta_state_relationship_validate`), but no new `reopens` edges can be
+  // initiated via `meta_state_report`. A caller-supplied `reopens` is silently
+  // ignored — the entry is written without it.
+  test("ignores caller-supplied reopens (writer removed; field not stamped)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "report-extension-reopens-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -256,10 +261,8 @@ describe("meta_state_report reopens field", () => {
       assert.strictEqual(parsed.reported, true);
       const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
       const entry = JSON.parse(raw.trim().split("\n")[0]);
-      assert.deepStrictEqual(entry.reopens, [
-        "meta-260608T1522Z-test-parent-1",
-        "meta-260608T1618Z-test-parent-2",
-      ]);
+      assert.strictEqual(entry.reopens, undefined,
+        "reopens is no longer stamped by meta_state_report (writer removed)");
     } finally {
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
@@ -287,21 +290,27 @@ describe("meta_state_report reopens field", () => {
     }
   });
 
-  // T13: invalid type rejection
-  test("rejects reopens as non-array", async () => {
+  // T13: a non-array `reopens` is silently ignored (not rejected) because the
+  // arg was removed from the report surface — there is no schema validation
+  // for an arg the tool no longer accepts. The entry is written without
+  // `reopens`, and the call succeeds.
+  test("ignores non-array reopens (writer removed; no rejection)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "report-extension-reopens-type-"));
     process.env.GATE_ROOT = tempDir;
     try {
-      await assert.rejects(
-        metaStateReportTool.handler({
-          category: "loop-anti-pattern",
-          severity: "warning",
-          affected_system: "mcp-tools",
-          description: "Test reopens type rejection (min 20 chars).",
-          reopens: "meta-260608T1522Z-not-an-array",
-        }),
-        (err) => /expected array/.test(err.message),
-      );
+      const result = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test reopens type rejection (min 20 chars).",
+        reopens: "meta-260608T1522Z-not-an-array",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.strictEqual(parsed.reported, true,
+        "non-array reopens is ignored (arg removed), not rejected");
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.reopens, undefined);
     } finally {
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;

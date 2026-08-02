@@ -9,7 +9,11 @@ import { isStaleView, buildDriftSignals } from "../../core/stale-view.js";
 
 /**
  * Group an array of {kind, id, field} refs by field name, collapsing
- * multi-valued fields (reopens, consolidates) into arrays.
+ * multi-valued fields (reopens) into arrays.
+ *
+ * `consolidates` was de-routed from `CROSS_REFS`. The
+ * consolidated edge is sourced from `citations_inverse` and surfaced as
+ * `cited_by` (generic) instead of `consolidated_by` (named).
  */
 function groupOutbound(refs) {
   const result = {};
@@ -18,11 +22,6 @@ function groupOutbound(refs) {
       // reopens is multi-valued: collect into array
       if (!result.reopens) result.reopens = [];
       result.reopens.push(ref.id);
-    } else if (ref.field === "consolidates") {
-      // consolidates maps to consolidated_into on the finding side,
-      // but on the change-log outbound it's a comma-separated list → array
-      if (!result.consolidates) result.consolidates = [];
-      result.consolidates.push(ref.id);
     } else if (ref.field === "proposed_design_for" || ref.field === "addresses") {
       // Multi-valued fields: collect into array
       if (!result[ref.field]) result[ref.field] = [];
@@ -36,13 +35,14 @@ function groupOutbound(refs) {
 
 /**
  * Map factory inbound field names to the wire-shape key names used by
- * the current tool. Preserves the 6 canonical inbound key names.
+ * the current tool. The consolidated edge collapsed into a
+ * citation row (generic `cited_by`). origin /
+ * supersedes / promoted_to_rule collapse into the same citation row — they
+ * surface as `cited_by` (generic) alongside consolidated. The other 3
+ * named inbound keys (reopens, addresses, proposed_design_for) are
+ * unchanged.
  */
 const INBOUND_KEY_MAP = {
-  consolidated_into: "consolidated_by",
-  supersedes:        "superseded_by",
-  origin:            "origin_of",
-  promoted_to_rule:  "promoted_from",
   reopens:           "reopened_by",
   addresses:         "addressed_by",
 };
@@ -50,7 +50,26 @@ const INBOUND_KEY_MAP = {
 function groupInbound(refs) {
   const result = {};
   for (const ref of refs) {
-    const key = INBOUND_KEY_MAP[ref.field] ?? ref.field;
+    // Citation rows surface as `cited_by` (generic, sourced
+    // from `citations_inverse`). A citation entry's `forwardRefs` emits
+    // `source` (skip — `cited_by` is target-keyed) and `target`
+    // (the edge that says "this target was cited by source"). Only the
+    // `target` ref maps to `cited_by`; the `source` ref is the
+    // emitting side and would conflate with the emitter's own id on
+    // inbound queries. This subsumes the named `consolidated_by` /
+    // `superseded_by` / `origin_of` / `promoted_from` keys retired
+    // alongside the de-routing.
+    let key;
+    if (ref.field === "target") {
+      key = "cited_by";
+    } else if (ref.field === "source") {
+      // The source side of a citation is the emitter; querying the
+      // emitter's inbound surfaces this ref as the emitter's own id
+      // (no useful wire information — drop).
+      continue;
+    } else {
+      key = INBOUND_KEY_MAP[ref.field] ?? ref.field;
+    }
     if (!result[key]) result[key] = [];
     result[key].push(ref.id);
   }
@@ -118,8 +137,6 @@ function computeDanglingRefs(refs, entries, signals = {}) {
     const status = target.status;
     if (isStaleView(target, signals)) {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "stale" });
-    } else if (status === "superseded") {
-      dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "superseded" });
     } else if (status === "resolved") {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "resolved" });
     }
@@ -140,7 +157,7 @@ function computeDanglingRefs(refs, entries, signals = {}) {
  */
 export const metaStateRelationshipsTool = {
   name: "meta_state_relationships",
-  description: "Query the relationship graph for a single meta-state entry. Returns inbound, outbound, or both directions of cross-references (1-hop traversal only). The `dangling_refs` derived field surfaces outbound refs whose target is stale, missing, superseded, or resolved — replacing the old stale-ref follow-up emission. Read-only, no operator gate required.",
+  description: "Query the relationship graph for a single meta-state entry. Returns inbound, outbound, or both directions of cross-references (1-hop traversal only). The `dangling_refs` derived field surfaces outbound refs whose target is stale, missing, or resolved — replacing the old stale-ref follow-up emission (`superseded` collapsed into `resolved` + a citation; `superseded` reason retired). Read-only, no operator gate required.",
   schema: {
     id: z.string().min(1).describe("Entry id to query relationships for"),
     direction: z.enum(["inbound", "outbound", "both"]).optional().default("both")
@@ -186,32 +203,14 @@ export const metaStateRelationshipsTool = {
   },
 };
 
-// Resolve outbound refs for the entry, including the dual-field fallback for
-// promoted_to_rule (legacy migration: if the finding doesn't have
-// promoted_to_rule declared, scan the registry for rules whose `origin`
-// points at this finding via a targeted `inverseRefs` lookup). Returns the
-// grouped wire shape, or null when the entry has no outbound refs.
-//
-// the fallback PERSISTS — legacy findings
-// without promoted_to_rule must keep resolving outbound.promoted_to_rule.
-// The per-query `buildInverseIndexes(entries)` O(N) rebuild was replaced
-// with a targeted `inverseRefs(findingId, entries)` lookup (the graph
-// scans registry entries that point at this finding — cheaper than
-// rebuilding all 6 inverse maps).
+// Resolve outbound refs for the entry. The dual-field
+// `promoted_to_rule` fallback is removed: the canonical promotion edge is now a
+// citation row emitted by `meta_state_promote_rule`. The fallback no
+// longer resolves — findings queryable via `cited_by` (the generic citation view)
+// surface the citing rule through the inbound path. Outbound retains
+// the non-relationship fields (`reopens`, `addresses`, `proposed_design_for`).
 function resolveOutboundRefs(factory, entry, id, entries) {
   const refs = factory.outboundRefs(entries);
-  if (entry.entry_kind === "finding" || entry.entry_kind === undefined) {
-    const hasPromoted = refs.some((r) => r.field === "promoted_to_rule");
-    if (!hasPromoted) {
-      // Targeted lookup: which rules have origin === findingId?
-      const rulesFromOrigin = inverseRefs(id, entries).filter(
-        (r) => r.field === "origin"
-      );
-      if (rulesFromOrigin.length > 0) {
-        refs.push({ kind: "rule", id: rulesFromOrigin[0].id, field: "promoted_to_rule" });
-      }
-    }
-  }
   const outbound = groupOutbound(refs);
   return Object.keys(outbound).length > 0 ? outbound : null;
 }

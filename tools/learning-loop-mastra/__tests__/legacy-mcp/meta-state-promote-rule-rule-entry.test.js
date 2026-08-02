@@ -51,17 +51,25 @@ test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)
     const entries = readRegistry(tempDir);
     const ruleEntry = entries.find((e) => e.entry_kind === "rule" && e.id === "rule-test-entry-kind");
     assert.ok(ruleEntry, "rule entry should exist");
-    assert.equal(ruleEntry.origin, reportText.id);
+    // The on-record `origin` field is no longer written; the canonical
+    // promotion edge is a citation row (source:rule, target:finding,
+    // rationale:"origin"). The field stays schema-optional (inert-historical)
+    // but is undefined on newly-promoted rules.
+    assert.equal(ruleEntry.origin, undefined);
     assert.equal(ruleEntry.enforcement, "gate");
 
+    const citation = entries.find(
+      (e) => e.entry_kind === "citation" && e.source === "rule-test-entry-kind" && e.target === reportText.id,
+    );
+    assert.ok(citation, "origin citation row linking rule→finding should exist");
+    assert.equal(citation.rationale, "origin");
+
     const finding = entries.find((e) => e.id === reportText.id);
-    // After Phase 2 migration, promoted_to_rule is no longer written on findings.
-    // The rule entry's origin field is the canonical inverse reference.
-    // Plan 260712-0724 follow-up — Fix C (Gap #3): finding status stays as
-    // post-migration "open" (NOT legacy "active"). The lifecycle-migration
-    // invariant (lifecycle-migration-finalize.test.js:54) requires 0 findings
-    // with status "active" survive the migration. The dedicated regression
-    // test below asserts this on its own.
+    // promoted_to_rule is no longer written on findings. The canonical
+    // promotion edge is the citation row above. Finding status stays as
+    // post-migration "open" (NOT legacy "active"); the lifecycle-migration
+    // invariant requires 0 findings with status "active" survive the
+    // migration. The dedicated regression test below asserts this on its own.
     assert.equal(finding.status, "open", "finding status should be 'open' after promotion (post-migration enum, not legacy 'active')");
   } finally {
     teardown();
@@ -134,9 +142,8 @@ test("meta_state_promote_rule accepts pattern_type=determinism-checklist", async
   }
 });
 
-// Plan 260712-0724 follow-up — Fix B: meta_state_promote_rule accepts applies_to
-// and persists it on the rule entry. Closes Implementation 3 Gap #2 — Red Team
-// Finding 9 fix (12-tool scope on universal rules).
+// meta_state_promote_rule accepts applies_to and persists it on the rule
+// entry — the 12-tool scope on universal rules.
 test("meta_state_promote_rule accepts applies_to.tools and persists on rule entry (RED→GREEN for Gap #2)", async () => {
   const tempDir = setup();
   try {
@@ -213,12 +220,11 @@ test("meta_state_patch can set applies_to on an existing rule entry (RED→GREEN
   }
 });
 
-// Plan 260712-0724 follow-up — Fix C: meta_state_promote_rule keeps the origin
-// finding's status as "open" (post-migration enum), NOT legacy "active". Closes
-// Implementation 3 Gap #3 — pre-existing bug surfaced during the deferred
-// closeout live session. The lifecycle-migration invariant
-// (lifecycle-migration-finalize.test.js:54) asserts 0 findings with status
-// "active" survive the migration; promote_rule must not re-introduce them.
+// meta_state_promote_rule keeps the origin finding's status as "open"
+// (post-migration enum), NOT legacy "active". The lifecycle-migration
+// invariant (lifecycle-migration-finalize.test.js:54) asserts 0 findings
+// with status "active" survive the migration; promote_rule must not
+// re-introduce them.
 test("meta_state_promote_rule keeps origin finding status as 'open' (RED→GREEN for Gap #3)", async () => {
   const tempDir = setup();
   try {
