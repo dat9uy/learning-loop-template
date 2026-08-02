@@ -1,6 +1,6 @@
 /**
- * Plan 260712-0300 Phase 1 — MCP-layer schema tests for `operation_envelope`
- * on change-log entries. Goes through `withMcpServer`/`callTool` so the
+ * MCP-layer schema tests for `operation_envelope` on change-log entries.
+ * Goes through `withMcpServer`/`callTool` so the
  * Zod union validation at the MCP layer fires. Direct handler calls bypass
  * Zod and cannot reproduce the schema rejection shape.
  *
@@ -12,10 +12,9 @@
  * and assert the REGISTRY STATE as the primary check, not the callTool
  * return value.
  *
- * Phase 1 portion: schema-layer tests (a) round-trip + (b) unknown-kind reject.
- * Phase 2 (added later in this same file): batch integration + assertWriteVisible
- * + deny-list + write-path reject + target validation + kind × op compatibility
- * + fixture-based fresh-assertion.
+ * Schema-layer tests (a) round-trip + (b) unknown-kind reject.
+ * Batch integration + assertWriteVisible + deny-list + write-path reject
+ * + target validation + kind × op compatibility + fixture-based fresh-assertion.
  */
 import { test } from "vitest";
 import assert from "node:assert/strict";
@@ -30,12 +29,12 @@ test("(a) meta_state_log_change accepts operation_envelope field; registry round
       target: "test-target",
       pre_count: {
         total: 3,
-        by_status: { open: 3, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
+        by_status: { open: 3, resolved: 0, accepted: 0, archived: 0 },
         by_kind: { finding: 3, "change-log": 0, rule: 0, "loop-design": 0 },
       },
       post_count: {
         total: 1,
-        by_status: { open: 1, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
+        by_status: { open: 1, resolved: 0, accepted: 0, archived: 0 },
         by_kind: { finding: 1, "change-log": 0, rule: 0, "loop-design": 0 },
       },
       content_hash: "sha256:" + "0".repeat(64),
@@ -70,12 +69,12 @@ test("(b) meta_state_log_change rejects operation_envelope with unknown kind; re
       target: "test-target",
       pre_count: {
         total: 0,
-        by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
+        by_status: { open: 0, resolved: 0, accepted: 0, archived: 0 },
         by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 },
       },
       post_count: {
         total: 0,
-        by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
+        by_status: { open: 0, resolved: 0, accepted: 0, archived: 0 },
         by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 },
       },
       content_hash: "sha256:" + "0".repeat(64),
@@ -100,7 +99,7 @@ test("(b) meta_state_log_change rejects operation_envelope with unknown kind; re
 });
 
 // ===========================================================================
-// Phase 2 — batch integration + deny-list extension + assertWriteVisible
+// Batch integration + deny-list extension + assertWriteVisible
 // ===========================================================================
 
 // (e) meta_state_batch accepts envelope field; auto-emits an envelope-annotated
@@ -150,7 +149,7 @@ test("(e) meta_state_batch accepts envelope; auto-emits envelope-annotated chang
     // pre_count.total includes the 2 seeded findings + any earlier artifacts
     // already in the registry (per-test tempRoot starts empty, so total = 2).
     assert.equal(envelopeLog.operation_envelope.pre_count.total, 2);
-    // Plan 260716-1101 Tier 2 Phase B: hard-delete is GONE — the delete op
+    // Hard-delete is GONE — the delete op
     // appends an archived tombstone (tombstone_kind: "delete") with the same
     // entry_kind as the target. The in-memory entries[] projection view
     // counts the tombstone as a `finding` entry; total stays at 2.
@@ -295,8 +294,8 @@ test("(g) meta_state_batch.update with operation_envelope field is rejected with
           operation_envelope: {
             kind: "migration",
             target: "forge-attempt",
-            pre_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
-            post_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
+            pre_count: { total: 0, by_status: { open: 0, resolved: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
+            post_count: { total: 0, by_status: { open: 0, resolved: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
             content_hash: "sha256:" + "0".repeat(64),
           },
         },
@@ -336,8 +335,8 @@ test("(g-write-reject) write op with operation_envelope on change-log entry is r
             operation_envelope: {
               kind: "migration",
               target: "forge-write",
-              pre_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
-              post_count: { total: 0, by_status: { open: 0, resolved: 0, superseded: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
+              pre_count: { total: 0, by_status: { open: 0, resolved: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
+              post_count: { total: 0, by_status: { open: 0, resolved: 0, accepted: 0, archived: 0 }, by_kind: { finding: 0, "change-log": 0, rule: 0, "loop-design": 0 } },
               content_hash: "sha256:" + "0".repeat(64),
             },
           },
@@ -369,7 +368,7 @@ test("(g-write-reject) write op with operation_envelope on change-log entry is r
 // legacy file.
 //
 // Implementation note: `status` is in IMMUTABLE_PATCH_FIELDS for findings
-// (rule/loop-design deactivation only — see Plan 260712-0109 Fix A), so the
+// (rule/loop-design deactivation only), so the
 // fixture uses `archive` ops to flip 2 findings from `open` to `archived`.
 // `archive` doesn't go through the patch deny-list (it's its own branch)
 // and reliably produces a `by_status.archived` delta for the post_count check.
@@ -441,12 +440,12 @@ test("(h-fresh-assertion) deterministic fixture: exact deepEqual on pre/post cou
     //   by_kind={finding:20, change-log:2, rule:0, loop-design:0}
     const expectedPre = {
       total: 22,
-      by_status: { open: 22, resolved: 0, superseded: 0, accepted: 0, archived: 0 },
+      by_status: { open: 22, resolved: 0, accepted: 0, archived: 0 },
       by_kind: { finding: 20, "change-log": 2, rule: 0, "loop-design": 0 },
     };
     const expectedPost = {
       total: 22,
-      by_status: { open: 20, resolved: 0, superseded: 0, accepted: 0, archived: 2 },
+      by_status: { open: 20, resolved: 0, accepted: 0, archived: 2 },
       by_kind: { finding: 20, "change-log": 2, rule: 0, "loop-design": 0 },
     };
     assert.deepEqual(env.pre_count, expectedPre, "pre_count must match fixture");

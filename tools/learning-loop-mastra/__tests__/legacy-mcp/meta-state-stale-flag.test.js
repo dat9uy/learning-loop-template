@@ -34,7 +34,8 @@ describe("stale status schema + behavior (TDD red)", () => {
   }
 
   test("T1: schema accepts status=open and rejects legacy/unknown values", () => {
-    // Plan 260707-0812 Phase 2: enum collapsed to {open, resolved, superseded}.
+    // Enum collapsed to {open, resolved, accepted, archived}; `superseded`
+    // is no longer writeable (collapsed to `resolved` + a citation).
     const valid = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       severity: "warning",
@@ -138,7 +139,7 @@ describe("stale status schema + behavior (TDD red)", () => {
   test("T8: meta_state_re_verify round-trip (stamps last_verified_at, finding stays open)", async () => {
     const tempDir = setup();
     try {
-      // Create a finding. Plan 260707-0812 Phase 3: ack is gone; report writes
+      // Create a finding. ack is gone; report writes
       // status:"open" directly. re_verify accepts isOpen findings (no stale
       // hard-requirement). Set verification steps + backdate created_at so
       // the entry is in the derived stale view (triggers re_verify's relevance).
@@ -212,11 +213,14 @@ describe("stale status schema + behavior (TDD red)", () => {
       });
       const changeLogId = JSON.parse(change.content[0].text).id;
 
-      // Post-migration (plan 260707-0812): `stale` is no longer a persisted
-      // status — it is a derived evidence-freshness view, so there is no
-      // `stale → superseded` transition to test. `meta_state_supersede` accepts
-      // any `isOpen` finding, so superseding the freshly-reported `open` finding
-      // is the canonical post-migration path this test exercises.
+      // `stale` is no longer a persisted status — it is a derived evidence-
+      // freshness view, so there is no `stale → superseded` transition to test.
+      // `meta_state_supersede` accepts any `isOpen` finding, so superseding the
+      // freshly-reported `open` finding is the canonical post-migration path
+      // this test exercises. The closure now stamps `status:"resolved"` +
+      // `resolved_at`/`resolved_by` and emits a citation row (source=finding,
+      // target=change-log) instead of stamping `superseded`/`superseded_at`/
+      // `superseded_by`/`consolidated_into` on the record.
 
       // Subtest A: supersede. `_expected_version` is omitted so supersede
       // defaults it to the finding's current version (CAS auto-passes); the
@@ -228,10 +232,11 @@ describe("stale status schema + behavior (TDD red)", () => {
         })).content[0].text
       );
       assert.strictEqual(resultA.superseded, true);
-      assert.strictEqual(resultA.status, "superseded");
-      assert.ok(resultA.superseded_at);
-      assert.strictEqual(resultA.superseded_by, "operator");
+      assert.strictEqual(resultA.status, "resolved");
+      assert.ok(resultA.resolved_at, "resolved_at is stamped");
+      assert.strictEqual(resultA.resolved_by, "operator");
       assert.strictEqual(resultA.consolidated_into, changeLogId);
+      assert.ok(resultA.citation_id, "a citation row is emitted for the supersede edge");
 
       // Subtest B: consolidated_into must be a change-log
       const resultB = JSON.parse(
@@ -251,7 +256,7 @@ describe("stale status schema + behavior (TDD red)", () => {
         })).content[0].text
       );
       assert.strictEqual(resultC.superseded, true);
-      assert.strictEqual(resultC.status, "superseded");
+      assert.strictEqual(resultC.status, "resolved");
 
       // Subtest D: CAS mismatch
       const resultD = JSON.parse(

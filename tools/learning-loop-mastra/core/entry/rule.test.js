@@ -44,8 +44,7 @@ test("createRule.isActive and isAgentChecklist", () => {
   assert.ok(consult.isAgentChecklist());
 });
 
-test("createRule accepts status:\"archived\" (Phase 1: archived in enum, no parseForRead needed)", () => {
-  // Plan 260731-1325 Phase 1: status enum now includes "archived".
+test("createRule accepts status:\"archived\" (archived in enum, no parseForRead needed)", () => {
   // deleteEntry appends status:"archived" for non-change-log kinds; createRule
   // must accept the tombstone directly without parseForRead.
   const archived = createRule({ ...FIXTURE, status: "archived" });
@@ -56,29 +55,52 @@ test("createRule accepts status:\"archived\" (Phase 1: archived in enum, no pars
 test("createRule.outboundRefs returns correct refs", () => {
   const r = createRule(FIXTURE);
   const refs = r.outboundRefs();
-  const fields = refs.map((f) => f.field).sort();
-  assert.ok(fields.includes("origin"));
-  assert.ok(fields.includes("supersedes"));
-  assert.ok(fields.includes("applies_to_resolution"));
+  // `origin` and `supersedes` were de-routed from CROSS_REFS; their canonical
+  // edges now live as citation rows. Only `applies_to_resolution` (forwardOnly,
+  // RI-exempt) remains as an outbound ref for a rule.
+  const fields = refs.map((ref) => ref.field);
+  assert.deepStrictEqual(fields, ["applies_to_resolution"]);
+  assert.ok(!fields.includes("origin"));
+  assert.ok(!fields.includes("supersedes"));
 
-  const originRef = refs.find((f) => f.field === "origin");
-  assert.strictEqual(originRef.id, "meta-test-finding");
-  assert.strictEqual(originRef.kind, "finding");
+  const appliesRef = refs.find((ref) => ref.field === "applies_to_resolution");
+  assert.strictEqual(appliesRef.id, "meta-test-finding");
+  assert.strictEqual(appliesRef.kind, "finding");
 });
 
 test("createRule.inboundRefs scans registry", () => {
   const r = createRule(FIXTURE);
+  // The migrated on-record `finding.promoted_to_rule` field is de-routed from
+  // CROSS_REFS, so it no longer produces an inbound ref to the rule. The
+  // canonical promotion edge is now a citation (source:rule, target:finding),
+  // which surfaces an inbound to the FINDING, not the rule. A rule's inbound
+  // edges come from citations whose `target` is the rule id (e.g. a supersedes
+  // citation from another rule).
   const findingWithPromoted = {
     id: "meta-test-finding",
     entry_kind: "finding",
     promoted_to_rule: "rule-test-rule",
   };
-  const root = [FIXTURE, findingWithPromoted];
-  const refs = r.inboundRefs(root);
-  const promotedRef = refs.find((f) => f.field === "promoted_to_rule");
-  assert.ok(promotedRef, "expected inbound ref from finding via promoted_to_rule");
-  assert.strictEqual(promotedRef.id, "meta-test-finding");
-  assert.strictEqual(promotedRef.kind, "finding");
+  const refsFromField = r.inboundRefs([FIXTURE, findingWithPromoted]);
+  assert.deepStrictEqual(refsFromField, [],
+    "promoted_to_rule on-record field alone must not produce an inbound ref to the rule");
+
+  const supersedesCitation = {
+    id: "citation-supersedes-rule-old-rule",
+    entry_kind: "citation",
+    source: "rule-new-rule",
+    target: "rule-test-rule",
+    rationale: "supersedes",
+    recorded_at: "2026-06-27T00:00:00Z",
+    recorded_by: "operator",
+    status: "active",
+    version: 0,
+  };
+  const refs = r.inboundRefs([FIXTURE, findingWithPromoted, supersedesCitation]);
+  const citedBy = refs.find((ref) => ref.field === "target");
+  assert.ok(citedBy, "expected a cited_by inbound ref from the supersedes citation");
+  assert.strictEqual(citedBy.id, "rule-new-rule");
+  assert.strictEqual(citedBy.kind, "rule");
 });
 
 test("createRule.matches regex pattern", () => {

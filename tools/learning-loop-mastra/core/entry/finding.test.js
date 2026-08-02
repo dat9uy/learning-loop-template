@@ -10,7 +10,6 @@ const FIXTURE = {
   severity: "warning",
   affected_system: "meta",
   description: "Test finding for factory unit tests.",
-  // Plan 260707-0812 Phase 2: enum collapsed to {open, resolved, superseded}.
   status: "open",
   consolidated_into: "meta-test-changelog",
   reopens: ["meta-stale-parent"],
@@ -43,14 +42,13 @@ test("createFinding rejects invalid data", () => {
 test("createFinding.outboundRefs returns correct refs", () => {
   const f = createFinding(FIXTURE);
   const refs = f.outboundRefs();
-  const fields = refs.map((r) => r.field).sort();
-  assert.ok(fields.includes("consolidated_into"));
-  assert.ok(fields.includes("promoted_to_rule"));
-  assert.ok(fields.includes("reopens"));
-
-  const consolidatedRef = refs.find((r) => r.field === "consolidated_into");
-  assert.strictEqual(consolidatedRef.id, "meta-test-changelog");
-  assert.strictEqual(consolidatedRef.kind, "change-log");
+  // The migrated fields (consolidated_into, promoted_to_rule) are de-routed
+  // from CROSS_REFS; their canonical edges now live as citation rows. Only
+  // `reopens` remains as an outbound ref for a finding.
+  const fields = refs.map((r) => r.field);
+  assert.deepStrictEqual(fields, ["reopens"]);
+  assert.ok(!fields.includes("consolidated_into"));
+  assert.ok(!fields.includes("promoted_to_rule"));
 
   const reopensRef = refs.find((r) => r.field === "reopens");
   assert.strictEqual(reopensRef.id, "meta-stale-parent");
@@ -58,11 +56,10 @@ test("createFinding.outboundRefs returns correct refs", () => {
 });
 
 test("createFinding status helpers (isOpen / isStaleView)", () => {
-  // Plan 260707-0812 Phase 2: predicates reworked to isOpen/isStaleView.
-  // The canonical status is now `open`. The enum no longer accepts
-  // `active`/`stale` directly (those were removed); the `isOpen` tolerance
-  // is exercised at the predicate level in stale-view.test.js (the entry
-  // helper cannot construct them anymore — the schema blocks them).
+  // The canonical status is `open`. The enum no longer accepts
+  // `active`/`stale` directly; the `isOpen` tolerance is exercised at the
+  // predicate level in stale-view.test.js (the entry helper cannot construct
+  // them anymore — the schema blocks them).
   const RECENT = new Date().toISOString();
   const open   = createFinding({ ...FIXTURE, status: "open",   created_at: RECENT });
   assert.ok(open.isOpen());
@@ -77,9 +74,9 @@ test("createFinding status helpers (isOpen / isStaleView)", () => {
   assert.ok(blocking.isBlocking());
 });
 
-test("createFinding accepts status:\"archived\" (Phase 1: archived in enum, no parseForRead needed)", () => {
-  // Plan 260731-1325 Phase 1: status enum now includes "archived".
-  // parseForRead is deleted; createFinding must accept archived directly.
+test("createFinding accepts status:\"archived\" (archived in enum, no parseForRead needed)", () => {
+  // deleteEntry appends status:"archived" for non-change-log kinds;
+  // createFinding must accept the tombstone directly without parseForRead.
   const archived = createFinding({ ...FIXTURE, status: "archived" });
   assert.strictEqual(archived.data.status, "archived");
   assert.ok(!archived.isOpen());
@@ -87,6 +84,11 @@ test("createFinding accepts status:\"archived\" (Phase 1: archived in enum, no p
 
 test("createFinding.inboundRefs scans registry for refs to this finding", () => {
   const f = createFinding(FIXTURE);
+  // The migrated on-record fields (rule.origin, change-log.consolidates) are
+  // de-routed from CROSS_REFS, so they no longer produce inbound refs. The
+  // canonical promotion edge is now a citation row (source:rule,
+  // target:finding, rationale:"origin"); inverseRefs surfaces it via the
+  // citation's `target` field substitution (cited_by).
   const ruleThatOriginates = {
     id: "rule-test-rule",
     entry_kind: "rule",
@@ -97,11 +99,27 @@ test("createFinding.inboundRefs scans registry for refs to this finding", () => 
     entry_kind: "change-log",
     consolidates: ["meta-test-finding"],
   };
-  const root = [FIXTURE, ruleThatOriginates, changelogThatConsolidates];
-  const refs = f.inboundRefs(root);
-  // Should find the rule via origin
-  const originRef = refs.find((r) => r.field === "origin");
-  assert.ok(originRef, "expected an inbound ref from rule via origin");
-  assert.strictEqual(originRef.id, "rule-test-rule");
-  assert.strictEqual(originRef.kind, "rule");
+
+  // On-record fields alone: no inbound refs (origin/consolidates de-routed).
+  const refsFromFields = f.inboundRefs([FIXTURE, ruleThatOriginates, changelogThatConsolidates]);
+  assert.deepStrictEqual(refsFromFields, []);
+
+  // Seed the canonical promotion citation; the finding is the citation's
+  // target, so inverseRefs reports the citation's source as the inbound ref.
+  const originCitation = {
+    id: "citation-origin-rule-test-rule",
+    entry_kind: "citation",
+    source: "rule-test-rule",
+    target: "meta-test-finding",
+    rationale: "origin",
+    recorded_at: "2026-06-27T00:00:00Z",
+    recorded_by: "operator",
+    status: "active",
+    version: 0,
+  };
+  const refs = f.inboundRefs([FIXTURE, ruleThatOriginates, changelogThatConsolidates, originCitation]);
+  const citedBy = refs.find((r) => r.field === "target");
+  assert.ok(citedBy, "expected a cited_by inbound ref from the origin citation");
+  assert.strictEqual(citedBy.id, "rule-test-rule");
+  assert.strictEqual(citedBy.kind, "rule");
 });

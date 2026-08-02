@@ -1,12 +1,14 @@
 import { test } from "vitest";
 import assert from "node:assert";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// Plan 260611-1000 retargeted the cascade to a 1-step path. Stale parents
-// (the legacy 'expired' status was removed) are closed in 1 call.
+// The cascade branch was removed from meta_state_resolve. The `cascade_from`
+// arg is no longer in the tool schema and is silently stripped by zod; the
+// handler resolves the parent directly. Stale parents (the legacy 'expired'
+// status was removed) are closed in a single explicit resolve call.
 
 const projectRoot = resolve(process.cwd());
 
@@ -21,10 +23,10 @@ async function importMetaStateResolveTool() {
 }
 
 async function writeStaleParent(core, tempRoot, id, opts = {}) {
-  // Plan 260707-0812 Phase 2: `stale` is no longer a status. The "stale parent"
-  // is modeled as an aged open finding (backdated created_at so isStaleView
-  // returns true). This preserves the cascade semantics — the parent is
-  // open-eligible but surfaced in the derived stale view.
+  // `stale` is no longer a status. The "stale parent" is modeled as an aged
+  // open finding (backdated created_at so isStaleView returns true). This
+  // preserves the cascade semantics — the parent is open-eligible but
+  // surfaced in the derived stale view.
   await core.writeEntry(tempRoot, {
     id,
     entry_kind: "finding",
@@ -96,7 +98,10 @@ test("cascade_from on stale parent closes in 1 step (no 2-step migrate)", async 
   }
 });
 
-test("cascade_from with missing child returns cascade_child_not_found", async () => {
+test("cascade_from is ignored: missing child no longer blocks resolve (parent resolves directly)", async () => {
+  // The cascade branch was removed; `cascade_from` is stripped by zod and
+  // never reaches the handler. A previously "missing child" no longer fails
+  // cascade validation — the parent resolves directly.
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
   const parentId = core.generateId("parent-stale-missing-child");
@@ -113,27 +118,28 @@ test("cascade_from with missing child returns cascade_child_not_found", async ()
       resolved_by: "operator",
     });
     const parsed = JSON.parse(result.content[0].text);
-    assert.strictEqual(parsed.resolved, false);
-    assert.strictEqual(parsed.reason, "cascade_child_not_found");
-    assert.deepStrictEqual(parsed.missing_ids, ["nonexistent-child"]);
+    assert.strictEqual(parsed.resolved, true);
+    assert.strictEqual(parsed.status, "resolved");
+    assert.strictEqual(parsed.migrated_via_cascade, undefined, "2-step shape must be gone");
 
     const after = core.readRegistry(tempRoot);
     const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "open", "failed cascade must leave parent status unchanged");
+    assert.strictEqual(parent.status, "resolved");
+    assert.ok(parent.resolved_at);
+    assert.strictEqual(parent.resolved_by, "operator");
   } finally {
     if (originalEnv === undefined) {
       delete process.env.GATE_ROOT;
     } else {
-      if (originalEnv === undefined) {
-        delete process.env.GATE_ROOT;
-      } else {
-        process.env.GATE_ROOT = originalEnv;
-      }
+      process.env.GATE_ROOT = originalEnv;
     }
   }
 });
 
-test("cascade_from with child not reopening parent returns cascade_child_not_reopening", async () => {
+test("cascade_from is ignored: child not reopening parent no longer blocks resolve (parent resolves directly)", async () => {
+  // The cascade branch was removed; `cascade_from` is stripped by zod and
+  // never reaches the handler. A child that does not reopen the parent no
+  // longer fails cascade validation — the parent resolves directly.
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
   const parentId = core.generateId("parent-stale-not-reopening");
@@ -152,69 +158,55 @@ test("cascade_from with child not reopening parent returns cascade_child_not_reo
       resolved_by: "operator",
     });
     const parsed = JSON.parse(result.content[0].text);
-    assert.strictEqual(parsed.resolved, false);
-    assert.strictEqual(parsed.reason, "cascade_child_not_reopening");
-    assert.ok(parsed.bad_children);
-    assert.strictEqual(parsed.bad_children[0].child_id, childId);
-    assert.strictEqual(parsed.bad_children[0].expected_reopens, parentId);
-    assert.deepStrictEqual(parsed.bad_children[0].actual_reopens, ["meta-some-other-parent"]);
+    assert.strictEqual(parsed.resolved, true);
+    assert.strictEqual(parsed.status, "resolved");
+
+    const after = core.readRegistry(tempRoot);
+    const parent = after.find((e) => e.id === parentId);
+    assert.strictEqual(parent.status, "resolved");
   } finally {
     if (originalEnv === undefined) {
       delete process.env.GATE_ROOT;
     } else {
-      if (originalEnv === undefined) {
-        delete process.env.GATE_ROOT;
-      } else {
-        process.env.GATE_ROOT = originalEnv;
-      }
+      process.env.GATE_ROOT = originalEnv;
     }
   }
 });
 
-test("cascade_from with unresolved child returns cascade_child_unresolved", async () => {
+test("cascade_from is ignored: child status no longer blocks resolve (parent resolves directly)", async () => {
+  // The cascade branch was removed; `cascade_from` is stripped by zod and
+  // never reaches the handler. The child's status (previously the
+  // non-cascade-eligible gate) is no longer inspected — the parent resolves
+  // directly regardless of the child's state.
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
+  const parentId = core.generateId("parent-stale-child-open");
+  const childId = core.generateId("child-open");
 
-  // After plan 260707-0812, only `superseded` and the runtime-applied
-  // `archived` are non-cascade-eligible child statuses. `resolved` is now
-  // explicitly accepted as a valid child (the cascade is the canonical way
-  // to close the parent once the underlying issue is resolved).
-  for (const badStatus of ["superseded"]) {
-    const parentId = core.generateId(`parent-stale-${badStatus}`);
-    const childId = core.generateId(`child-${badStatus}`);
+  await writeStaleParent(core, tempRoot, parentId);
+  await writeChild(core, tempRoot, childId, parentId, "open");
 
-    // Clear registry for each iteration
-    const metaStatePath = join(tempRoot, "meta-state.jsonl");
-    writeFileSync(metaStatePath, "", { flag: "w" });
+  const originalEnv = process.env.GATE_ROOT;
+  process.env.GATE_ROOT = tempRoot;
+  try {
+    const { metaStateResolveTool } = await importMetaStateResolveTool();
+    const result = await metaStateResolveTool.handler({
+      id: parentId,
+      cascade_from: [childId],
+      resolved_by: "operator",
+    });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.strictEqual(parsed.resolved, true);
+    assert.strictEqual(parsed.status, "resolved");
 
-    await writeStaleParent(core, tempRoot, parentId);
-    await writeChild(core, tempRoot, childId, parentId, badStatus);
-
-    const originalEnv = process.env.GATE_ROOT;
-    process.env.GATE_ROOT = tempRoot;
-    try {
-      const { metaStateResolveTool } = await importMetaStateResolveTool();
-      const result = await metaStateResolveTool.handler({
-        id: parentId,
-        cascade_from: [childId],
-        resolved_by: "operator",
-      });
-      const parsed = JSON.parse(result.content[0].text);
-      assert.strictEqual(parsed.resolved, false, `status=${badStatus}`);
-      assert.strictEqual(parsed.reason, "cascade_child_unresolved", `status=${badStatus}`);
-      assert.ok(parsed.bad_children, `status=${badStatus}`);
-      assert.strictEqual(parsed.bad_children[0].child_id, childId, `status=${badStatus}`);
-      assert.strictEqual(parsed.bad_children[0].child_status, badStatus, `status=${badStatus}`);
-    } finally {
-      if (originalEnv === undefined) {
-        delete process.env.GATE_ROOT;
-      } else {
-        if (originalEnv === undefined) {
-          delete process.env.GATE_ROOT;
-        } else {
-          process.env.GATE_ROOT = originalEnv;
-        }
-      }
+    const after = core.readRegistry(tempRoot);
+    const parent = after.find((e) => e.id === parentId);
+    assert.strictEqual(parent.status, "resolved");
+  } finally {
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
     }
   }
 });
@@ -292,7 +284,7 @@ test("cascade_from fails the operator gate before child validation (consult-gate
     pattern: "test-session-id",
     applies_to_resolution: parentId,
     description: "Rule entry for resolution evidence test.",
-    status: "active", // rule status: rule entries use the rule enum (active/inactive), unchanged by Phase 2
+    status: "active", // rule entries use the rule enum (active/inactive), separate from finding status
     promoted_at: new Date().toISOString(),
     promoted_by: "test",
     created_at: new Date().toISOString(),
@@ -373,11 +365,10 @@ test("cascade_from on active parent closes in 1 step (sanity check)", async () =
 });
 
 test("cascade_from on terminal parent returns already_terminal", async () => {
-  // Plan 260707-0812 Phase 2: ack removed; the legacy `cascade_parent_is_reported`
-  // branch is gone. Terminal parents (resolved/superseded/archived) hit the
-  // early-return `already_terminal` guard before the cascade branch — so the
-  // cascade branch is never reached for terminal parents. This test asserts
-  // the reachable behavior.
+  // Terminal parents (resolved/accepted/archived) hit the early-return
+  // `already_terminal` guard before any cascade handling — so the cascade
+  // arg is irrelevant for terminal parents. This test asserts the reachable
+  // behavior.
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
   const parentId = core.generateId("parent-terminal-cascade");

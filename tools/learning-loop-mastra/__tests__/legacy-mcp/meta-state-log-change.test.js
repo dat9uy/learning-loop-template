@@ -185,7 +185,23 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(text.logged, true);
 
       const entries = readRegistry(tempDir);
-      assert.strictEqual(entries[0].supersedes, "meta-260601T0000Z-old-design");
+      // The on-record `supersedes` field is no longer stamped on the change-log;
+      // the canonical supersede edge is emitted as a citation row in
+      // citations.jsonl (source=change-log id, target=supersedes id,
+      // rationale="supersedes"). The field stays schema-optional
+      // (inert-historical) but is unindexed.
+      const changeLogEntry = entries.find((e) => e.entry_kind === "change-log");
+      assert.ok(changeLogEntry, "change-log entry persisted");
+      assert.strictEqual(changeLogEntry.supersedes, undefined,
+        "supersedes is no longer stamped on the change-log record");
+      const citation = entries.find(
+        (e) => e.entry_kind === "citation"
+          && e.target === "meta-260601T0000Z-old-design"
+          && e.source === changeLogEntry.id,
+      );
+      assert.ok(citation, "supersedes edge emitted as a citation row");
+      assert.strictEqual(citation.rationale, "supersedes");
+      assert.strictEqual(citation.status, "active");
     } finally {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
@@ -258,7 +274,7 @@ describe("meta_state_log_change tool", () => {
     }
   });
 
-  // Plan 260711-0030 Phase 2: in-process 60s idempotency cache was removed.
+  // In-process 60s idempotency cache was removed.
   // Replaced tests below assert that 2 identical calls produce 2 distinct entries
   // (cache no longer dedupes; each call writes a fresh entry with a fresh id).
 
