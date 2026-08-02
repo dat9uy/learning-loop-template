@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "drop reopens/cascade_from writers"
-status: pending
+status: completed
 priority: P2
 effort: ""
 dependencies: [4]

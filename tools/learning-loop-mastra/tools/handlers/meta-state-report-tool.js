@@ -9,10 +9,18 @@ import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { assertinvariant } from "../../core/operation-invariant.js";
 
+// Phase 5: `reopens` was removed from the report-tool surface. The
+// field stays `.optional()` on the finding schema (inert-historical;
+// the read path + the 17 historical edges are retained for
+// `meta_state_relationships` + `meta_state_relationship_validate`),
+// but no new `reopens` edges can be initiated via `meta_state_report`.
+// `resolved` is now honestly terminal going forward — operators close
+// stale parents explicitly via `meta_state_resolve`, not as a side
+// effect of opening a child.
 const REPORT_FIELDS = [
   "category", "subtype", "severity", "affected_system", "description",
   "evidence_journal", "evidence_code_ref", "evidence_test", "mechanism_check",
-  "session_id", "reopens",
+  "session_id",
 ];
 const reportSchema = Object.fromEntries(
   REPORT_FIELDS.map((field) => [
@@ -23,7 +31,7 @@ const reportSchema = Object.fromEntries(
 
 export const metaStateReportTool = {
   name: "meta_state_report",
-  description: "Report a new meta-state finding for operator review. Use evidence_code_ref for grounding and meta_state_derive_status for freshness checks. Markdown paths in `source_refs` are deprecated and rejected by record validation. Use meta_state_log_change for system changes and meta_state_resolve for closure. Pass reopens for a stale-parent cross-reference.",
+  description: "Report a new meta-state finding for operator review. Use evidence_code_ref for grounding and meta_state_derive_status for freshness checks. Markdown paths in `source_refs` are deprecated and rejected by record validation. Use meta_state_log_change for system changes and meta_state_resolve for closure. Phase 5: the `reopens` writer was removed — new findings cannot re-open a closed parent. To close a stale parent, call meta_state_resolve on it directly.",
   schema: reportSchema,
   handler: async ({
     category,
@@ -36,7 +44,6 @@ export const metaStateReportTool = {
     evidence_test,
     mechanism_check,
     session_id,
-    reopens,
   }) => {
     const root = resolveRoot();
     const id = generateId(slugify(description));
@@ -88,7 +95,6 @@ export const metaStateReportTool = {
       // `cold-session-discoverability.test.cjs`) all assume the tool persists
       // this; honor it here so callers can use the canonical MCP surface.
       ...(session_id && { session_id }),
-      ...(reopens && { reopens }),
 // new findings are written with
       // `status:"open"` (the canonical post-collapse status), not "reported".
       // `expires_at` and `acked_at` writes are removed — `expires_at` is
