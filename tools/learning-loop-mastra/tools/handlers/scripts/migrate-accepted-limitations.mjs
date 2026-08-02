@@ -1,43 +1,42 @@
 #!/usr/bin/env node
-/**
- * migrate-accepted-limitations.mjs — one-time true-append migration that
- * flips open standing-trade-off findings to the `accepted` terminal status.
- *
- * Scans the meta-state registry (max-by-version projection) for open findings
- * whose `subtype` ends in `-accepted` (the standing-trade-off convention), or
- * any id passed via --id, and true-appends a v+1 line with `status:"accepted"`
- * + `accepted_at`/`accepted_by`/`accepted_reason`.
- *
- * Scan-based, NOT hardcoded — candidates are derived from the registry shape
- * at run time. The same script can re-run after registry growth without
- * modification.
- *
- * Mode:
- *   --dry-run          print candidates without writing (default)
- *   --apply            write the v+1 lines
- *
- * The migration is append-only: it never modifies existing version lines.
- * The projection's last-wins-by-max-version picks the new accepted line; the
- * pre-migration open line stays on disk (audit trail).
- *
- * Status is on IMMUTABLE_PATCH_FIELDS, so `meta_state_patch` cannot flip
- * `open` → `accepted`. This script bypasses the patch path and writes the
- * new line directly via the same append primitive `archiveEntry` uses
- * (`trueAppendAtomic` + `invalidateCache`), keeping the lifecycle
- * `acceptEntry` shape consistent with the tool's contract.
- *
- * Usage:
- *   node tools/learning-loop-mastra/tools/handlers/scripts/migrate-accepted-limitations.mjs --apply [--id <id>] [--root <path>]
- *   node tools/learning-loop-mastra/tools/handlers/scripts/migrate-accepted-limitations.mjs --dry-run
- */
+// migrate-accepted-limitations.mjs — one-time migration that flips open
+// standing-trade-off findings to the `accepted` terminal status.
+//
+// Scans the meta-state registry (max-by-version projection) for open
+// findings whose `subtype` ends in `-accepted` (the standing-trade-off
+// convention), or any id passed via --id, and flips each to `accepted`
+// via the core `acceptEntry` op.
+//
+// Scan-based, NOT hardcoded — candidates are derived from the registry
+// shape at run time. The same script can re-run after registry growth
+// without modification.
+//
+// Mode:
+//   --dry-run          print candidates without writing (default)
+//   --apply            write the v+1 lines
+//
+// The migration is append-only: it never modifies existing version lines.
+// The projection's last-wins-by-max-version picks the new accepted line;
+// the pre-migration open line stays on disk (audit trail).
+//
+// Writes route through the core `acceptEntry` op (enqueue +
+// withRegistryLock + trueAppendAtomicRaw + invalidateCache + lifecycle
+// invariant guards), the same primitive `meta_state_accept` uses. This
+// keeps the migration consistent with the tool's contract and picks up
+// future guard additions automatically. `acceptEntry` is idempotent on
+// re-run: a finding already `accepted` returns `already_accepted` and
+// writes nothing, so --apply is safe to repeat.
+//
+// Usage:
+//   node tools/learning-loop-mastra/tools/handlers/scripts/migrate-accepted-limitations.mjs --apply [--id <id>] [--root <path>]
+//   node tools/learning-loop-mastra/tools/handlers/scripts/migrate-accepted-limitations.mjs --dry-run
 
-import { readFileSync, writeFileSync, existsSync, appendFileSync, openSync, fsyncSync, closeSync } from "node:fs";
-import { join } from "node:path";
-
-const REGISTRY_FILENAME = "meta-state.jsonl";
+import { readRegistry, acceptEntry } from "../../../core/meta-state.js";
+import { resolve as resolvePath } from "node:path";
+import { resolveRoot } from "#lib/resolve-root.js";
 
 function parseArgs(argv) {
-  const args = { dryRun: true, ids: [], root: process.cwd() };
+  const args = { dryRun: true, ids: [], root: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--apply") args.dryRun = false;
@@ -54,53 +53,6 @@ function parseArgs(argv) {
   return args;
 }
 
-// Read the registry (max-by-version projection) without the read-cache layer.
-// The script is a one-shot migration; it must read the disk state directly so
-// a stale cache from another process does not skip candidates.
-function readProjection(root) {
-  const path = join(root, REGISTRY_FILENAME);
-  if (!existsSync(path)) return [];
-  const lines = readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "");
-  const byId = new Map();
-  for (const line of lines) {
-    const entry = JSON.parse(line);
-    const prior = byId.get(entry.id);
-    if (!prior) {
-      byId.set(entry.id, entry);
-      continue;
-    }
-    const priorV = prior.version ?? 0;
-    const nextV = entry.version ?? 0;
-    if (nextV > priorV) {
-      byId.set(entry.id, entry);
-      continue;
-    }
-    if (nextV === priorV) {
-      const priorT = prior.created_at ?? "";
-      const nextT = entry.created_at ?? "";
-      if (nextT > priorT) byId.set(entry.id, entry);
-    }
-  }
-  return [...byId.values()];
-}
-
-// True-append one line to the registry (O_APPEND + fsync). Mirrors the
-// `trueAppendAtomic` primitive the core layer uses; the script cannot import
-// the core because it runs from a CLI entry point (no MCP server context).
-function trueAppend(path, entry) {
-  const fd = openSync(path, "a");
-  try {
-    writeSync(fd, JSON.stringify(entry) + "\n");
-    fsyncSync(fd);
-  } finally {
-    closeSync(fd);
-  }
-}
-
-// Sync import (top-level) — node:fs writeSync/appendFileSync live in different
-// namespaces. The two paths both fsync; we use writeSync via openSync above.
-import { writeSync } from "node:fs";
-
 function isCandidate(entry, idSet) {
   if (entry.entry_kind !== "finding") return false;
   if (entry.status !== "open") return false;
@@ -109,22 +61,15 @@ function isCandidate(entry, idSet) {
   return typeof entry.subtype === "string" && entry.subtype.endsWith("-accepted");
 }
 
-function buildAcceptedLine(entry, acceptedBy, reason) {
-  const now = new Date().toISOString();
-  return {
-    ...entry,
-    status: "accepted",
-    accepted_at: now,
-    accepted_by: acceptedBy,
-    accepted_reason: reason,
-    version: (entry.version ?? 0) + 1,
-  };
-}
-
-function main() {
+async function main() {
   const args = parseArgs(process.argv);
   const idSet = new Set(args.ids);
-  const entries = readProjection(args.root);
+  // resolveRoot honors GATE_ROOT and the project-root containment check;
+  // --root overrides it for test fixtures. Reads use the union read
+  // (meta-state.jsonl + change-log.jsonl + citations.jsonl) so candidates
+  // are derived from the same shape the live registry sees.
+  const root = args.root ? resolvePath(args.root) : resolveRoot();
+  const entries = readRegistry(root);
   const candidates = entries.filter((e) => isCandidate(e, idSet));
 
   console.log(`Found ${candidates.length} candidate(s):`);
@@ -142,17 +87,26 @@ function main() {
     return;
   }
 
-  const path = join(args.root, REGISTRY_FILENAME);
   const acceptedBy = "migration";
   const reason = "Migrated to `accepted`; standing trade-off accepted as lifecycle terminal.";
   let written = 0;
+  let alreadyAccepted = 0;
   for (const c of candidates) {
-    const line = buildAcceptedLine(c, acceptedBy, reason);
-    trueAppend(path, line);
-    written += 1;
-    console.log(`  appended v+1 for ${c.id}`);
+    const result = await acceptEntry(root, c.id, acceptedBy, reason);
+    if (result.accepted) {
+      written += 1;
+      console.log(`  accepted ${c.id} (v${result.version})`);
+    } else if (result.reason === "already_accepted") {
+      alreadyAccepted += 1;
+      console.log(`  skip ${c.id} (already accepted, v${result.current_version ?? "?"})`);
+    } else {
+      console.error(`  failed ${c.id}: ${result.reason}`);
+    }
   }
-  console.log(`\nMigration complete: ${written} accepted line(s) appended to ${path}`);
+  console.log(`\nMigration complete: ${written} accepted, ${alreadyAccepted} already accepted.`);
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
