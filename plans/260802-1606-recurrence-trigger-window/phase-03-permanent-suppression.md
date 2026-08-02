@@ -1,9 +1,9 @@
-# Phase 3: Collapse dedup to permanent-for-non-archived
+# Phase 3: Collapse dedup to permanent-for-non-archived (+ race-safe write)
 
 ## Context
 
 The dedup filter (`recurrence-tracker.js:87-93`) currently suppresses re-filing only for
-**`open** findings (`isOpen(e)`). Because the log is append-only and never trimmed, the
+**open** findings (`isOpen(e)`). Because the log is append-only and never trimmed, the
 dedup filter is the ONLY thing preventing the original burst from being re-filed every
 session forever (once P1 drops the `since` filter and scans the full log). PR 109 added an
 `accepted` status (terminal) and made `resolved` terminal; both should suppress too.
@@ -16,6 +16,11 @@ that can precede the rule patch → phantom regressions). Decision: `open` + `ac
 `resolved` all suppress permanently; `archived` re-admits. No `resolved_at` comparison,
 no grace-window constant.
 
+It also closes the **cross-process check-then-write race** (red-team Critical): the dedup
+read at `:87` is unlocked and `withRegistryLock` is per-write only
+(`meta-state.js:1344-1346`), so two simultaneous SessionStarts both pass the filter and
+both write duplicate findings on the trigger's very first firing.
+
 Report: §2, design decision #4.
 
 ## Requirements
@@ -24,22 +29,27 @@ Report: §2, design decision #4.
   `recurring-false-positive` findings.
 - `archived` findings do NOT suppress (a deleted/archived finding can re-detect).
 - No `resolved_at` field read, no grace-window constant, no `withinGrace` helper.
+- The dedup check is **re-evaluated inside the registry lock** at write time (no TOCTOU
+  across concurrent SessionStart processes).
+- A dedup hit emits a **stderr diagnostic** (existing finding id + suppressed group hash)
+  so suppression — including a wildcard hash collision — is observable, not silent.
 - The blind spot is recorded as a deliberate, revisitable decision (not a hidden defect):
   a genuine same-prefix regression after resolve will NOT auto-file; the live gate banner
   is the first-order signal; revisit only on a documented incident.
 
 ## Files
 
-- **Read:** `tools/learning-loop-mastra/core/recurrence-tracker.js` (`:84-97` dedup),
-  `tools/learning-loop-mastra/core/constants.js` (`TERMINAL_STATUSES` `:60` includes
-  `resolved`/`accepted`/`superseded`/`archived`; `isOpen`), `tools/learning-loop-mastra/core/stale-view.js`
-  (`isOpen` definition).
-- **Modify:** `recurrence-tracker.js` (the `existing` filter `:87-93`).
+- **Read:** `tools/learning-loop-mastra/core/recurrence-tracker.js` (`:84-97` dedup,
+  `:101-126` write loop), `tools/learning-loop-mastra/core/constants.js`
+  (`TERMINAL_STATUSES` `:60`), `tools/learning-loop-mastra/core/stale-view.js` (`isOpen`),
+  `tools/learning-loop-mastra/core/meta-state.js` (`writeEntry` lock scope `:1344-1346`),
+  `tools/learning-loop-mastra/core/registry-lock.js` (`withRegistryLock` `:33-43`).
+- **Modify:** `recurrence-tracker.js` (the `existing` filter + race-safe write path +
+  dedup diagnostic).
 
 ## Steps
 
-1. **Widen the filter.** Replace the `isOpen(e)` clause (`:91`) with `e.status !== "archived"`.
-   The full predicate becomes:
+1. **Widen the filter.** Replace the `isOpen(e)` clause (`:91`) with `e.status !== "archived"`:
    ```js
    const existing = readRegistry(root).filter(
      (e) =>
@@ -49,48 +59,56 @@ Report: §2, design decision #4.
        && e.status !== "archived",
    );
    ```
-   `open`, `accepted`, `resolved` (and any non-archived status) all join the suppress set;
-   `archived` is excluded so a re-detect after archive is possible.
-2. **Remove any grace-window scaffolding.** If P2 or an earlier draft introduced a
-   `RESOLVED_GRACE_DAYS` constant or `withinGrace` helper, delete them. Confirm no
-   `resolved_at` read remains in `checkAndEmit`. (The cancelled `260802-0135` plan had a
-   `RESOLVED_GRACE_DAYS = 14` design decision — explicitly NOT carried over.)
-3. **Tests (TDD):**
-   - An `open` existing finding with the same (hashed) `recurrence_key` → suppresses
-     re-filing (unchanged behavior, re-asserted).
-   - An `accepted` existing finding with the same key → suppresses (NEW; previously
-     `isOpen(accepted)` is false so it would have re-filed — this is the fix).
-   - A `resolved` existing finding with the same key → suppresses (NEW; previously would
-     have re-filed every session from the stale burst — the grace-window noise source).
-   - An `archived` existing finding with the same key → does NOT suppress → re-files
-     (archive re-admits detection).
-   - No `resolved_at` is read anywhere in `checkAndEmit` (assert the function does not
-     reference it — guards against re-introducing the grace window).
+2. **Make the write race-safe (shape validated 2026-08-02).** Add a
+   `writeEntryIfAbsent(root, entry, keyPredicate)` helper that re-reads `existingKeys`
+   under `withRegistryLock` immediately before appending — narrow lock scope, matching
+   the existing `writeEntry` lock discipline (`meta-state.js:1344-1346`). Do NOT hold
+   one lock across checkAndEmit's whole read-check-write cycle. The unlocked
+   pre-filter stays as a fast path; the locked re-check is the correctness boundary.
+<!-- Updated: Validation Session 1 - race-safe write pinned to writeEntryIfAbsent -->
+3. **Dedup-hit diagnostic.** On suppression, `console.error` one line: existing finding
+   id + the suppressed group's `recurrence_key` hash. (The SessionStart hook already
+   uses stderr; this stays out of the agent-token channel.)
+4. **Remove any grace-window scaffolding.** No `RESOLVED_GRACE_DAYS`, no `withinGrace`,
+   no `resolved_at` read in `checkAndEmit`.
+5. **Tests (TDD):**
+   - `open` existing finding, same hashed key → suppresses (unchanged, re-asserted).
+   - `accepted` existing finding → suppresses (NEW; previously re-filed).
+   - `resolved` existing finding → suppresses (NEW; the stale-burst noise source).
+   - `archived` existing finding → does NOT suppress → re-files.
+   - **Race test:** two concurrent `checkAndEmit` invocations against the same fixture
+     (or a serialized simulation of interleaved read/write) → exactly one finding.
+   - A suppression emits the stderr diagnostic with finding id + hash.
+   - No `resolved_at` is read anywhere in `checkAndEmit`.
 
 ## Validation
 
 - Recurrence + meta-state test suites green.
-- Manual: seed an `accepted` and a `resolved` `recurring-false-positive` finding in a
-  fixture registry + a qualifying burst in the log; run `checkAndEmit`; assert **zero**
-  new findings (both suppress). Archive one; re-run; assert **one** new finding (archive
-  re-admits).
+- Manual: seed `accepted` + `resolved` findings for a key + a qualifying burst; run
+  `checkAndEmit`; assert zero new findings + two diagnostic lines. Archive one; re-run;
+  assert one new finding.
 
 ## Risk
 
 - **The blind spot (deliberate).** A genuine same-prefix regression after a resolve won't
-  auto-file. Mitigations (recorded in plan §decision #4 + the finding logged at ship): the
-  live gate banner fires every command regardless; same-prefix regression after a correct
-  rule refinement is near-impossible; the trigger has never fired. **Revisit trigger:** add
-  a post-resolve re-file path only if a documented incident shows the banner insufficient.
-  This is a recorded trade-off, not a regression.
-- **`superseded` status.** Post-PR-109, `superseded` collapses into `resolved` + citation;
-  if any `recurring-false-positive` is still `superseded` (none exist today — zero
-  findings), the `!== "archived"` filter treats it as suppressing (terminal). Acceptable
-  and consistent.
+  auto-file. Mitigations: the live gate banner fires every command regardless; same-prefix
+  regression after a correct rule refinement is near-impossible; the trigger has never
+  fired. Revisit trigger: add a post-resolve re-file path only if a documented incident
+  shows the banner insufficient.
+- **Adversarial key squatting — documented non-issue (red-team, rejected).** A computed
+  `recurrence_key` could theoretically be squatted (write an `open` finding for a victim
+  key) to pre-suppress a genuine future burst. Rejected per threat model: single-operator
+  repo; writing findings requires the loop record tools, and an actor with that access
+  can suppress detection far more directly; the gate banner remains first-order signal.
+- **`superseded` status.** Post-PR-109 `superseded` collapses into `resolved` + citation;
+  if any `recurring-false-positive` were `superseded` (none exist), `!== "archived"`
+  treats it as suppressing. Consistent.
+- **Hash collision blast radius (bounded).** 64-bit keys (P1) make collisions
+  birthday-safe far beyond registry scale; the step-3 diagnostic makes any suppression
+  attributable (finding id + hash on stderr) instead of silent.
 
 ## Rollback
 
-Revert the one-line filter change (`!== "archived"` → restore `isOpen(e)`). Returns to
-open-only suppression. No data migration. The `accepted`/`resolved` suppression is purely
-additive safety; reverting only re-exposes the grace-window noise (re-filing from stale
-bursts), which is the bug this phase removes.
+Revert the filter + lock changes. Returns to open-only suppression and the pre-existing
+(unlocked) write path — no data migration; reverting only re-exposes the stale-burst
+re-file noise and the race this phase removes.
