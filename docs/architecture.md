@@ -149,7 +149,7 @@ The universal write hook (`write-gate.js`) is a thin I/O adapter; all policy liv
 
 **Mode:** marker — an active observation is stale when the last operator-message marker is newer than its `updated_at`; a missing/invalid `updated_at` is stale (stale-on-null, matching the inbound age mode). No marker, or an invalid marker timestamp, means no state-change is pending → not stale. Owner: `core/observation-staleness.js#isObservationStaleByMarker`, called from `core/inbound-state.js#checkObservationStaleness`.
 
-The two gates differ in *mode* (age vs marker), not in window — both use `OBSERVATION_STALENESS_WINDOW_MS` and the same reference time. The marker is the cache of "an age-staleness event occurred within the last window": the inbound gate writes it only when the age scan finds stale observations, so a marker exists only when observations were genuinely stale (F1). See Known Issues (F2) for the unification.
+The two gates differ in *mode* (age vs marker), not in window — both use `OBSERVATION_STALENESS_WINDOW_MS` and the same reference time. The marker is the cache of "an age-staleness event occurred within the last window": the inbound gate writes it only when the age scan finds stale observations, so a marker exists only when observations were genuinely stale. See § Gate Behavior and Design Notes for the unification of the two modes.
 
 **Projection (shared by both gates):** `readRuntimeObservations` (`core/file-readers.js`) dedups to the latest `budget-state` row per surface, so `obs.updated_at` is the authoritative per-surface-latest timestamp (this is what makes the outbound marker mode safe without re-reading the sidecar). Consequence: a surface whose latest `budget-state` row is `paused`/`stopped`/`initial` projects no active observation, so the constraint gate (`checkObservationExists` → `makeGateDecision`) **blocks** — a non-tracked surface does not satisfy the "observation required" constraint. A fresh `active` row under the canonical id (resume/restart) restores it. The inbound gate separately skips paused surfaces for staleness *warnings* (`isSurfacePaused`); the constraint-gate block is the bash-gate counterpart, not a contradiction.
 
@@ -200,7 +200,7 @@ Distinct from the bash/write gates above (which gate agent *shell commands* and 
 
 **Behavior:**
 1. At server boot, `pinRuntimeIdAtBoot()` reads `process.env.LOOP_SURFACE` (set via the `env` field of each runtime's `mcp.json`), validates it against the supported surfaces, and freezes the runtime id for the process lifetime (no setter exported).
-2. Each tool's `execute` is wrapped by `withR2Gate`. For every declared write path field (`pathFields` in `tools/manifest.json`), the gate resolves the path via `resolveSafePath` and checks ownership against `.loop/r2-allowlist.json` (per-runtime own/deny plus universal entries).
+2. Each tool's `execute` is wrapped by `withR2Gate`. For every declared write path field (`pathFields` in `tools/learning-loop-mastra/tools/manifest.json`), the gate resolves the path via `resolveSafePath` and checks ownership against `.loop/r2-allowlist.json` (per-runtime own/deny plus universal entries).
 3. `validateToolManifest` runs at boot and throws if any tool lacks `pathFields`, enforcing default-deny for undeclared write paths.
 4. `resolveSafePath` realpath-resolves user paths and rejects traversal, symlink, and hardlink escape. It is the path-safety layer beneath the R2 gate and is also used directly at the seven audit-log/recording sites that previously used `path.join`.
 
@@ -266,7 +266,7 @@ The workflow registry is hardcoded in `core/workflow-registry.js` (not a JSON fi
 }
 ```
 
-`workflow_notify_artifact` evaluates the change against this registry via `evaluateTriggers` and **returns the recommended tools** — it does NOT spawn processes. The agent calls the recommended tools explicitly. `recommended_tools` is currently vacated across all entries (the previously-referenced tools were removed or never shipped); the field is required by the handler shape but may be empty. `workflow_trigger` looks up a workflow by name and returns its `recommended_tools` list the same way. Both handlers append a structured entry to `gate-log.jsonl` (per-surface) on each call, and `workflow_notify_artifact` requires the changed path to be under `records/**` (in-handler ownership guard, since the manifest declares `pathFields: []`).
+`workflow_notify_artifact` evaluates the change against this registry via `evaluateTriggers` and **returns the recommended tools** — it does NOT spawn processes. The agent calls the recommended tools explicitly. `recommended_tools` is currently vacated across all entries; the field is required by the handler shape but may be empty. `workflow_trigger` looks up a workflow by name and returns its `recommended_tools` list the same way. Both handlers append a structured entry to `gate-log.jsonl` (per-surface) on each call, and `workflow_notify_artifact` requires the changed path to be under `records/**` (in-handler ownership guard, since the manifest declares `pathFields: []`).
 
 #### Workflow Logs
 
@@ -357,9 +357,9 @@ Lifecycle state lives in-band in `runtime-state.jsonl` itself (`kind: budget-sta
 
 The `kind` discriminator is load-bearing: `readRuntimeStateRowsLatest` plus the kind+status filter (kind=`budget-state`, status=`active`) is what the gate actually reads. `ledger-event` rows are out of scope by kind — emitting a drift observation for them would pollute the gate. The `unmapped-active-entry` drift check fires only for unmapped budget-state rows; ledger-event rows are out by kind, never by an exemption the gate grants.
 
-`stop` is the non-destructive retire: appending `status: stopped` keeps the row history (each lifecycle step is a versioned row) and the operator can verify what was paused when, but the stopped chain gets no further pause/resume transitions and no ledger events under the canonical id. Restart is a deliberate budget-state `runtime_state_record` under the same canonical id — a fresh `active` version on top of the preserved history; `runtime_state_record` rejects budget-state rows under any non-canonical id, so a surface never has two tracking entities. The destructive `runtime_state_prune_surface` was removed — the footgun "delete the ledger to clear the gate" is gone structurally.
+`stop` is the non-destructive retire: appending `status: stopped` keeps the row history (each lifecycle step is a versioned row) and the operator can verify what was paused when, but the stopped chain gets no further pause/resume transitions and no ledger events under the canonical id. Restart is a deliberate budget-state `runtime_state_record` under the same canonical id — a fresh `active` version on top of the preserved history; `runtime_state_record` rejects budget-state rows under any non-canonical id, so a surface never has two tracking entities. There is no `runtime_state_prune_surface` — the "delete the ledger to clear the gate" footgun is gone structurally; the budget gate cannot be cleared by deleting the ledger.
 
-The per-surface preflight marker (`SURFACES/coordination/.loop-preflight-runtime-tracking`) authorizes pause/resume/stop — same per-surface convention as `runtime_state_record`'s `.loop-preflight-runtime-state`, and same 30-minute TTL as `gate_mark_preflight`'s markers (a stale or content-less marker does not authorize). The legacy `.loop/runtime-tracking.json` sidecar is no longer written; the legacy deny-list rules (`core/r2/ownership.js`, `core/evaluate-bash-gate.js` `PATH_WRITE_PATTERNS`, `core/bound-artifacts.js`) remain in place as no-op defenses (nothing writes the sidecar). The destructive `prune` tool was removed entirely — see `git log --diff-filter=D` for the historical record.
+The per-surface preflight marker (`SURFACES/coordination/.loop-preflight-runtime-tracking`) authorizes pause/resume/stop — same per-surface convention as `runtime_state_record`'s `.loop-preflight-runtime-state`, and same 30-minute TTL as `gate_mark_preflight`'s markers (a stale or content-less marker does not authorize). The deny-list rules (`core/r2/ownership.js`, `core/evaluate-bash-gate.js` `PATH_WRITE_PATTERNS`, `core/bound-artifacts.js`) remain as no-op defenses. There is no `prune` tool (see `git log --diff-filter=D` for the historical record).
 
 ## Meta-State Self-Learning Loop
 
@@ -390,28 +390,28 @@ flowchart TD
     S4["<b>4. Agent</b> (Claude / Droid / Mastra Code)<br/>the second filter"]:::agent --> S5
     subgraph S5["<b>5. meta_state_* tools (CLI + MCP)</b>"]
         direction LR
-        T_SP0["<b>SP0</b> (Self-Modification)<br/>log_change, sweep"]:::sp0
-        T_SP1["<b>SP1</b> (Derivation)<br/>derive_status"]:::sp1
-        T_SP2["<b>SP2</b> (Grounding)<br/>check_grounding,<br/>refresh_file_index"]:::sp2
-        T_SP3["<b>SP3</b> (Drift)<br/>query_drift"]:::sp3
+        T_SP0["<b>Self-Modification</b><br/>log_change, sweep"]:::sp0
+        T_SP1["<b>Derivation</b><br/>derive_status"]:::sp1
+        T_SP2["<b>Grounding</b><br/>check_grounding,<br/>refresh_file_index"]:::sp2
+        T_SP3["<b>Drift</b><br/>query_drift"]:::sp3
         T_SP0 --- T_SP1 --- T_SP2 --> T_SP3
     end
     S5 --> Registry
     Registry[("<b>meta-state.jsonl</b><br/>findings + change-log<br/>(immutable audit log)")]:::registry
     subgraph S6["<b>6. Pure functions in core/</b>"]
         direction TB
-        S6a["<b>deriveStatus</b> (SP1)<br/>file exists, hash matches,<br/>tests pass"]:::purefn
-        S6b["<b>checkGrounding</b> (SP2)<br/>SHA-256 verification"]:::purefn
+        S6a["<b>deriveStatus</b><br/>file exists, hash matches,<br/>tests pass"]:::purefn
+        S6b["<b>checkGrounding</b><br/>SHA-256 verification"]:::purefn
         S6a --> S6b
     end
     Registry --> S6
     S6 --> S7
-    S7["<b>7. queryDrift</b> (SP3)<br/>joins SP1 + SP2 across registry<br/>→ drift events"]:::purefn
+    S7["<b>7. queryDrift</b><br/>joins derivation + grounding across registry<br/>→ drift events"]:::purefn
     S5 --> S7
     S7 --> S8
     S8{"<b>8. Agent decision</b>"}:::decision
     S8 -->|resolve| S8a["meta_state_resolve"]:::resolve
-    S8 -->|investigate| S8b["Drill into SP1/SP2"]:::investigate
+    S8 -->|investigate| S8b["Drill into derivation/grounding"]:::investigate
     S8 -->|log| S8c["meta_state_log_change"]:::log
     S8a -.->|records outcome| Registry
     S8b -.->|records finding| Registry
@@ -441,7 +441,7 @@ flowchart TD
 - **Self-aware audit trail**: The agent uses `meta_state_log_change` to record any system modification (schema change, tool addition, gate rule promotion, etc.) as a first-class entry. The change-log entries are immutable audit log (no TTL, no auto-resolve).
 - **Verifiable assertions**: For any finding, the agent can call `meta_state_derive_status` to compute the effective status from the live filesystem (without mutating the entry). Drift between the entry's `status` and the derived `derived_status` is surfaced via `drift: true`.
 - **Grounded claims**: For findings with `mechanism_check: true`, the agent can call `meta_state_check_grounding` to verify the file is still live, the SHA-256 hash matches the last check, and (optionally) the referenced tests still pass. Drift is detected via `status: "drifted"`.
-- **Aggregate drift surfacing** (SP3, shipped): `meta_state_query_drift` joins SP1's `derived_status` + SP2's `grounding.status` across the entire registry, returning a flat list of drift events with `recommendation` (resolve / investigate). Default `run_grounding: false` (derivation-only); opt-in to join SP2.
+- **Aggregate drift surfacing**: `meta_state_query_drift` joins derivation's `derived_status` + grounding's `grounding.status` across the entire registry, returning a flat list of drift events with `recommendation` (resolve / investigate). Default `run_grounding: false` (derivation-only); opt-in to join grounding.
 - **Schema-as-source-of-truth**: The meta-state tool zod schemas are generated from JSON Schema at runtime via `core/schema-to-zod.js`, so the JSON Schema is the single source for the tool input shape. A field-coverage test catches drift between schema and tool surface.
 
 ### Relationship to the Constraint Gate
@@ -473,7 +473,7 @@ Four surfaces, one registry. Every injected surface rides a declared **channel**
 | Surface | Channel | Trigger | Delivery fidelity | Role |
 |---|---|---|---|---|
 | **push (SessionStart `.claude` hooks)** | `claude-session-start` | runtime startup | `full`/`lean`/`unknown` (attested) | Fixed cold-start context projected to `slug — suggestion` pointers, hand-partitioned by the two `.claude` universal hooks under the 10k `additionalContext` cap. Bounded and cache-stable. |
-| **push (SessionStart `.factory` hook)** | `factory-session-start` | runtime startup | attested (deferred) | `.factory` still emits one full-text block — **pointer projection deferred (D3.1, separate cross-surface alignment plan)**; the channel exists but has not been flipped to pointer form. |
+| **push (SessionStart `.factory` hook)** | `factory-session-start` | runtime startup | attested (deferred) | `.factory` still emits one full-text block — **pointer projection deferred (a separate cross-surface alignment track)**; the channel exists but has not been flipped to pointer form. |
 | **pull-warm (`loop_describe`)** | `mcp-warm` | agent mid-session | n/a (agent-initiated) | Current dynamic state: rules/findings/loop-designs/registry summary. Its hint block is the same builder output as push (convenience, not authority); the value-add of a warm call is the dynamic fields. |
 | **pull-single (`loop_get_instruction`)** | _(registry-direct)_ | agent on demand | n/a (agent-initiated) | Re-fetch one hint by slug (or numeric index = registry position, for back-compat) that scrolled out of context. Resolves against the fixed registry order — never the shrinkable builder array. |
 | **static (AGENTS.md / CLAUDE.md / learning-loop skill)** | _(steering layer)_ | always | n/a | Steering layer + prompt-author docs; never a hint-content source. |
@@ -483,7 +483,7 @@ Four surfaces, one registry. Every injected surface rides a declared **channel**
 
 ### Channels → state axes
 
-The channel term names what was already de-facto at L3: each injected surface has a declared channel, and the channel's delivery fidelity varies per provider profile. State-2 (deterministic injection) guarantees the hook fires on the right channel at the right moment; it does **not** guarantee the channel's content reaches the model — that is measured at the endpoint. The `sessionstart-steering-injection-is-push-dependent-and-silent` finding is the lesson: a lean provider profile can silently drop a push channel's content (transcript ≠ wire), so delivery must be **attested**, not assumed.
+The channel term names what was already de-facto at L3: each injected surface has a declared channel, and the channel's delivery fidelity varies per provider profile. State-2 (deterministic injection) guarantees the hook fires on the right channel at the right moment; it does **not** guarantee the channel's content reaches the model — that is measured at the endpoint. The lesson: a lean provider profile can silently drop a push channel's content (transcript ≠ wire), so delivery must be **attested**, not assumed.
 
 **Delivery attestation (`tools/scripts/delivery-classify.mjs`):** an offline classifier reads session transcripts, recomputes the manifest + hint-payload floors at run time, and classifies each session's first API call as `full` (delivered tokens ≥ 0.8× floor), `lean`, or `unknown` (no `usage` fields). It appends `delivery-<sessionId>-<runTs>` ledger-event rows to repo-root `runtime-state.jsonl` (idempotent by `transcript_content_hash` — re-classifies when the transcript grows), readable via `runtime_state_read`. The loop *knows* delivery through its own queryable substrate (pull, not push). The delivered-token metric is `input_tokens + cache_read_input_tokens + cache_creation_input_tokens` (not `input_tokens` alone, which excludes cache reads and would falsely flag cached sessions `lean`).
 
