@@ -132,10 +132,12 @@ function assertNoChangeLogLeak(root, entries, path) {
  * file is created on first legal append).
  */
 function assertNoCitationLeak(root, entries, path) {
-  const fileName = path.split("/").pop();
+  // Match by suffix (not `path.split("/").pop()`) so the guard is robust on
+  // path separators that differ from `"/"` (e.g. Windows backslash). Mirrors
+  // the suffix style used by `assertNoChangeLogLeak`.
   for (const entry of entries) {
     if (entry.entry_kind === "citation") {
-      if (fileName === "meta-state.jsonl" || fileName === "change-log.jsonl") {
+      if (path.endsWith("meta-state.jsonl") || path.endsWith("change-log.jsonl")) {
         throw new Error(
           "citation_leak: trueAppendAtomic received a citation entry while targeting meta-state.jsonl or change-log.jsonl. " +
           "Route citation entries to citations.jsonl via appendCitationEntryAtomic instead. " +
@@ -143,7 +145,7 @@ function assertNoCitationLeak(root, entries, path) {
         );
       }
     } else {
-      if (fileName === "citations.jsonl") {
+      if (path.endsWith("citations.jsonl")) {
         throw new Error(
           "citation_leak: trueAppendAtomic received a non-citation entry while targeting citations.jsonl. " +
           "The citations.jsonl stream is exclusively for citation entries. " +

@@ -10,16 +10,20 @@ import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 // Set of statuses excluded by default from `meta_state_list` results.
-// Phase 3 collapsed `superseded` into `resolved` + a citation; the
-// canonical terminal set is {resolved, accepted}; `archived` is excluded
-// upstream by the entry_kind/status filter pair, not here.
-const EXCLUDABLE_STATUSES = new Set(["resolved", "accepted"]);
+// `superseded` is kept here for backward compatibility with un-migrated or
+// historical on-disk findings: the canonical writeable enum no longer accepts
+// `superseded` (it collapses to `resolved` + a citation), but entries already
+// on disk may still carry it, and `isOpen` already treats it as terminal — so
+// the default view must exclude it too, or a closed finding would surface in
+// the open-views list. `archived` is excluded upstream by the
+// entry_kind/status filter pair, not here.
+const EXCLUDABLE_STATUSES = new Set(["resolved", "superseded", "accepted"]);
 
 const REF_FIELDS = [
-  // Phase 3+4: `consolidated_into` / `origin` / `supersedes` /
+  // `consolidated_into` / `origin` / `supersedes` /
   // `promoted_to_rule` were collapsed into citation rows. The new wire
   // shape is `ref_field:"citation"`, which sources from
-  // `citations_inverse` (Phase 2+).
+  // `citations_inverse` (the citation-backed inverse map).
   "citation",
   "addresses",
   "proposed_design_for",
@@ -30,7 +34,7 @@ const REF_FIELDS = [
 // Scan-backed fields (proposed_design_for) iterate entries and tolerate
 // the wire-format wrap {item: [...]} that meta_state_patch can produce on
 // top-level arrays under passthrough ZodObject fields. `citation` is
-// inverse-backed via `citations_inverse` (Phase 2+).
+// inverse-backed via `citations_inverse`.
 const INVERSE_BACKED_REF_FIELDS = new Set([
   "addresses",
   "reopens",
@@ -166,7 +170,7 @@ export const metaStateListTool = {
     // include_archived: true is the unified "show me the audit trail" affordance;
     // it surfaces all 4 terminal statuses (resolved, accepted, auto-resolved,
     // archived) without requiring callers to know which statuses are terminal.
-// (Phase 3 collapsed `superseded` into `resolved` + a citation.)
+// (`superseded` collapsed into `resolved` + a citation.)
     const isExplicitStatusFilter = typeof status === "string" && EXCLUDABLE_STATUSES.has(status);
     const includeTerminal = include_archived || isExplicitStatusFilter;
     if (!includeTerminal) {
