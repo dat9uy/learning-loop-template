@@ -638,3 +638,82 @@ test("empty_patch hint for rule names rule-specific fields, no finding leakage",
     teardown();
   }
 });
+
+test("meta_state_patch rule supersedes with CAS mismatch emits no citation", async () => {
+  const root = setup();
+  try {
+    const { writeFileSync, readFileSync, existsSync } = await import("node:fs");
+    const { join } = await import("node:path");
+
+    // Seed a rule entry that a later rule supersedes.
+    const targetRule = {
+      id: "meta-rule-supersedes-target-fixture",
+      entry_kind: "rule",
+      status: "active",
+      enforcement: "gate",
+      pattern_type: "regex",
+      pattern: "(target)-fixture",
+      description: "Target rule fixture for supersedes citation guard (min 20 chars)",
+      affected_system: "meta",
+      created_at: new Date().toISOString(),
+      version: 0,
+    };
+    const sourceRule = {
+      id: "meta-rule-supersedes-source-fixture",
+      entry_kind: "rule",
+      status: "active",
+      enforcement: "gate",
+      pattern_type: "regex",
+      pattern: "(source)-fixture",
+      description: "Source rule fixture for supersedes citation guard (min 20 chars)",
+      affected_system: "meta",
+      created_at: new Date().toISOString(),
+      version: 0,
+    };
+    const registryPath = join(root, "meta-state.jsonl");
+    writeFileSync(
+      registryPath,
+      JSON.stringify(targetRule) + "\n" + JSON.stringify(sourceRule) + "\n",
+      "utf8",
+    );
+
+    // CAS mismatch: send _expected_version 99 (current is 0). The patch
+    // carries `supersedes` so a buggy ordering would have emitted the
+    // citation before the version_mismatch early-return. The fix emits
+    // the citation only after a successful update, so a CAS failure must
+    // leave citations.jsonl empty.
+    const result = await patchCall({
+      id: sourceRule.id,
+      entry_kind: "rule",
+      patch: {
+        description: "Updated source rule description (min 20 chars)",
+        supersedes: targetRule.id,
+      },
+      _expected_version: 99,
+    });
+
+    assert.equal(result.patched, false);
+    assert.equal(result.reason, "version_mismatch");
+    assert.equal(result.current_version, 0);
+
+    const citationsPath = join(root, "citations.jsonl");
+    if (existsSync(citationsPath)) {
+      const citationLines = readFileSync(citationsPath, "utf8")
+        .split("\n")
+        .filter((line) => line.trim() !== "");
+      const citations = citationLines.map((line) => JSON.parse(line));
+      const supersedesForTarget = citations.filter(
+        (c) => c.rationale === "supersedes" && c.target === targetRule.id,
+      );
+      assert.equal(
+        supersedesForTarget.length,
+        0,
+        `CAS-failed patch must not emit a supersedes citation, got: ${JSON.stringify(supersedesForTarget)}`,
+      );
+    }
+    // If citations.jsonl does not exist, that is the strongest possible
+    // guarantee — no citation was ever appended.
+  } finally {
+    teardown();
+  }
+});
