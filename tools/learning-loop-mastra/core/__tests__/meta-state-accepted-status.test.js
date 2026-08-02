@@ -218,7 +218,7 @@ describe("accepted status — interaction with archive/resolve", () => {
     // pins the contract the handler reads.
     const { readFileSync } = await import("node:fs");
     const source = readFileSync(
-      "/home/datguy/codingProjects/learning-loop-template/tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js",
+      new URL("../../tools/handlers/meta-state-resolve-tool.js", import.meta.url).pathname,
       "utf8",
     );
     const match = source.match(/const TERMINAL_STATUSES = new Set\(\[([^\]]+)\]\)/);
