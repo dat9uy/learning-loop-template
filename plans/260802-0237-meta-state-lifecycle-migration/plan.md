@@ -131,11 +131,11 @@ with no live writers.
 | # | Phase | Status | Depends on |
 |---|-------|--------|------------|
 | 1 | [Phase 1: `accepted` status + terminal-set harmonization](./phase-01-accepted-status.md) | Completed | — |
-| 2 | [Phase 2: `citation` kind substrate](./phase-02-citation-substrate.md) | Pending | — |
-| 3 | [Phase 3: collapse `superseded` → `resolved` + citation](./phase-03-superseded-collapse.md) | Pending | 2 |
-| 4 | [Phase 4: migrate `origin` + `supersedes` to citations; retire `promoted_to_rule`](./phase-04-origin-supersedes-migration.md) | Pending | 2 |
-| 5 | [Phase 5: drop `reopens`/`cascade_from` writers](./phase-05-reopens-writer-drop.md) | Pending | 4 |
-| 6 | [Phase 6: docs, plumbing, registry-wide regression](./phase-06-docs-regression.md) | Pending | 1–5 |
+| 2 | [Phase 2: `citation` kind substrate](./phase-02-citation-substrate.md) | Completed | — |
+| 3 | [Phase 3: collapse `superseded` → `resolved` + citation](./phase-03-superseded-collapse.md) | Completed | 2 |
+| 4 | [Phase 4: migrate `origin` + `supersedes` to citations; retire `promoted_to_rule`](./phase-04-origin-supersedes-migration.md) | Completed | 2 |
+| 5 | [Phase 5: drop `reopens`/`cascade_from` writers](./phase-05-reopens-writer-drop.md) | Completed | 4 |
+| 6 | [Phase 6: docs, plumbing, registry-wide regression](./phase-06-docs-regression.md) | Completed | 1–5 |
 
 Phases 1 and 2 are independent and may progress in parallel (different files;
 Phase 1 touches status enums/handlers, Phase 2 touches the registry substrate).

@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "docs, plumbing, registry-wide regression"
-status: pending
+status: completed
 priority: P1
 effort: ""
 dependencies: [1, 2, 3, 4, 5]

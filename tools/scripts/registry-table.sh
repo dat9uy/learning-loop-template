@@ -55,7 +55,13 @@ set -- ${positional[@]+"${positional[@]}"}
 # `meta_state_list`'s output (Phase A step 7 / Red Team M2). Either file
 # may be absent — jq's slurp tolerates the empty array.
 if [[ $# -eq 0 ]]; then
-  set -- meta-state.jsonl change-log.jsonl
+  # Phase 2 of plan 260802-0237 added citations.jsonl — the citation log
+  # carries the canonical asserted-relationship edges (source:rule,
+  # target:finding, rationale:"origin"; etc.). The default file set now
+  # unions all three files; each is deduped by id with last-wins by
+  # max(version). Citation ids use the `citation-` prefix and never
+  # collide with `meta-` / `rule-` / `change-` / `loop-design-` ids.
+  set -- meta-state.jsonl change-log.jsonl citations.jsonl
 fi
 
 # Validate every input exists and is readable; bail with exit 2 + hint.
