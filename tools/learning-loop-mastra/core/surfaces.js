@@ -198,8 +198,8 @@ export function appendToAllSurfaces(root, subpath, line) {
  * Read JSONL from all surface coordination files, with dedup and sort.
  * Each line of each surface's file is parsed as JSON; malformed lines
  * are skipped. Entries are deduped across surfaces by ts + command_prefix
- * + rule_id + decision (matches the decision log's existing key and avoids
- * dropping distinct decisions that share the first three fields).
+ * + rule_id + decision + session_id (session-scoped decisions captured on
+ * multiple surfaces must not collapse into one another across sessions).
  * @param {string} root
  * @param {string} subpath
  * @param {object} options

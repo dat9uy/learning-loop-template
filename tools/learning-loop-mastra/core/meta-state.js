@@ -1426,6 +1426,11 @@ export function writeEntry(root, entry) {
  * append + cache invalidation). The unlocked pre-filter in callers remains
  * the fast path; this helper is the correctness boundary.
  *
+ * Finding-only helper: the append path is hardcoded to
+ * `appendRegistryEntryAtomic` (no change-log/citation dispatch), and the
+ * entry MUST carry a non-empty `recurrence_key` — a missing key would match
+ * every keyless recurring-false-positive and silently suppress the write.
+ *
  * @param {string} root
  * @param {object} entry — the prepared finding (must carry `recurrence_key`)
  * @returns {Promise<{ written: boolean, suppressed_by?: object }>}
@@ -1437,6 +1442,31 @@ export function writeEntry(root, entry) {
 export function writeEntryIfAbsent(root, entry) {
   return enqueue(root, () =>
     withRegistryLock(root, async () => {
+      // Universal pre-state-only identity wrapper at this mutation boundary:
+      // entry has an id, a recognized entry_kind, and a non-empty
+      // recurrence_key (the dedup-key guard above, enforced at the boundary).
+      const invariantResult = await assertinvariant(
+        () => Promise.resolve({ entry }),
+        {
+          accept: {
+            context: () => entry,
+            check: (e) =>
+              Boolean(e)
+              && typeof e.id === "string"
+              && typeof e.entry_kind === "string"
+              && typeof e.recurrence_key === "string"
+              && e.recurrence_key.length > 0,
+          },
+          returnOnFail: {
+            reason_code: "write_entry_if_absent_identity_precondition_failed",
+          },
+          root,
+        }
+      );
+      if (!invariantResult.ok) {
+        throw new Error("invalid_entry: write_entry_if_absent_identity_precondition_failed");
+      }
+
       // Schema-version-skew gate: mirror writeEntry's behavior.
       if (entry && entry.entry_kind && !isSchemaBranchSupported(root, entry.entry_kind)) {
         throw new SchemaVersionSkewError(root, entry.entry_kind, readLoopVersion(root));

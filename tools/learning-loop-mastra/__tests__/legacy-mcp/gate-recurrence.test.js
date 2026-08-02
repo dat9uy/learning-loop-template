@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
 import { findRecurrentGroups, checkAndEmit, hashRecurrenceKey } from "../../core/recurrence-tracker.js";
+import { writeEntryIfAbsent } from "../../core/meta-state.js";
 import { gateCheckRecurrenceTool } from "../../tools/handlers/gate-check-recurrence-tool.js";
 
 let root;
@@ -704,4 +705,50 @@ await test("SessionStart hook fails open when checkAndEmit throws", () => {
     result.stderr.includes("recurrence-check: failed") || result.stderr.includes("recurrence-check"),
     "stderr must carry the fail-open diagnostic",
   );
+});
+
+await test("checkAndEmit: entries_scanned counts decision-log lines (latency-tripwire metric)", async () => {
+  // The tripwire budget is about the decision-log scan, so the reported
+  // count must be the log size, not the registry size. 3 entries on one
+  // surface, no registry entries → entries_scanned === 3.
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  writeEntries([
+    makeEntry(now - 5 * 60000, "a", "rule-no-new-artifact-types", sid),
+    makeEntry(now - 3 * 60000, "a", "rule-no-new-artifact-types", sid),
+    makeEntry(now - 1 * 60000, "a", "rule-no-new-artifact-types", sid),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.entries_scanned, 3, "entries_scanned must be the decision-log line count");
+});
+
+await test("writeEntryIfAbsent: missing recurrence_key rejects at the invariant boundary", async () => {
+  // Without the guard, an undefined key would match every keyless
+  // recurring-false-positive and silently suppress the write.
+  await assert.rejects(
+    () => writeEntryIfAbsent(root, { id: "meta-test-no-key", entry_kind: "finding" }),
+    /write_entry_if_absent_identity_precondition_failed/,
+  );
+  // And nothing was appended.
+  assert.ok(!existsSync(join(root, "meta-state.jsonl")), "no line may be written on invariant failure");
+});
+
+await test("writeEntryIfAbsent: valid finding writes once, second call suppresses", async () => {
+  const finding = {
+    id: "meta-test-if-absent",
+    entry_kind: "finding",
+    category: "gate-logic-bug",
+    severity: "warning",
+    affected_system: "gate-logic",
+    subtype: "recurring-false-positive",
+    recurrence_key: "rule-x::abc123",
+    description: "direct helper coverage",
+    status: "open",
+    created_at: new Date().toISOString(),
+  };
+  const first = await writeEntryIfAbsent(root, finding);
+  assert.strictEqual(first.written, true);
+  const second = await writeEntryIfAbsent(root, { ...finding, id: "meta-test-if-absent-2" });
+  assert.strictEqual(second.written, false);
+  assert.strictEqual(second.suppressed_by.id, "meta-test-if-absent");
 });

@@ -61,6 +61,9 @@ export function hashRecurrenceKey(ruleId, prefix) {
  * @param {string} root
  * @param {object} options
  * @param {number} options.threshold
+ * @param {object} [options.out] — optional sink; receives
+ *   `{ log_entries_scanned }` (decision-log lines read, for the latency
+ *   tripwire — the scan cost scales with this, not with registry size)
  * @returns {Array}
  */
 export function findRecurrentGroups(root, options = {}) {
@@ -69,6 +72,7 @@ export function findRecurrentGroups(root, options = {}) {
   // Scan the full log — no `since` filter. `since` is a tool, not the
   // default; the trigger relies on dedup, not time-window pruning.
   const allEntries = readDecisionLog(root);
+  if (options.out) options.out.log_entries_scanned = allEntries.length;
   // (Clean-cutover rule: entries with no session_id group into a bucket that
   // never fires, so the historical backlog does not flood the first post-ship
   // SessionStart. Fallback-tier session_ids are bounded to a 24h span.)
@@ -126,14 +130,17 @@ function generateFindingId(ruleId) {
 
 /**
  * Check for recurrent groups and auto-file findings (deduped against existing).
- * Returns { checked_groups, findings_emitted, recurrent }.
+ * Returns { checked_groups, findings_emitted, recurrent, entries_scanned }
+ * where entries_scanned is the DECISION-LOG line count (the latency-tripwire
+ * metric; the full-log scan cost scales with it).
  *
  * @param {string} root
  * @param {object} options
- * @returns {{ checked_groups: number, findings_emitted: number, recurrent: Array }}
+ * @returns {{ checked_groups: number, findings_emitted: number, recurrent: Array, entries_scanned: number }}
  */
 export async function checkAndEmit(root, options = {}) {
-  const recurrent = findRecurrentGroups(root, options);
+  const scanOut = {};
+  const recurrent = findRecurrentGroups(root, { ...options, out: scanOut });
 
   // One registry read covers the dedup filter AND the evidence_code_ref
   // derivation. Suppression rule: any non-archived recurring-false-positive
@@ -188,7 +195,6 @@ export async function checkAndEmit(root, options = {}) {
     });
   }
   const fresh = Array.from(freshByKey.values());
-  const entriesScanned = allEntries.length; // surrogate for log size — registry size proxies dedup pressure
 
   // Log per-key dedup hits BEFORE the write loop so the stderr channel
   // carries the suppression even when the fast-path filter has already
@@ -211,8 +217,8 @@ export async function checkAndEmit(root, options = {}) {
       subtype: "recurring-false-positive",
       recurrence_key: recurrenceKey,
       description:
-        `Pattern recurred ${group.count} times in session ${group.session_id} under rule ${group.rule_id}; ` +
-        `${group.sessions_crossing_threshold ?? 1} session(s) crossed threshold. ` +
+        `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) ` +
+        `(latest: ${group.session_id}) under rule ${group.rule_id}. ` +
         `First seen: ${group.first_ts}. Last seen: ${group.last_ts}.`,
       evidence_code_ref: evidenceCodeRef,
       mechanism_check: true,
@@ -253,6 +259,6 @@ export async function checkAndEmit(root, options = {}) {
     checked_groups: recurrent.length,
     findings_emitted: dryRun ? 0 : written,
     recurrent,
-    entries_scanned: entriesScanned,
+    entries_scanned: scanOut.log_entries_scanned ?? 0,
   };
 }
