@@ -526,6 +526,9 @@ describe("setup-git-push.sh: contract", () => {
         if (!existsSync(dest)) symlinkSync(join(sysDir, name), dest);
       }
     }
+    // The shim must be the only `gh` visible — a system gh may already be
+    // symlinked above (CI images ship gh in /usr/bin or /usr/local/bin).
+    rmSync(join(binDir, "gh"), { force: true });
     symlinkSync(ghShim.shimPath, join(binDir, "gh"));
     try {
       const env = { ...cleanGitEnv({}), PATH: binDir, GIT_SSH_COMMAND: "/bin/false" };
