@@ -79,6 +79,21 @@ function isHttpsRemote(url) {
   return typeof url === "string" && /^https:\/\/github\.com\//.test(url);
 }
 
+// Per-scheme sub-classifiers. Each returns a {mode, pointer} pair. Split
+// out of classifyPushMode so the per-scheme branch counts stay low
+// (cyclomatic 3 each), keeping the gate's CRAP threshold comfortable.
+function classifyHttps({ helper, ghAuthOk }) {
+  if (!helper) return { mode: MODES.HTTPS_ANON, pointer: true };
+  if (ghAuthOk) return { mode: MODES.HTTPS_GH, pointer: false };
+  return { mode: MODES.HTTPS_UNVERIFIED, pointer: true };
+}
+
+function classifySsh({ probeOk, hostReachable }) {
+  if (probeOk) return { mode: MODES.SSH_OK, pointer: false };
+  if (hostReachable) return { mode: MODES.BROKEN, pointer: true };
+  return { mode: MODES.UNKNOWN_OFFLINE, pointer: false };
+}
+
 /**
  * Pure function: classify the clone's push mode.
  *
@@ -92,30 +107,9 @@ function isHttpsRemote(url) {
  * @returns {{mode: string, pointer: boolean}} pointer=true means the line should emit a setup-script pointer
  */
 function classifyPushMode({ url, helper, ghAuthOk, probeOk, hostReachable }) {
-  if (!url) {
-    return { mode: MODES.NO_ORIGIN, pointer: false };
-  }
-
-  if (isHttpsRemote(url)) {
-    if (!helper) {
-      return { mode: MODES.HTTPS_ANON, pointer: true };
-    }
-    if (ghAuthOk) {
-      return { mode: MODES.HTTPS_GH, pointer: false };
-    }
-    return { mode: MODES.HTTPS_UNVERIFIED, pointer: true };
-  }
-
-  if (isSshRemote(url)) {
-    if (probeOk) {
-      return { mode: MODES.SSH_OK, pointer: false };
-    }
-    if (hostReachable) {
-      return { mode: MODES.BROKEN, pointer: true };
-    }
-    return { mode: MODES.UNKNOWN_OFFLINE, pointer: false };
-  }
-
+  if (!url) return { mode: MODES.NO_ORIGIN, pointer: false };
+  if (isHttpsRemote(url)) return classifyHttps({ helper, ghAuthOk });
+  if (isSshRemote(url)) return classifySsh({ probeOk, hostReachable });
   return { mode: MODES.NON_GITHUB, pointer: false };
 }
 
@@ -194,16 +188,36 @@ function warnAndExit(msg) {
   process.exit(0);
 }
 
+function gatherInputs(url) {
+  // Probe SSH and HTTPS targets conditionally so the HTTPS fast path
+  // skips the network entirely and the SSH path is bounded to ≤3s + ≤2s.
+  const helper = readHelper();
+  if (isSshRemote(url)) {
+    return {
+      url, helper,
+      probeOk: probeRemoteRead(url),
+      hostReachable: hostReachable(),
+      ghAuthOk: false,
+    };
+  }
+  if (isHttpsRemote(url)) {
+    return {
+      url, helper,
+      probeOk: false,
+      hostReachable: false,
+      ghAuthOk: ghAuthOk(),
+    };
+  }
+  return { url, helper, probeOk: false, hostReachable: false, ghAuthOk: false };
+}
+
 function main() {
   const url = readOriginUrl();
-  const helper = readHelper();
-  const probe = url && isSshRemote(url) ? probeRemoteRead(url) : false;
-  const reachable = url && isSshRemote(url) ? hostReachable() : false;
-  const auth = url && isHttpsRemote(url) ? ghAuthOk() : false;
-
-  const { mode, pointer } = classifyPushMode({
-    url, helper, ghAuthOk: auth, probeOk: probe, hostReachable: reachable,
-  });
+  if (!url) {
+    emitLine(MODES.NO_ORIGIN, false);
+    return;
+  }
+  const { mode, pointer } = classifyPushMode(gatherInputs(url));
   emitLine(mode, pointer);
 }
 
