@@ -58,22 +58,28 @@ The initial implementation was reviewed by the `code-reviewer` subagent. Finding
    - `pnpm test` runs end-to-end and produces `coverage-final.json` (verified).
    - `pnpm fallow:gate` was attempted — see "Pre-existing toolchain issue" below.
 
-8. **Vitest 4 project-only `coverage` shape.** The coverage block is configured on the e2e project only (not at the root). This works in vitest 4.1.10; future vitest 4.x bumps could regress. Documented in `vitest.config.mjs` comments.
+8. **Coverage shape (revised post-review).** Coverage was originally configured on the `e2e` project only; that left unit-exercised source files uninstrumented, so `fallow:gate` flagged them as 0%-tested with inflated CRAP (M2). Fixed: coverage now lives at the **root** (`enabled: true`), so `pnpm test` instruments ALL source files and fallow sees full coverage. The fast pre-commit gate disables it via the `--coverage.enabled=false` CLI flag in `test:unit` — verified empirically that the CLI flag DOES override root config in vitest 4.1.10 (unlike the per-project `coverage.enabled: false` quirk). Pre-commit stays fast; pre-push now produces complete coverage.
 
-9. **Guard test regex parser.** The `E2E_FILES` array literal is parsed via a naive regex. If a future maintainer reformats the array (multi-line entries, dropped trailing comma), the parser produces an empty set silently. Acceptable trade-off for KISS; an explicit `expect(configured.length).toBeGreaterThan(0)` sanity check catches the worst case. A future improvement would be to migrate to JSON.
+9. **Guard test regex parser.** The `E2E_FILES` array literal is parsed via a naive regex. If a future maintainer reformats the array (multi-line entries, dropped trailing comma), the parser can produce a partial or empty set. The `expect(configured.length).toBeGreaterThan(0)` sanity check catches only the **empty-set** case, not a partial parse — the original report overstated this. A **partial** parse is still caught for any marker-matching file that lands outside the parsed set, because `missingFromConfigured = derived.filter(!configured)` fails loud on derived files absent from the (partially-parsed) configured list. The only uncaught case is a partial parse dropping files that don't match markers — but those wouldn't be in `derived` either, so no loud failure occurs (they're silently unclassified, same as any non-spawning file today). Acceptable under KISS; a future migration to JSON would remove the regex entirely.
 
-## Pre-existing toolchain issue (NOT caused by this plan)
+## Toolchain issue — RESOLVED (post-review)
 
-`pnpm fallow:gate` (and `pnpm fallow:brief`) currently fail with:
+`pnpm fallow:gate` (and `pnpm fallow:brief`) previously failed with:
 > `Error: coverage: failed to parse coverage data from coverage/coverage-final.json: invalid value: integer -50, expected u32`
 
-The `-50` values appear in 11 places across 7 source files instrumented by `@vitest/coverage-istanbul@4.1.10` (branch hit counters emit negative values for certain code shapes; fallow:3.10.0 strictly rejects u32 violations). Affected files include `with-mcp-server.js`, `core/meta-state.js`, `core/stale-view.js`, `mastra/handler-adapter.js`, etc.
+The `-50` values are negative **branch hit counters** (`b.N[1]`) emitted by `@vitest/coverage-istanbul@4.1.10` for 11 instrumented code sites across 7 source files (`with-mcp-server.js`, `core/meta-state.js`, `core/stale-view.js`, `mastra/handler-adapter.js`, `core/canonical-compare.js`, `mastra/schema-parity.js`, `tools/lib/gate-logging.js`). Fallow 3.10.0 strictly rejects u32 violations.
 
-This is a pre-existing istanbul/fallow toolchain interaction. It would manifest under the pre-split config too (same files are instrumented). The pre-push hook will fail because of this — operators encountering the failure should:
-- Acknowledge the false-positive coverage parse failure on this branch (file a follow-up finding for the istanbul/fallow toolchain)
-- Or temporarily bypass with `git push --no-verify` — CI runs fallow via the SARIF action (no `--coverage` flag), which is more tolerant
+**Root cause (corrected):** the original report framed this as "pre-existing on main." That framing was **unverified and wrong**. Empirical re-check after the review: the `-50` is **config-shape-dependent**, not a steady property of the toolchain —
+- Prior per-project coverage config (coverage block on the `e2e` project only): `pnpm test` → 11 negative hit counters → fallow fails (exit 2). This is the state the review found.
+- New root-coverage config (coverage at root, `enabled: true`): both `pnpm test` (full) AND `pnpm test:e2e` (e2e-only) → **0 negative hit counters**. `main` uses root coverage, so `main` does not produce `-50` — the failure was introduced by this branch's per-project coverage design, not pre-existing.
 
-This plan does not regress fallow:gate; the toolchain issue was present before. A separate investigation should fix it (likely updating fallow or sanitizing coverage-final.json before parsing).
+The istanbul negative-counter bug is latent in the provider (it surfaces under the per-project instrumentation shape), and `sanitize-coverage.mjs` only clamped `column`/`line` position fields, not hit counters — so the prior config had no defense.
+
+**Fix (two layers):**
+1. **Config (root cause):** coverage moved to the root (see #8) — eliminates the `-50` at the source. Verified: 0 negatives under root coverage on both full and e2e-only runs.
+2. **Defense-in-depth:** `sanitize-coverage.mjs` now also parses the JSON and clamps every negative `b`/`s`/`f` hit counter to 0. Verified it clamps when negatives are present (11 clamped on the prior coverage file). This protects partial-coverage paths (`pnpm test:e2e` alone, future istanbul regressions, per-project configs) so fallow never sees a negative counter regardless of config shape.
+
+`fallow:gate` now exits 1 (real findings) instead of 2 (parse failure). The pre-push hook is functional. (CI's SARIF fallow action was already tolerant — unaffected.)
 
 ## Live git commit verification
 
@@ -83,8 +89,8 @@ This plan does not regress fallow:gate; the toolchain issue was present before. 
 ## Live pre-push chain verification (component-by-component)
 
 - `.git/hooks/pre-push` content verified — reads `pnpm test && pnpm fallow:gate`.
-- `pnpm test` (first half) — verified end-to-end: 2835 tests pass, 2:14 wall, `coverage-final.json` produced (1.3MB istanbul).
-- `pnpm fallow:gate` (second half) — script chain reaches fallow but fallow fails on the pre-existing `-50` coverage parse issue (see above).
+- `pnpm test` (first half) — verified end-to-end: both projects run with root coverage on, `coverage-final.json` produced with full instrumentation (0 negative counters under root coverage).
+- `pnpm fallow:gate` (second half) — post-review fix: parses coverage successfully (no `-50` error), exits 1 on real findings (was exit 2 / parse failure before the config + sanitize fixes). The pre-push gate is functional.
 
 ## Test set parity
 
@@ -106,7 +112,7 @@ This plan does not regress fallow:gate; the toolchain issue was present before. 
 - [x] `pnpm test:unit` (warm) completes in **seconds-of-minutes, ~46% faster than baseline** — measured 82s vitest / 1:22 wall. (Plan said "seconds"; the import-phase floor makes this unrealistic. The relative improvement is the real win.)
 - [x] `vitest run` (no filter) test count ≥ pre-split (2835 ≥ 2832).
 - [x] All blast-radius parity tests pass under unit + unfiltered.
-- [x] e2e membership guard passes; deliberate misclassification fails it (verified twice: round 1 for marker-pattern drift, round 2 for SDK-direct spawn drift).
+- [x] e2e membership guard passes; deliberate misclassification fails it (verified three rounds: marker-pattern drift, SDK-direct spawn drift, and CLI-spawn drift post-review).
 - [x] Live `git commit` fires the unit gate; full suite passes.
 - [x] `.git/hooks/pre-commit` replaced (verified by file read).
 - [x] `git push --no-verify` documented; CI backstop confirmed in `.github/workflows/test.yml`.
