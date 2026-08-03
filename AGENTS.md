@@ -141,6 +141,36 @@ Without this config, `merge=union` is a silent no-op and parallel change-log PRs
 
 ---
 
+## 4b. Git Push Setup (one-time per-clone for autonomous shells)
+
+Autonomous shells (subagents, headless runtimes) cannot inherit the operator's interactive `SSH_AUTH_SOCK`, so a passphrase-protected SSH key blocks every push with `Permission denied (publickey)`. The same shell is the one most likely to bypass the pre-push gate under flake pressure, destroying the audit trail — auth fragility and audit-trail preservation are coupled.
+
+**One-time per-clone setup script:** `bash tools/scripts/setup-git-push.sh`. Idempotent, fail-closed, full rollback on every failure path:
+
+- SSH remote + probe-ok → no-op (a working SSH config is never rewritten).
+- SSH remote + probe-fail + `gh auth status` ok → converts `origin` from `git@github.com:…` to `https://github.com/…`, sets `credential.https://github.com.helper` to an **absolute** `!$GH_BIN auth git-credential` value, verifies write capability via `gh api repos/<owner>/<repo>` (the body must contain `"push":true` — `git ls-remote` proves read access only, so it never gates the success exit).
+- SSH remote + probe-fail + no gh session → exit 1 + remediation hint, zero config drift.
+- HTTPS remote + helper + gh ok → no-op.
+- HTTPS remote + no helper (the read-only-trap: public repos probe OK anonymously, push 403s) → configures the helper only, URL is already https.
+- Non-GitHub remote → fail closed exit 1, even with `--force`.
+
+The mutation region is wrapped in `flock` + an `ERR` trap that restores BOTH the prior remote URL and the prior helper value, so a `.git/config.lock` mid-region failure (red-team F4 partial-mutation window) cannot leave a half-configured clone. The surface is hardened with a shell test under `tools/scripts/__tests__/setup-git-push.test.js` (cases a–j: probe-ok SSH no-op, broken-SSH convert, no-gh-session exit 1, non-GitHub fail-closed, idempotency, --force on working HTTPS, unknown-arg exit 2, write-verify rollback, HTTPS read-only-trap fix-up, helper-write-failure rollback).
+
+**SessionStart push-preflight hook** (`tools/learning-loop-mastra/hooks/universal/session-start-git-push-preflight.cjs`) reports the clone's push mode in one line at session start, scheme-first, with honest verification labels:
+
+- `https-gh` — HTTPS + helper + `gh auth status` ok (the only fully-write-assured mode).
+- `https-unverified` — HTTPS + helper but `gh auth status` fails (pointer to setup-git-push.sh).
+- `https-anon` — HTTPS without helper (pointer).
+- `ssh-ok` — SSH + probe succeeds.
+- `broken` — SSH + probe fails AND the host is reachable (pointer).
+- `unknown/offline` — probe fails AND reachability is ambiguous (no pointer — never prescribe a mutating script on an ambiguous signal).
+
+Read-only, fail-open (any internal error → warning line, exit 0). Common case < 1s, worst case ≤ ~5s (3s probe + 2s reachability). Wired for `.claude` only; `.factory` and `.mastracode` deferred to follow-up (the `.factory` adapter is hardcoded to the inject-* hooks, so a non-trivial extension is required before the preflight can dispatch through it).
+
+**Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to bypass the pre-push gate under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk. A promoted gate rule detecting the bypass itself is the mitigation (proposed via `meta_state_promote_rule` for operator decision).
+
+---
+
 ## 5. Where This Project Is Heading
 
 The long-term direction lives in `docs/trajectory.md` — read it before reasoning about loop design. The engine invariant that underpins the trajectory is in `docs/loop-engine.md`.
