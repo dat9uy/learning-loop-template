@@ -25,31 +25,22 @@ import { test, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { findLineageMatches } from "../core/stable-artifacts-lineage.js";
+import { findLineageMatches, isScannableArtifactPath } from "../core/stable-artifacts-lineage.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const SCAN_ROOT = join(REPO_ROOT, "tools", "learning-loop-mastra");
 
-// The detection patterns + durable-id masking live in core/stable-artifacts-
-// lineage.js so this file-scan test and the commit-msg hook share one matcher
-// and cannot drift apart. See that module for the pattern rationale.
+// The detection patterns, durable-id masking, and scan-scope predicate live in
+// core/stable-artifacts-lineage.js so this file-scan test, the commit-msg
+// hook, and the write-boundary gate share one matcher and one scope.
 
-// File extensions included in the scan.
-const EXTENSIONS = new Set([".js", ".cjs", ".mjs", ".yaml"]);
-
-// Path-level exclusions: __tests__/** (legitimate plan-path test fixtures),
-// *.test.js (test code uses plan paths as INPUT data — see the rule's
-// legit-test-fixtures-excluded item), *.md (docs), *.json (allowlist sidecar
-// itself and the test file).
+// Path-level exclusions, applied to a path relative to SCAN_ROOT. Delegates to
+// the shared core predicate so the write-boundary gate cannot drift from this
+// test's scope. (Kept as a local seam because the exclusion assertions below
+// pin the behavior directly.)
 function isExcludedPath(relPath) {
-  // Match __tests__ as the directory itself, a nested segment, or a leaf.
-  if (relPath === "__tests__") return true;
-  if (relPath.startsWith(`__tests__${sep}`)) return true;
-  if (relPath.includes(`${sep}__tests__${sep}`)) return true;
-  if (relPath.endsWith(".test.js")) return true;
-  if (relPath.endsWith(".md")) return true;
-  if (relPath.endsWith(".json")) return true;
-  return false;
+  const relFromRepoRoot = `tools/learning-loop-mastra/${relPath.split(sep).join("/")}`;
+  return !isScannableArtifactPath(relFromRepoRoot);
 }
 
 // Match key: file (relative to repo root, POSIX) + trimmed line content.
@@ -83,8 +74,6 @@ function scanCurrentMatches() {
     const relFromRoot = relative(REPO_ROOT, file);
     const relFromScanRoot = relative(SCAN_ROOT, file);
     if (isExcludedPath(relFromScanRoot)) continue;
-    const ext = file.slice(file.lastIndexOf("."));
-    if (!EXTENSIONS.has(ext)) continue;
     const content = readFileSync(file, "utf8");
     for (const h of findLineageMatches(content)) {
       matches.push(matchKey(relFromRoot, h.content));

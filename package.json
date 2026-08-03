@@ -8,6 +8,7 @@
     "#lib/*": "./tools/lib/*"
   },
   "scripts": {
+    "prepare": "simple-git-hooks",
     "bootstrap:api": "cd product/api && uv sync && bash scripts/install-vnstock.sh",
     "dev:api": "cd product/api && uv run uvicorn src.main:app --reload --port 8000",
     "dev:web": "cd product/web && pnpm dev",

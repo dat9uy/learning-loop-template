@@ -13,7 +13,7 @@ import {
   extractFilePath,
   formatHookDecision,
 } from "./lib/protocol-adapter.js";
-import { evaluateWriteGate } from "../../core/evaluate-write-gate.js";
+import { evaluateWriteGate, extractAuthoredContent } from "../../core/evaluate-write-gate.js";
 import { findProjectRoot } from "../../core/gate-logic.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -29,7 +29,8 @@ function main() {
   if (!filePath) process.exit(0);
 
   const root = findProjectRoot();
-  const decision = evaluateWriteGate({ filePath, root });
+  const authoredContent = extractAuthoredContent(input.tool_input);
+  const decision = evaluateWriteGate({ filePath, root, authoredContent });
 
   if (decision.decision !== "ok") {
     // Exit 0 + `permissionDecision: "deny"` (in the hookSpecificOutput envelope)
