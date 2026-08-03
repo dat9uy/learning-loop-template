@@ -1,6 +1,6 @@
 // Unit tests for the SessionStart git-push preflight hook.
 //
-// Locks the classification contract (plan 260803-1749):
+// Locks the classification contract:
 //   - pure classifyPushMode: scheme-first, then health
 //   - integration: spawn the hook against a temp repo + fake-gh PATH
 //   - fail-open: any internal error -> warning line, exit 0
@@ -320,12 +320,10 @@ describe("session-start-git-push-preflight: integration (spawned hook)", () => {
 
   test("(vi) SSH + probe fails + not reachable -> unknown/offline, NO pointer", () => {
     const work = makeWorkRepo({ sshRemote: true });
-    // exit 4 mirrors real-world `gh api` network-error; the hook classifies
-    // any non-zero, non-timeout exit as "the host answered" — only signal/
-    // timeout exits are "unreachable". To force "unreachable" without
-    // introducing a network error path in the hook, we set the fake shim
-    // to exit 124 (timeout convention). The hook treats 124 as unreachable.
-    const gh = makeFakeGhDir({ api: 124 });
+    // exit 1 mirrors real-world `gh api` network-error (DNS/connect fail
+    // exits 1 fast, not 124): the hook must count any non-zero exit as
+    // unreachable, or an offline machine gets prescribed a mutating script.
+    const gh = makeFakeGhDir({ api: 1 });
     try {
       const proc = runHook({
         cwd: work,

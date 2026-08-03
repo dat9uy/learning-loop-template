@@ -167,7 +167,7 @@ The mutation region is wrapped in `flock` + an `ERR` trap that restores BOTH the
 
 Read-only, fail-open (any internal error → warning line, exit 0). Common case < 1s, worst case ≤ ~5s (3s probe + 2s reachability). Wired for `.claude` only; `.factory` and `.mastracode` deferred to follow-up (the `.factory` adapter is hardcoded to the inject-* hooks, so a non-trivial extension is required before the preflight can dispatch through it).
 
-**Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to bypass the pre-push gate under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk. A promoted gate rule detecting the bypass itself is the mitigation; see `meta_state_promote_rule` from the post-implementation step in `plans/260803-1749-deterministic-git-push-for-autonomous-agents/`.
+**Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to bypass the pre-push gate under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk. A promoted gate rule detecting the bypass itself is the mitigation (proposed via `meta_state_promote_rule` for operator decision).
 
 ---
 

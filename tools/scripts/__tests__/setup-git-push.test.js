@@ -1,6 +1,6 @@
 // Unit tests for tools/scripts/setup-git-push.sh.
 //
-// Locks the deterministic-git-push contract (plan 260803-1749):
+// Locks the deterministic-git-push contract:
 //   (a) probe-ok SSH path is a no-op (working SSH never rewritten)
 //   (b) broken SSH + gh session (auth status 0, permissions.push=true)
 //       converts the remote to HTTPS with an absolute-path gh helper
@@ -13,6 +13,8 @@
 //       remote URL and prior helper value both restored
 //   (i) HTTPS + no helper + gh session -> helper configured, URL untouched
 //   (j) helper write failure mid-region -> rollback restores URL + helper
+//   (k) rollback restores a multi-valued prior helper chain
+//   (l) missing flock -> exit 1 + hint, NO mutation (fail-closed)
 //
 // Network discipline: tests use a local bare repo as `origin` and a second
 // local bare repo as the post-swap HTTPS target. The post-swap write
@@ -42,6 +44,8 @@ import {
   writeFileSync,
   readFileSync,
   chmodSync,
+  readdirSync,
+  symlinkSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 
@@ -212,7 +216,6 @@ describe("setup-git-push.sh: contract", () => {
 
   test("(b) broken SSH + gh session: HTTPS + absolute helper + write-verified", () => {
     const originPath = makeBareRepo();
-    const httpsBase = makeBareRepo();
     const work = makeTempRepo({ originPath, sshRemote: true, owner: "acme", repo: "widget" });
     const ghShim = makeGhShim({
       auth: "Logged in to github.com as test (oauth_token)",
@@ -223,7 +226,6 @@ describe("setup-git-push.sh: contract", () => {
       const envBrokenSsh = {
         ...withPath({}, ghShim.path),
         GIT_SSH_COMMAND: "/bin/false",
-        SETUP_GIT_PUSH_HTTPS_BASE: httpsBase,
       };
 
       const proc = runScript([], { cwd: work, env: envBrokenSsh });
@@ -251,7 +253,6 @@ describe("setup-git-push.sh: contract", () => {
     } finally {
       rmSync(work, { recursive: true, force: true });
       rmSync(originPath, { recursive: true, force: true });
-      rmSync(httpsBase, { recursive: true, force: true });
       rmSync(ghShim.dir, { recursive: true, force: true });
     }
   });
@@ -311,7 +312,6 @@ describe("setup-git-push.sh: contract", () => {
 
   test("(e) idempotency: run twice after (b) -> second run no-op exit 0", () => {
     const originPath = makeBareRepo();
-    const httpsBase = makeBareRepo();
     const work = makeTempRepo({ originPath, sshRemote: true });
     const ghShim = makeGhShim({
       auth: "logged in",
@@ -321,7 +321,6 @@ describe("setup-git-push.sh: contract", () => {
       const env = {
         ...withPath({}, ghShim.path),
         GIT_SSH_COMMAND: "/bin/false",
-        SETUP_GIT_PUSH_HTTPS_BASE: httpsBase,
       };
       const proc1 = runScript([], { cwd: work, env });
       assert.equal(proc1.status, 0);
@@ -337,7 +336,6 @@ describe("setup-git-push.sh: contract", () => {
     } finally {
       rmSync(work, { recursive: true, force: true });
       rmSync(originPath, { recursive: true, force: true });
-      rmSync(httpsBase, { recursive: true, force: true });
       rmSync(ghShim.dir, { recursive: true, force: true });
     }
   });
@@ -469,6 +467,79 @@ describe("setup-git-push.sh: contract", () => {
       rmSync(work, { recursive: true, force: true });
       rmSync(originPath, { recursive: true, force: true });
       rmSync(ghShim.dir, { recursive: true, force: true });
+    }
+  });
+
+  test("(k) rollback restores a MULTI-valued prior helper chain", () => {
+    const originPath = makeBareRepo();
+    const work = makeTempRepo({ originPath, sshRemote: true });
+    // Two prior helper entries: rollback must restore BOTH, not collapse
+    // the chain to the last value.
+    const prior1 = "!helper-one auth git-credential";
+    const prior2 = "cache --timeout=60";
+    runGit(["config", "--local", "--add", "credential.https://github.com.helper", prior1], work);
+    runGit(["config", "--local", "--add", "credential.https://github.com.helper", prior2], work);
+    const priorUrl = readRemote(work);
+
+    const ghShim = makeGhShim({
+      auth: "logged in",
+      api: JSON.stringify({ permissions: { push: false } }),
+    });
+    try {
+      const env = {
+        ...withPath({}, ghShim.path),
+        GIT_SSH_COMMAND: "/bin/false",
+      };
+      const proc = runScript([], { cwd: work, env });
+      assert.equal(proc.status, 1, `write-verify fail must exit 1, got ${proc.status}\nstderr: ${proc.stderr}`);
+      assert.equal(readRemote(work), priorUrl, `URL must be restored`);
+      const all = runGit(["config", "--local", "--get-all", "credential.https://github.com.helper"], work);
+      assert.deepEqual(all.stdout.trim().split("\n"), [prior1, prior2], `full helper chain must be restored in order`);
+    } finally {
+      rmSync(work, { recursive: true, force: true });
+      rmSync(originPath, { recursive: true, force: true });
+      rmSync(ghShim.dir, { recursive: true, force: true });
+    }
+  });
+
+  test("(l) missing flock: exit 1 + hint, NO mutation (fail-closed)", () => {
+    // A minimal shell (stock macOS, slim container) has no flock. The
+    // script must refuse to run unguarded rather than proceed — and must
+    // never misread the missing binary as "another run in progress" (a
+    // silent exit-0 no-op on a still-broken clone).
+    const originPath = makeBareRepo();
+    const work = makeTempRepo({ originPath, sshRemote: true });
+    const priorUrl = readRemote(work);
+    const ghShim = makeGhShim({
+      auth: "logged in",
+      api: JSON.stringify({ permissions: { push: true } }),
+    });
+    // Build a PATH dir with every system binary EXCEPT flock, plus the gh
+    // shim, so `command -v flock` fails inside the script.
+    const binDir = join(mkdtempSync(join(tmpdir(), "setup-git-push-noflock-")), "bin");
+    mkdirSync(binDir, { recursive: true });
+    for (const sysDir of ["/usr/bin", "/bin", "/usr/local/bin"]) {
+      if (!existsSync(sysDir)) continue; // slim CI images may lack /usr/local/bin
+      for (const name of readdirSync(sysDir)) {
+        if (name === "flock") continue;
+        const dest = join(binDir, name);
+        if (!existsSync(dest)) symlinkSync(join(sysDir, name), dest);
+      }
+    }
+    symlinkSync(ghShim.shimPath, join(binDir, "gh"));
+    try {
+      const env = { ...cleanGitEnv({}), PATH: binDir, GIT_SSH_COMMAND: "/bin/false" };
+      const proc = runScript([], { cwd: work, env });
+      assert.equal(proc.status, 1, `missing flock must exit 1, got ${proc.status}\nstderr: ${proc.stderr}`);
+      assert.match(proc.stderr, /flock/, `stderr must name the missing tool`);
+      assert.equal(readRemote(work), priorUrl, `URL must be untouched`);
+      const helper = runGit(["config", "--local", "--get", "credential.https://github.com.helper"], work);
+      assert.notEqual(helper.status, 0, `helper must not be written`);
+    } finally {
+      rmSync(work, { recursive: true, force: true });
+      rmSync(originPath, { recursive: true, force: true });
+      rmSync(ghShim.dir, { recursive: true, force: true });
+      rmSync(join(binDir, ".."), { recursive: true, force: true });
     }
   });
 });

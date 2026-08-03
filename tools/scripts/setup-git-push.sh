@@ -8,10 +8,9 @@
 # Why a setup script at all: the per-clone git config (URL + helper) is not
 # committable, and the autonomous-shell session cannot inherit the operator's
 # interactive `SSH_AUTH_SOCK`. Without intervention every push from such a
-# shell fails with `Permission denied (publickey)`. The same shell is
-# exactly the one that previously bypassed the pre-push gate under flake
-# pressure (see meta-260803T1720Z-agent-runtime-git-push-is-fragile) — this
-# script restores the legitimate push path so the bypass is no longer
+# shell fails with `Permission denied (publickey)`. That pressure once led
+# an autonomous shell to bypass the pre-push gate under a transient flake —
+# this script restores the legitimate push path so the bypass is no longer
 # incentivized.
 #
 # Usage:
@@ -36,11 +35,6 @@
 # verification is `gh api repos/<owner>/<repo> --jq .permissions.push` and
 # gates the success exit. No step in this script reports a read-probe-ok
 # state as "push-ready".
-#
-# Test hook: SETUP_GIT_PUSH_HTTPS_BASE (when set) replaces the
-# https://github.com/<owner>/<repo>.git base used in the post-swap
-# conversion. Tests inject a local file:// bare repo so the verify step
-# never touches the real network.
 #
 # Mirrors the contract shape of tools/scripts/setup-git-merge-drivers.sh:
 #   - set -euo pipefail
@@ -176,11 +170,6 @@ gh_write_ok() {
   "$gh_bin" api "repos/${own}/${rep}" 2>/dev/null | grep -q '"push":true'
 }
 
-# (SETUP_GIT_PUSH_HTTPS_BASE is no longer consulted by the script; it is
-# preserved in the comment for tests that want to assert against a specific
-# base, but the convert path now uses the real github.com URL because
-# `gh api` is what actually verifies permissions — not the local base.)
-
 # ----------------------------------------------------- read-probe health
 # For an SSH remote: probe first. A working probe means the agent socket
 # is reachable — leave the remote alone.
@@ -253,6 +242,16 @@ fi
 LOCK="$GIT_DIR/setup-git-push.lock"
 LOCK_FD=9
 
+# flock is the mutual-exclusion primitive for the mutation region; without
+# it the script cannot guarantee the rollback contract, so refuse to run
+# rather than proceed unguarded (a missing flock must never be read as
+# "another run in progress" — that would silently no-op a broken clone).
+if ! command -v flock >/dev/null 2>&1; then
+  echo "setup-git-push.sh: flock is required but not installed" >&2
+  echo "  hint: install util-linux (or run the conversion steps from AGENTS.md manually)" >&2
+  exit 1
+fi
+
 # `flock -w N` waits up to N seconds. We wait briefly so a concurrent run
 # can finish; if the lock is held past the wait we exit 0 because the other
 # run is doing the work.
@@ -275,9 +274,10 @@ fi
 
 # Snapshot prior values for rollback. Both are read inside the lock so a
 # concurrent run cannot have shifted them between the snapshot and the
-# mutation region.
+# mutation region. The helper can be multi-valued; snapshot ALL values so
+# rollback restores the full chain instead of collapsing it to one entry.
 PRIOR_URL="$CURRENT_URL"
-PRIOR_HELPER="$CURRENT_HELPER"
+mapfile -t PRIOR_HELPERS < <(git config --local --get-all credential.https://github.com.helper || true)
 
 # ERR trap: any failure inside the mutation region restores BOTH the prior
 # URL and the prior helper value, then exits 1. A failed convert must leave
@@ -291,10 +291,15 @@ rollback() {
   else
     git config --local --unset remote.origin.url
   fi
-  if [[ -n "$PRIOR_HELPER" ]]; then
-    git config --local --replace-all credential.https://github.com.helper "$PRIOR_HELPER"
-  else
-    git config --local --unset credential.https://github.com.helper
+  # Clear whatever the mutation region wrote, then replay the full prior
+  # chain (--unset-all also handles the multi-valued case that plain
+  # --unset refuses with exit 5).
+  git config --local --unset-all credential.https://github.com.helper
+  if ((${#PRIOR_HELPERS[@]} > 0)); then
+    local hv
+    for hv in "${PRIOR_HELPERS[@]}"; do
+      git config --local --add credential.https://github.com.helper "$hv"
+    done
   fi
   echo "setup-git-push.sh: rollback complete (rc=$rc)" >&2
   exit 1

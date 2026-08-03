@@ -153,15 +153,18 @@ function probeRemoteRead(url) {
 }
 
 // Reachability check: `gh api /` against the real host. Returns true iff
-// the API responded (any non-signal, non-timeout exit). Used to disambiguate
-// "auth broken" from "machine offline". Capped at REACHABILITY_TIMEOUT_MS.
+// the API actually answered (exit 0). A network-down failure exits 1
+// immediately, and a spawn timeout surfaces as status null/signal — both
+// must count as unreachable, otherwise an offline machine gets mislabeled
+// "broken" and prescribed a mutating script on an ambiguous signal.
+// Capped at REACHABILITY_TIMEOUT_MS.
 function hostReachable() {
   const r = spawnSync("gh", ["api", "/"], {
     encoding: "utf8",
     timeout: REACHABILITY_TIMEOUT_MS,
     stdio: ["ignore", "ignore", "ignore"],
   });
-  return r.status !== null && r.status !== 124;
+  return r.status === 0;
 }
 
 // `gh auth status -h github.com` exit code. The body is unused; the
