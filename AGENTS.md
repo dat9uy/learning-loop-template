@@ -115,11 +115,13 @@ meta_state_list({ id: "<id>", include_all_versions: true, include_archived: true
 
 | Gate | Use case |
 |---|---|
-| `pnpm test` | Iterative test feedback during development |
+| `pnpm test:unit` | Fast per-commit feedback (vitest unit project only; coverage off; ~1:30 wall) |
+| `pnpm test:e2e` | MCP-server / CLI-subprocess tests in isolation (with coverage) |
+| `pnpm test` | Full gate — both projects + coverage (use for pre-push, CI, fix-loop) |
 | `pnpm fallow:gate` | Stable coverage+complexity audit AFTER refresh_file_index |
 | `pnpm gate:self-verify` | Pre-push local CI-equivalent (test + coverage + fallow) |
 
-The pre-commit hook (`simple-git-hooks.pre-commit`) still runs `pnpm test && pnpm fallow:gate` directly because it operates on already-committed state where fingerprints are stable. The `gate:self-verify` wrapper is the fix-loop companion; it does not replace the pre-commit hook.
+The pre-commit hook (`simple-git-hooks.pre-commit`) runs `pnpm test:unit` for fast per-commit feedback. The pre-push hook (`simple-git-hooks.pre-push`) runs `pnpm test && pnpm fallow:gate` for the full gate. CI (`test.yml`) runs the full gate independently on PRs and `push: main` — it is the authoritative gate; the local pre-push is a defense-in-depth backstop. The `gate:self-verify` wrapper remains the fix-loop companion. See `plans/260803-1314-hybrid-test-tiering-and-pre-push-gate/` for the rationale (cold-vs-warm × coverage-on/off measurement matrix).
 
 ---
 

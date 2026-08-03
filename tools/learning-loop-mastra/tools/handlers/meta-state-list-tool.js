@@ -72,7 +72,7 @@ export const metaStateListTool = {
     entry_kinds: z.preprocess(stripEnvelope, z.array(z.enum(["finding", "change-log", "rule", "loop-design"]))).optional()
       .describe("Filter by multiple entry kinds (takes precedence over entry_kind if both set)"),
     id: z.preprocess(stripEnvelope, z.union([z.string(), z.array(z.string())])).optional()
-      .describe("Filter by id (string or string[]). Missing ids are silently skipped. Pairs with `ref_by`/`ref_field` for the narrow query path."),
+      .describe("Filter by id (string or string[]). Exact-match only; ids are full slugs, not prefixes. Missing ids are silently skipped, but a queried id that is a unique non-empty prefix of exactly one registry id surfaces an `id_prefix_hints` entry naming the full id. Pairs with `ref_by`/`ref_field` for the narrow query path."),
     ref_by: z.string().optional()
       .describe("Filter entries that reference this id in `ref_field`. Required with `ref_field`."),
     ref_field: z.enum(REF_FIELDS).optional()
@@ -187,6 +187,52 @@ export const metaStateListTool = {
       filters_applied: activeFilters,
     });
 
+    // Did-you-mean: when an id query misses, surface a unique proper-prefix
+    // match so the agent retries once with the full slug instead of guessing
+    // (or re-querying with include_archived, etc.). Exact-match semantics are
+    // unchanged — this only adds an advisory field to the empty/miss envelope.
+    //
+    // Fires per queried id that does NOT exact-match any registry id, when it
+    // is a non-empty proper prefix of EXACTLY ONE registry id. Ambiguous
+    // (2+) and zero-prefix matches stay silent so the hint can never mislead.
+    // `suggested_status` is included so the agent can fold include_archived /
+    // status into the same retry when the match is terminal — saves a second
+    // round-trip. Built from the full collapsed registry (one row per id,
+    // max_by(version)) so include_all_versions does not double-count an id
+    // and suppress the hint.
+    let idPrefixHints;
+    if (id !== undefined) {
+      const queriedIds = Array.isArray(id) ? id : [id];
+      const canonical = new Map();
+      for (const e of entries) {
+        if (typeof e.id !== "string") continue;
+        const prev = canonical.get(e.id);
+        if (!prev || (e.version ?? 0) > (prev.version ?? 0)) canonical.set(e.id, e);
+      }
+      for (const q of queriedIds) {
+        if (typeof q !== "string" || q.length === 0 || canonical.has(q)) continue;
+        let matchId = null;
+        let matchStatus = null;
+        let matchCount = 0;
+        for (const [eid, e] of canonical) {
+          if (eid.length > q.length && eid.startsWith(q)) {
+            matchCount++;
+            if (matchCount > 1) break;
+            matchId = eid;
+            matchStatus = e.status ?? null;
+          }
+        }
+        if (matchCount === 1) {
+          (idPrefixHints ??= []).push({
+            queried: q,
+            suggested_id: matchId,
+            suggested_status: matchStatus,
+            note: "id is exact-match only; retry with the full id (add include_archived:true if suggested_status is terminal)",
+          });
+        }
+      }
+    }
+
     const output = {
       entries: compact ? result.map(toCompact) : result,
       count: result.length,
@@ -199,6 +245,7 @@ export const metaStateListTool = {
       ref_by_filter: ref_by || null,
       ref_field_filter: ref_field || null,
       compact: compact ?? true,
+      ...(idPrefixHints ? { id_prefix_hints: idPrefixHints } : {}),
     };
 
     return {

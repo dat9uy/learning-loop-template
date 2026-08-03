@@ -42,6 +42,47 @@ function maskDurableIds(line) {
   return line.replace(DURABLE_ID_TOKEN, (m) => m.split("-")[0] + "-<id>");
 }
 
+// ── Scan scope (shared by the file-scan test and the write-boundary gate) ────
+// The scan covers stable code artifacts under the loop's own tooling tree.
+// Three consumers share this scope so they cannot drift apart:
+//   - __tests__/stable-artifacts-no-plan-ids.test.js (file-scan total ban)
+//   - hooks/commit-msg-stable-artifacts.js (commit-message gate)
+//   - core/evaluate-write-gate.js (write-boundary authored-content scan)
+// Scan root and extensions are module-private: the shared public seam is
+// isScannableArtifactPath, so consumers cannot pick a divergent subset.
+const SCAN_ROOT_REL = "tools/learning-loop-mastra";
+const SCAN_EXTENSIONS = new Set([".js", ".cjs", ".mjs", ".yaml"]);
+
+/**
+ * Path-level exclusions, applied to a path relative to SCAN_ROOT_REL:
+ * __tests__/** (legitimate plan-path test fixtures), *.test.js (test code uses
+ * plan paths as INPUT data), *.md (docs), *.json (allowlist sidecar).
+ */
+function isExcludedScanPath(relFromScanRoot) {
+  // Match __tests__ as the directory itself, a nested segment, or a leaf.
+  if (relFromScanRoot === "__tests__") return true;
+  if (relFromScanRoot.startsWith("__tests__/")) return true;
+  if (relFromScanRoot.includes("/__tests__/")) return true;
+  if (relFromScanRoot.endsWith(".test.js")) return true;
+  if (relFromScanRoot.endsWith(".md")) return true;
+  if (relFromScanRoot.endsWith(".json")) return true;
+  return false;
+}
+
+/**
+ * Is this repo-root-relative path inside the lineage scan scope? Accepts
+ * POSIX-style separators (callers normalize before invoking).
+ */
+export function isScannableArtifactPath(relFromRepoRoot) {
+  const rel = relFromRepoRoot.replace(/\\/g, "/").replace(/^\.\//, "");
+  const prefix = SCAN_ROOT_REL + "/";
+  if (!rel.startsWith(prefix)) return false;
+  const relFromScanRoot = rel.slice(prefix.length);
+  if (isExcludedScanPath(relFromScanRoot)) return false;
+  const ext = relFromScanRoot.slice(relFromScanRoot.lastIndexOf("."));
+  return SCAN_EXTENSIONS.has(ext);
+}
+
 /**
  * Find lineage matches in a block of text (a file's contents or a commit
  * message). Returns one entry per offending line with the 1-based line number

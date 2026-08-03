@@ -90,6 +90,7 @@ async function loadWriteToolSchemas() {
     out.set(handler.name, {
       properties: new Set(Object.keys(jsonSchema.properties || {})),
       required: new Set(jsonSchema.required || []),
+      propSchema: jsonSchema.properties || {},
     });
   }
   return out;
@@ -128,6 +129,126 @@ test("every sketch key is a real schema property and every schema-required key i
         sketchRequired.has(key),
         `${name}: schema-required key "${key}" is missing from the sketch (or marked optional); add it as a non-? key`,
       );
+    }
+  }
+});
+
+// Parse a sketch key into its annotation (the text after the key name),
+// so the guard below can verify enum/object annotations against the schema.
+// `annotation` is null when the key is bare (e.g. `id`). For
+// `change_dimension:semantic|mechanical|surface` → "semantic|mechanical|surface";
+// for `change_diff:{added,removed,changed}` → "{added,removed,changed}";
+// for `stage:prepare|commit?` the trailing `?` is consumed by `optional` and
+// stripped before the annotation is captured.
+function parseSketchAnnotations(sketch) {
+  const inner = sketch.replace(/^\{|\}$/g, "");
+  const parts = [];
+  let depth = 0;
+  let buf = "";
+  for (const ch of inner) {
+    if (ch === "[" || ch === "{") {
+      depth++;
+      buf += ch;
+    } else if (ch === "]" || ch === "}") {
+      depth--;
+      buf += ch;
+    } else if (ch === "," && depth === 0) {
+      parts.push(buf);
+      buf = "";
+    } else {
+      buf += ch;
+    }
+  }
+  if (buf.trim()) parts.push(buf);
+  return parts.map((part) => {
+    part = part.trim();
+    let optional = false;
+    if (part.endsWith("?")) {
+      optional = true;
+      part = part.slice(0, -1).trim();
+    }
+    const name = part.split(":")[0].split("[")[0].split("{")[0].trim();
+    let annotation = null;
+    if (part.length > name.length) {
+      annotation = part.slice(name.length);
+      if (annotation.startsWith(":")) annotation = annotation.slice(1);
+    }
+    return { name, optional, annotation };
+  });
+}
+
+// An enum annotation is a pipe-delimited list of bare tokens with no
+// brackets/braces/commas (e.g. `semantic|mechanical|surface`). An object
+// annotation is a `{a,b,c}` literal. Anything else (e.g. `[{op,...}]`) is a
+// free-form shape hint this guard does not validate.
+const ENUM_ANNOTATION = /^[a-z0-9|-]+$/;
+const OBJECT_ANNOTATION = /^\{.*\}$/;
+
+function splitTopLevel(inner) {
+  // Split a brace-less-or-braced comma list at depth 0 (reuses the
+  // sketch-parser depth rule so nested commas in `[{op,...}]`-style hints
+  // would not break, though object annotations only contain bare keys).
+  const out = [];
+  let depth = 0;
+  let buf = "";
+  for (const ch of inner) {
+    if (ch === "[" || ch === "{") {
+      depth++;
+      buf += ch;
+    } else if (ch === "]" || ch === "}") {
+      depth--;
+      buf += ch;
+    } else if (ch === "," && depth === 0) {
+      out.push(buf.trim());
+      buf = "";
+    } else {
+      buf += ch;
+    }
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out.filter(Boolean);
+}
+
+test("every enum/object annotation in a sketch matches the schema", async () => {
+  const schemas = await loadWriteToolSchemas();
+  for (const name of CLI_WRITE_TOOLS) {
+    const sketch = WRITE_TOOL_SKETCHES[name];
+    const { propSchema } = schemas.get(name);
+    const annotated = parseSketchAnnotations(sketch).filter((k) => k.annotation);
+
+    for (const { name: key, annotation } of annotated) {
+      const prop = propSchema[key];
+      assert.ok(prop, `${name}: annotation on non-property "${key}"`);
+
+      if (ENUM_ANNOTATION.test(annotation)) {
+        // Enum annotation: the listed values must exactly equal the
+        // schema's enum (catches a stale hand-copied list — the same drift
+        // the constants-backed meta_state_report annotation avoids).
+        const values = annotation.split("|");
+        assert.ok(
+          Array.isArray(prop.enum),
+          `${name}.${key}: sketch enum annotation "${annotation}" but schema has no enum`,
+        );
+        assert.deepEqual(
+          [...values].sort(),
+          [...prop.enum].sort(),
+          `${name}.${key}: sketch enum [${values.join("|")}] != schema enum [${prop.enum.join("|")}]`,
+        );
+      } else if (OBJECT_ANNOTATION.test(annotation)) {
+        // Object annotation: every listed sub-key must be a real property
+        // of the schema object (over-listing is harmless; a phantom key is
+        // the failure that would mislead the agent's first write).
+        const inner = annotation.replace(/^\{|\}$/g, "");
+        const subKeys = splitTopLevel(inner);
+        const schemaProps = new Set(Object.keys(prop.properties || {}));
+        for (const sk of subKeys) {
+          assert.ok(
+            schemaProps.has(sk),
+            `${name}.${key}: sketch object sub-key "${sk}" is not a schema property; valid: [${[...schemaProps].join(", ")}]`,
+          );
+        }
+      }
+      // else: free-form hint (e.g. `operations:[{op,...}]`) — not guarded.
     }
   }
 });

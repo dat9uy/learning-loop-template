@@ -17,6 +17,10 @@ import {
 } from "./gate-logic.js";
 import { SURFACES, getAllCoordinationPaths, getAllSurfacePaths } from "./surfaces.js";
 import { BOUND_ARTIFACTS } from "./bound-artifacts.js";
+import {
+  findLineageMatches,
+  isScannableArtifactPath,
+} from "./stable-artifacts-lineage.js";
 
 /**
  * Named seam for the product/** preflight check (locked by convergence addendum).
@@ -165,13 +169,15 @@ const WRITE_GATE_RULES = [
 /**
  * Write-gate evaluator — rule-registry cascade.
  *
- * @param {{ filePath: string, root?: string }} params
+ * @param {{ filePath: string, root?: string, authoredContent?: string }} params
  * @returns {{ decision: string, reason?: string, file_path?: string, matched_rule?: string, surface?: string, preflight_checklist?: string[] }}
  */
-export function evaluateWriteGate({ filePath, root }) {
+export function evaluateWriteGate({ filePath, root, authoredContent }) {
   if (!isValidFilePath(filePath)) return { decision: "ok" };
   const resolvedRoot = resolveRoot(root);
   const relPath = toRelativePath(filePath, resolvedRoot);
+  const lineageBlock = checkAuthoredContent(relPath, authoredContent);
+  if (lineageBlock) return lineageBlock;
   const matched = WRITE_GATE_RULES.find((rule) => rule.match(relPath));
   if (!matched) return applyPromotedRulesCheck(relPath, resolvedRoot);
   if (matched.name === "product") {
@@ -325,6 +331,45 @@ export function evaluateRuntimeStatePreflight({ filePath, root, matchedRule }) {
 
 function isValidFilePath(filePath) {
   return Boolean(filePath) && typeof filePath === "string";
+}
+
+/**
+ * Authored content for the lineage scan: Write carries `content`, Edit
+ * carries `new_string`, patch-style tools carry `patch`. Lives in core (not
+ * the hook adapter) so the precedence chain rides the write-gate test
+ * coverage instead of the untested hook entry point.
+ */
+export function extractAuthoredContent(toolInput) {
+  if (!toolInput) return null;
+  return toolInput.content ?? toolInput.new_string ?? toolInput.patch ?? null;
+}
+
+/**
+ * Write-boundary content scan for `rule-no-plan-ids-in-stable-code-artifacts`.
+ * Authored content (Write `content`, Edit `new_string`, patch text) is matched
+ * with the shared lineage matcher before any path rule runs, so a banned
+ * plan-ID/phase token is rejected at authoring time instead of surfacing
+ * post-hoc at the file-scan test or commit-msg hook. Fail-closed: a hit blocks
+ * the write, matching the commit-msg hook's stance. Scope + exclusions come
+ * from core/stable-artifacts-lineage.js so the three consumers cannot drift.
+ */
+function checkAuthoredContent(relPath, authoredContent) {
+  if (typeof authoredContent !== "string" || authoredContent.length === 0) return null;
+  if (!isScannableArtifactPath(relPath)) return null;
+  const hits = findLineageMatches(authoredContent);
+  if (hits.length === 0) return null;
+  const detail = hits
+    .slice(0, 5)
+    .map((h) => `line ${h.line}: ${h.content.trim()} [${h.patterns.join(", ")}]`)
+    .join("; ");
+  return {
+    decision: "block",
+    reason:
+      `Authored content contains plan-ID/phase-number lineage banned from stable code artifacts (${hits.length} hit(s): ${detail}). ` +
+      "Plan lineage belongs in plan docs, reports, and git history — describe the invariant or behavior directly.",
+    file_path: relPath,
+    matched_rule: "rule-no-plan-ids-in-stable-code-artifacts",
+  };
 }
 
 function resolveRoot(root) {
