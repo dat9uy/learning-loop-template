@@ -16,6 +16,8 @@
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
     "smoke:mastracode": "node scripts/probe-mastracode.cjs",
     "test": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run && node tools/scripts/sanitize-coverage.mjs",
+    "test:unit": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run --project unit",
+    "test:e2e": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run --project e2e",
     "test:iter": "vitest run --bail=1 1>/dev/null; bash tools/scripts/vitest-failures.sh",
     "test:one": "bash tools/scripts/test-one.sh",
     "test:debug": "vitest run tools/learning-loop-mastra/__tests__/debug/",
@@ -49,7 +51,8 @@
     "vitest": "^4.1.10"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm test && pnpm fallow:gate",
+    "pre-commit": "pnpm test:unit",
+    "pre-push": "pnpm test && pnpm fallow:gate",
     "commit-msg": "node tools/learning-loop-mastra/hooks/commit-msg-stable-artifacts.js $1"
   }
 }

@@ -10,10 +10,12 @@ const GITIGNORE = resolve(REPO_ROOT, ".gitignore");
 const ALLOWLIST = resolve(REPO_ROOT, ".loop", "r2-allowlist.json");
 const PKG_JSON = resolve(REPO_ROOT, "package.json");
 
-// R13 regression guard: the pre-commit hook (simple-git-hooks) runs
-// `pnpm test && pnpm fallow:gate`. This test locks the load-bearing
-// invariants the hook relies on so a regression is caught early.
-describe("pre-commit hook invariants (R13)", () => {
+// R13 regression guard: the hybrid test-tiering gate layout. This test
+// locks the load-bearing invariants the pre-commit (fast unit) + pre-push
+// (full `pnpm test && pnpm fallow:gate`) split relies on so a regression
+// is caught early. See
+// `plans/260803-1314-hybrid-test-tiering-and-pre-push-gate/` for context.
+describe("hybrid gate layout (R13)", () => {
   test(".loop/r2-allowlist.json exists and is committed (not gitignored)", () => {
     assert.ok(existsSync(ALLOWLIST), ".loop/r2-allowlist.json must exist at repo root");
     const gitignore = readFileSync(GITIGNORE, "utf8");
@@ -56,11 +58,36 @@ describe("pre-commit hook invariants (R13)", () => {
     }
   });
 
-  test("package.json pre-commit hook runs pnpm test + fallow:gate", () => {
+  test("package.json pre-commit hook runs the fast unit project (not the full gate)", () => {
     const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
     const hook = pkg["simple-git-hooks"]?.["pre-commit"];
     assert.ok(hook, "simple-git-hooks pre-commit must be configured");
-    assert.ok(hook.includes("pnpm test"), "pre-commit must run pnpm test");
-    assert.ok(hook.includes("fallow:gate"), "pre-commit must run pnpm fallow:gate");
+    assert.equal(
+      hook,
+      "pnpm test:unit",
+      "pre-commit must run only the unit project — fallow moves to pre-push so per-commit cost is bounded",
+    );
+  });
+
+  test("package.json pre-push hook runs the full gate (pnpm test + fallow:gate)", () => {
+    const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
+    const hook = pkg["simple-git-hooks"]?.["pre-push"];
+    assert.ok(hook, "simple-git-hooks pre-push must be configured");
+    assert.ok(hook.includes("pnpm test"), "pre-push must run pnpm test");
+    assert.ok(hook.includes("fallow:gate"), "pre-push must run pnpm fallow:gate");
+  });
+
+  test("package.json scripts define test:unit and test:e2e for the projects", () => {
+    const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
+    assert.ok(pkg.scripts?.["test:unit"], "test:unit script must exist");
+    assert.ok(pkg.scripts?.["test:e2e"], "test:e2e script must exist");
+    assert.ok(
+      pkg.scripts["test:unit"].includes("--project unit"),
+      "test:unit must run the unit project",
+    );
+    assert.ok(
+      pkg.scripts["test:e2e"].includes("--project e2e"),
+      "test:e2e must run the e2e project",
+    );
   });
 });
