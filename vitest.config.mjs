@@ -21,8 +21,10 @@ import { defineConfig } from "vitest/config";
 //   - `unit` = the 4 original globs MINUS the e2e files (see
 //     `tools/learning-loop-mastra/__tests__/test-tier-e2e-membership.test.js`
 //     for the guard test).
-//   - `e2e` = the explicit e2e file list (Strategy A from the plan: explicit
-//     list + guard test, KISS; drift caught loud by the guard, not silently).
+//   - `e2e` = the explicit e2e file list — MCP-server-spawning tests AND
+//     CLI-subprocess tests that `spawnSync`/`spawn` the `bin/loop.mjs` binary
+//     (Strategy A from the plan: explicit list + guard test, KISS; drift
+//     caught loud by the guard, not silently).
 //
 // Known noise: vitest's coverage instrumentation emits `vite:dynamic-import-vars`
 // warnings for `mastra/server.js` and `agents/build-meta-state-tools.js` (they
@@ -53,6 +55,17 @@ const E2E_FILES = [
   "tools/learning-loop-mastra/__tests__/storage-parity.test.cjs",
   "tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs",
   "tools/learning-loop-mastra/__tests__/cold-session-enumerate-mastra.test.cjs",
+  // CLI-subprocess tests: spawn the `bin/loop.mjs` binary directly via
+  // spawnSync/spawn. The plan's e2e definition is "MCP-server-spawning OR
+  // CLI-subprocess"; these are the CLI-spawn half. Caught by the `LOOP_BIN`
+  // / `cliPath` markers in the guard test (the spawn-arg variables that
+  // carry the loop.mjs path). Mention-only files that reference the path in
+  // comments/strings use `CLI_BIN_PATH`/`CLI_COMMAND` and are NOT caught.
+  "tools/learning-loop-mastra/__tests__/cli-args-file-dispatch.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-schema-flag.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-workflow-dispatch.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-write-exit-codes.test.js",
+  "tools/learning-loop-mastra/__tests__/runtime-state-versioned-dedup.test.js",
 ];
 
 const BASE_INCLUDE = [
@@ -81,25 +94,35 @@ export default defineConfig({
       // out of dead-code analysis for the same reason.
       "tools/learning-loop-mastra/scout/pipeline/test-fixtures/**",
     ],
-    // Coverage is configured per-project (see below). Vitest 4's per-project
-    // `coverage.enabled: false` does NOT actually disable coverage when the
-    // root has `enabled: true` — coverage-final.json gets generated either way.
-    // So coverage lives ONLY on the e2e project. When `pnpm test` runs both
-    // projects, the e2e project's coverage is the one emitted. Unit-only
-    // changes will not appear in coverage-final.json; the plan accepts this
-    // as a known minor regression (unit files have low CRAP, fallow's CRAP
-    // inflation is bounded).
+    // Coverage at the root so `pnpm test` (both projects, pre-push gate)
+    // instruments ALL source files — fallow:gate then sees full coverage and
+    // does not flag unit-exercised functions as 0%-tested. The fast pre-commit
+    // gate (`pnpm test:unit`) overrides this via the `--coverage.enabled=false`
+    // CLI flag (CLI flags DO override root config in vitest 4, unlike the
+    // per-project `coverage.enabled: false` quirk) so the unit project skips
+    // the ~19s istanbul transform tax. `clean: false` preserves coverage across
+    // the unit+e2e merge when `pnpm test` runs both projects.
+    coverage: {
+      provider: "istanbul",
+      reporter: ["json"],
+      reportsDirectory: "coverage",
+      include: ["tools/learning-loop-mastra/**/*.js"],
+      exclude: ["**/*.test.{js,cjs,mjs}", "**/fixtures/**", "**/__tests__/helpers/**"],
+      clean: false,
+      enabled: true,
+    },
     projects: [
       {
         test: {
           name: "unit",
           include: BASE_INCLUDE,
-          // Files that match the e2e markers (`connectMcpServer` /
-          // `with-mcp-server`) are excluded from the unit project. The
-          // guard test (`test-tier-e2e-membership.test.js`) greps the
-          // same markers and asserts the e2e project's include equals
-          // this exclude — drift becomes a loud failure, not a silent
-          // misclassification.
+          // E2E files (MCP-server-spawning AND CLI-subprocess-spawning) are
+          // excluded from the unit project. The guard test
+          // (`test-tier-e2e-membership.test.js`) greps the marker set
+          // (`connectMcpServer`/`with-mcp-server`/`StdioClientTransport`/
+          // `@modelcontextprotocol/sdk/client`/`LOOP_BIN`/`cliPath`) and
+          // asserts the e2e project's include equals this exclude — drift
+          // becomes a loud failure, not a silent misclassification.
           exclude: [
             ...E2E_FILES,
             // Scout test fixtures — intentionally failing test inputs
@@ -109,13 +132,13 @@ export default defineConfig({
             // per project.
             "tools/learning-loop-mastra/scout/pipeline/test-fixtures/**",
           ],
-          // Note: vitest 4's per-project `coverage.enabled: false` does NOT
-          // actually disable coverage when the root has `enabled: true`
-          // (coverage-final.json gets generated either way). Coverage lives
-          // ONLY on the e2e project (below). Unit files won't appear in
-          // coverage-final.json; the plan accepts this as a known minor
-          // regression (unit files have low CRAP; fallow's CRAP inflation
-          // is bounded).
+          // Coverage is disabled for the pre-commit unit gate via the
+          // `--coverage.enabled=false` CLI flag in the `test:unit` script
+          // (CLI flags override root config; the per-project
+          // `coverage.enabled: false` quirk does not apply to CLI overrides).
+          // The full `pnpm test` (pre-push) runs both projects with root
+          // coverage on, so unit-exercised source files ARE instrumented and
+          // fallow:gate sees their coverage (no false 0%-tested CRAP inflation).
           // CJS gate tests under `.claude/coordination/__tests__` and
           // `.factory/hooks/__tests__` cannot `require("vitest")`; they
           // rely on vitest globals. vitest 4's `projects` config does
@@ -139,15 +162,6 @@ export default defineConfig({
           globals: true,
           testTimeout: 120000,
           hookTimeout: 120000,
-          coverage: {
-            provider: "istanbul",
-            reporter: ["json"],
-            reportsDirectory: "coverage",
-            include: ["tools/learning-loop-mastra/**/*.js"],
-            exclude: ["**/*.test.{js,cjs,mjs}", "**/fixtures/**", "**/__tests__/helpers/**"],
-            clean: false,
-            enabled: true,
-          },
         },
       },
     ],

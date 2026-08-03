@@ -7,12 +7,19 @@ import { fileURLToPath } from "node:url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
 
-// Guard test: the `e2e` project's `include` list must match the files in
-// the vitest `include` globs that contain e2e markers (`connectMcpServer` or
-// `with-mcp-server`). When a new test file starts spawning the MCP server
-// but isn't added to the e2e project's include, this guard fails loud —
-// preventing a silent misclassification where an e2e file lands in the
-// fast `unit` project.
+// Guard test: the `e2e` project's `include` list must match the files that
+// contain e2e markers — MCP-server spawns (`connectMcpServer`,
+// `with-mcp-server`, `StdioClientTransport`, `@modelcontextprotocol/sdk/client`)
+// OR CLI-subprocess spawns of the `bin/loop.mjs` binary (`LOOP_BIN`/`cliPath`
+// are the spawn-arg variables that carry the loop.mjs path). When a new test
+// file starts spawning the MCP server or the CLI binary but isn't added to
+// the e2e project's include, this guard fails loud — preventing a silent
+// misclassification where an e2e file lands in the fast `unit` project.
+//
+// The CLI-spawn markers are scoped to the spawn-arg variable names, not the
+// path string: files that only reference `bin/loop.mjs` in comments/strings
+// (passed to a pure `evaluateBashGate`) use `CLI_BIN_PATH`/`CLI_COMMAND` and
+// are correctly NOT matched. This keeps pure-function tests in `unit`.
 //
 // See `plans/260803-1314-hybrid-test-tiering-and-pre-push-gate/` for context.
 
@@ -23,13 +30,16 @@ const SEARCH_DIRS = [
   "tools/scripts/__tests__",
 ];
 
-// Marker pattern catches both the shared helper (`withMcpServer` /
-// `connectMcpServer`) and the SDK-direct spawn pattern (`StdioClientTransport`
-// + `@modelcontextprotocol/sdk/client`). The latter is used by 3 files that
-// bypass the helper and spawn a real MCP server directly — they would
-// otherwise silently land in `unit` and inflate pre-commit cost by ~8s.
+// Marker pattern covers both e2e classes:
+//   - MCP-server spawn: `connectMcpServer`/`with-mcp-server` (shared helper)
+//     and `StdioClientTransport`/`@modelcontextprotocol/sdk/client` (SDK-direct
+//     spawn, bypassing the helper).
+//   - CLI-subprocess spawn: `LOOP_BIN`/`cliPath` — the spawn-arg variables
+//     that carry the `bin/loop.mjs` path into `spawnSync("node", [VAR, …])` /
+//     `spawn("node", [VAR, …])`. The async `spawn` form is included (one file
+//     uses it); a sync-only assumption would miss it.
 const MARKER_PATTERN =
-  "connectMcpServer|with-mcp-server|StdioClientTransport|@modelcontextprotocol/sdk/client";
+  "connectMcpServer|with-mcp-server|StdioClientTransport|@modelcontextprotocol/sdk/client|LOOP_BIN|cliPath";
 
 function deriveE2EFiles() {
   const result = execFileSync(
