@@ -1,7 +1,7 @@
 ---
 title: "Deterministic git push for autonomous agents"
 description: "Fix finding meta-260803T1720Z-agent-runtime-git-push-is-fragile-an-autonomous-shell-cannot: make git push deterministic for autonomous shells by adding an idempotent per-clone setup script (tools/scripts/setup-git-push.sh) that converts a broken/read-only GitHub remote to HTTPS + absolute-path gh credential helper with WRITE-capability verification, plus a fail-open SessionStart preflight hook reporting push mode. Scope: auth fragility only — the pre-push flake incentive is residual and addressed via a proposed bypass-detection gate rule, not fixed here."
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 branch: "main"

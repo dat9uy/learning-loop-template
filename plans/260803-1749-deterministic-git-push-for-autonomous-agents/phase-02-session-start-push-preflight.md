@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "SessionStart push-preflight hook"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [1]
