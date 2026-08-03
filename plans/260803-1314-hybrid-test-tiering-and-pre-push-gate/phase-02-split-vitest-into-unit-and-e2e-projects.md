@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Split vitest into unit and e2e projects"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [1]

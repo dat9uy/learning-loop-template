@@ -1,7 +1,7 @@
 ---
 title: "Hybrid test tiering and pre-push gate"
 description: "Split the vitest suite into `unit` (fast, no server/CLI subprocess) and `e2e` (MCP-server-spawning + CLI-subprocess) projects, then rewire git hooks: pre-commit runs the unit project only (seconds), pre-push runs the full `pnpm test && pnpm fallow:gate` gate. CI already runs the full gate on PRs and `push: main`, so the local pre-push is a backstop, not the authority. Goal: drop the ~2.5min per-commit pre-commit cost without losing the end-to-end gate."
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 branch: "fix/write-gate-lineage-scan"
@@ -58,10 +58,10 @@ A 2.5min gate per commit incentivizes `--no-verify`, which defeats the gate enti
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Measure and characterize the suite](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: Split vitest into unit and e2e projects](./phase-02-split-vitest-into-unit-and-e2e-projects.md) | Pending |
-| 3 | [Phase 3: Rewire git hooks: fast pre-commit, full pre-push](./phase-03-rewire-git-hooks-fast-pre-commit-full-pre-push.md) | Pending |
-| 4 | [Phase 4: Verify timings, parity, and CI independence](./phase-04-verify-timings-parity-and-ci-independence.md) | Pending |
+| 1 | [Phase 1: Measure and characterize the suite](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: Split vitest into unit and e2e projects](./phase-02-split-vitest-into-unit-and-e2e-projects.md) | Completed |
+| 3 | [Phase 3: Rewire git hooks: fast pre-commit, full pre-push](./phase-03-rewire-git-hooks-fast-pre-commit-full-pre-push.md) | Completed |
+| 4 | [Phase 4: Verify timings, parity, and CI independence](./phase-04-verify-timings-parity-and-ci-independence.md) | Completed |
 
 ## Success Criteria
 
@@ -113,3 +113,9 @@ A 2.5min gate per commit incentivizes `--no-verify`, which defeats the gate enti
 - Zero unresolved contradictions.
 
 <!-- slug: hybrid-test-tiering-and-pre-push-gate -->
+
+## Deviations from plan
+
+The plan's Phase 3 success criterion "pre-commit wall-clock drops from ~153s (cold) to seconds (unit-only)" is *not* met in the absolute sense. Measured: `pnpm test:unit` = 82s vitest / 1:22 wall. Vitest 4's import phase alone takes ~45s for 277 unit test files; that floor is independent of tiering. The 46% relative improvement is the real win (was 153s vitest / 2:35 wall for the monolithic pre-commit); operators should read the criterion as "drops substantially" not "drops to seconds". Documented in `reports/phase-04-verification.md`.
+
+Other deviations are noted inline in the verification report.

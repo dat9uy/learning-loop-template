@@ -72,9 +72,14 @@ describe("hybrid gate layout (R13)", () => {
   test("package.json pre-push hook runs the full gate (pnpm test + fallow:gate)", () => {
     const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
     const hook = pkg["simple-git-hooks"]?.["pre-push"];
-    assert.ok(hook, "simple-git-hooks pre-push must be configured");
-    assert.ok(hook.includes("pnpm test"), "pre-push must run pnpm test");
-    assert.ok(hook.includes("fallow:gate"), "pre-push must run pnpm fallow:gate");
+    // Exact match — same strictness as the pre-commit test. A future
+    // operator swapping the chain to a direct fallow invocation with
+    // extra flags would otherwise slip past a substring check.
+    assert.equal(
+      hook,
+      "pnpm test && pnpm fallow:gate",
+      "pre-push must run the full gate: pnpm test && pnpm fallow:gate",
+    );
   });
 
   test("package.json scripts define test:unit and test:e2e for the projects", () => {

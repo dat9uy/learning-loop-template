@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Verify timings, parity, and CI independence"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2, 3]

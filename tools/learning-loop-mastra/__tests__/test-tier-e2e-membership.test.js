@@ -23,7 +23,13 @@ const SEARCH_DIRS = [
   "tools/scripts/__tests__",
 ];
 
-const MARKER_PATTERN = "connectMcpServer|with-mcp-server";
+// Marker pattern catches both the shared helper (`withMcpServer` /
+// `connectMcpServer`) and the SDK-direct spawn pattern (`StdioClientTransport`
+// + `@modelcontextprotocol/sdk/client`). The latter is used by 3 files that
+// bypass the helper and spawn a real MCP server directly — they would
+// otherwise silently land in `unit` and inflate pre-commit cost by ~8s.
+const MARKER_PATTERN =
+  "connectMcpServer|with-mcp-server|StdioClientTransport|@modelcontextprotocol/sdk/client";
 
 function deriveE2EFiles() {
   const result = execFileSync(

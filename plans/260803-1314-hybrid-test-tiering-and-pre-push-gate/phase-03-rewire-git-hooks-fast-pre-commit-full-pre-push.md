@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Rewire git hooks: fast pre-commit, full pre-push"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]

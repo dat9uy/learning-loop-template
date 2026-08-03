@@ -18,11 +18,11 @@ import { defineConfig } from "vitest/config";
 //     fast gate skips the ~19s istanbul transform tax.
 //
 // Project boundary:
-//   - `unit` = the 4 original globs MINUS the 19 e2e files (see
+//   - `unit` = the 4 original globs MINUS the e2e files (see
 //     `tools/learning-loop-mastra/__tests__/test-tier-e2e-membership.test.js`
 //     for the guard test).
-//   - `e2e` = the explicit 19-file list (Strategy A from the plan: explicit list
-//     + guard test, KISS; drift caught loud by the guard, not silently).
+//   - `e2e` = the explicit e2e file list (Strategy A from the plan: explicit
+//     list + guard test, KISS; drift caught loud by the guard, not silently).
 //
 // Known noise: vitest's coverage instrumentation emits `vite:dynamic-import-vars`
 // warnings for `mastra/server.js` and `agents/build-meta-state-tools.js` (they
@@ -31,6 +31,7 @@ import { defineConfig } from "vitest/config";
 
 const E2E_FILES = [
   ".claude/coordination/__tests__/claude-code-mcp-loading.test.cjs",
+  ".claude/coordination/__tests__/gate-integration.test.cjs",
   "tools/learning-loop-mastra/__tests__/agent-parity.test.cjs",
   "tools/learning-loop-mastra/__tests__/cli-mcp-subset-registration.test.js",
   "tools/learning-loop-mastra/__tests__/cli-read-parity.test.js",
@@ -41,7 +42,9 @@ const E2E_FILES = [
   "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-id-stdio.test.js",
   "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-derived-schema.test.js",
   "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-entry-kind-invariant.test.js",
+  "tools/learning-loop-mastra/__tests__/legacy-mcp/mcp-protocol-e2e.test.cjs",
   "tools/learning-loop-mastra/__tests__/legacy-mcp/zod-coerce-top-level.test.js",
+  "tools/learning-loop-mastra/__tests__/mcp-protocol-e2e.test.cjs",
   "tools/learning-loop-mastra/__tests__/mcp-tools-list-parity.test.js",
   "tools/learning-loop-mastra/__tests__/mcp-wire-budget.test.js",
   "tools/learning-loop-mastra/__tests__/meta-state-patch-jit-payload.test.js",
@@ -49,6 +52,7 @@ const E2E_FILES = [
   "tools/learning-loop-mastra/__tests__/server-runid.test.js",
   "tools/learning-loop-mastra/__tests__/storage-parity.test.cjs",
   "tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs",
+  "tools/learning-loop-mastra/__tests__/cold-session-enumerate-mastra.test.cjs",
 ];
 
 const BASE_INCLUDE = [
@@ -105,6 +109,13 @@ export default defineConfig({
             // per project.
             "tools/learning-loop-mastra/scout/pipeline/test-fixtures/**",
           ],
+          // Note: vitest 4's per-project `coverage.enabled: false` does NOT
+          // actually disable coverage when the root has `enabled: true`
+          // (coverage-final.json gets generated either way). Coverage lives
+          // ONLY on the e2e project (below). Unit files won't appear in
+          // coverage-final.json; the plan accepts this as a known minor
+          // regression (unit files have low CRAP; fallow's CRAP inflation
+          // is bounded).
           // CJS gate tests under `.claude/coordination/__tests__` and
           // `.factory/hooks/__tests__` cannot `require("vitest")`; they
           // rely on vitest globals. vitest 4's `projects` config does
