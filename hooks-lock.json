@@ -28,6 +28,16 @@
         ".mastracode": { "kind": "none" }
       }
     },
+    "session-start-git-push-preflight": {
+      "path": "tools/learning-loop-mastra/hooks/universal/session-start-git-push-preflight.cjs",
+      "event": "SessionStart",
+      "wiring": {
+        ".claude":     { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/session-start-git-push-preflight.cjs" },
+        ".factory":    { "kind": "none" },
+        ".mastracode": { "kind": "none" }
+      },
+      "notes": "Per plan 260803-1749 risk section: .factory's loop-surface-inject.cjs is hardcoded to the inject-* hooks, so the preflight cannot dispatch through it without invasive adapter changes. .factory and .mastracode coverage deferred to follow-up finding."
+    },
     "bash-gate": {
       "path": "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
       "event": "PreToolUse",

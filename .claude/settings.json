@@ -14,6 +14,10 @@
           {
             "type": "command",
             "command": "node tools/learning-loop-mastra/hooks/universal/session-start-inject-process-hints.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node tools/learning-loop-mastra/hooks/universal/session-start-git-push-preflight.cjs"
           }
         ]
       }
