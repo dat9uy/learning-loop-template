@@ -47,22 +47,25 @@ const WRITE_TOOL_SKETCHES = {
   // strips the annotation before extracting the key name, so the
   // annotation does not poison the required-keys check.
   meta_state_report: `{category:${META_STATE_FINDING_CATEGORIES.join("|")},severity:${META_STATE_FINDING_SEVERITIES.join("|")},affected_system,description}`,
-  meta_state_resolve: "{id,resolution}",
-  meta_state_promote_rule: "{id,rule_id,enforcement,pattern_type,pattern,hint_text?,hint_suggestion?,hint_order?,hint_slug?}",
-  meta_state_log_change: "{change_dimension,change_target,change_diff,reason}",
-  meta_state_patch: "{id,entry_kind,patch}",
+  meta_state_resolve: "{id,resolution,resolved_by:operator|auto-resolve?}",
+  meta_state_promote_rule: "{id,rule_id,enforcement:gate|agent,pattern_type:regex|glob|determinism-checklist|agent-checklist,pattern,hint_text?,hint_suggestion?,hint_order?,hint_slug?}",
+  // change_dimension is an enforced enum and change_diff is a nested object
+  // whose keys the Zod type-error does NOT reveal — annotating both kills the
+  // guess→reject→`--schema`→retry round-trip (session 6bd99328).
+  meta_state_log_change: "{change_dimension:semantic|mechanical|surface,change_target,change_diff:{added,removed,changed},reason}",
+  meta_state_patch: "{id,entry_kind:finding|rule|loop-design|change-log,patch}",
   meta_state_batch: "{operations:[{op,...}]}",
   meta_state_archive: "{override:[id],reason,confirm?}",
   meta_state_unarchive: "{id,reason?}",
   meta_state_supersede: "{id,consolidated_into,resolution}",
   meta_state_accept: "{id,accepted_reason,accepted_by?}",
-  meta_state_propose_design: "{title,description,proposed_design_for,affected_system}",
+  meta_state_propose_design: "{title,description,proposed_design_for,affected_system,severity_hint:low|medium|high?}",
   meta_state_ship_loop_design: "{id,shipped_in_plan}",
-  meta_state_dispatch_finding: "{id,stage,issue_number?,issue_url?,repo?}",
+  meta_state_dispatch_finding: "{id,stage:prepare|commit?,issue_number?,issue_url?,repo?}",
   meta_state_re_verify: "{id}",
   meta_state_touch: "{id}",
   meta_state_refresh_file_index: "{path,reason?}",
-  runtime_state_record: "{affected_system,kind,id,source_ref,timestamp}",
+  runtime_state_record: "{affected_system,kind:ledger-event|budget-state,id,source_ref,timestamp}",
   runtime_state_pause: "{surface}",
   runtime_state_resume: "{surface}",
   runtime_state_stop: "{surface,confirm}",
@@ -70,15 +73,15 @@ const WRITE_TOOL_SKETCHES = {
   gate_override: "{rule_id,ttl_seconds,operator_note}",
   // Workflow helpers reclassified into CLI_WRITE_TOOLS (the only writes that
 // ride the CLI besides meta_state_* / runtime_state_*).
-  workflow_notify_artifact: "{path,change_type}",  // path must be records/** (in-handler guard)
+  workflow_notify_artifact: "{path,change_type:created|updated|deleted}",  // path must be records/** (in-handler guard)
   workflow_trigger: "{name,context?}",             // context is the legacy-preprocess optional
   // Portable-six: stateless pure transforms unwrapped from createLoopWorkflow.
   workflow_classify_prompt: "{prompt}",
   workflow_prepare_runtime_request: "{dimension,scope,output_level,command_class,temp_root_class,evidence_missing?,why_local_insufficient?}",
-  workflow_self_improvement: "{improvement_type,description,proposed_changes?}",
+  workflow_self_improvement: "{improvement_type:schema-change|workflow-gap|heuristic-tune|tool-addition,description,proposed_changes?}",
   workflow_intentional_skip: "{assertion_id,skip_reason,scope}",
-  workflow_report_phase_status: "{process_steps_total,process_steps_complete,experiment_result,blocker_reason?}",
-  workflow_runtime_probe: "{stack,probe_type,temp_dir?}",
+  workflow_report_phase_status: "{process_steps_total,process_steps_complete,experiment_result:success|failure|inconclusive,blocker_reason?}",
+  workflow_runtime_probe: "{stack,probe_type:install|build|test|runtime,temp_dir?}",
 };
 
 const EMPTY_STALE_DISPATCH = { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" };
