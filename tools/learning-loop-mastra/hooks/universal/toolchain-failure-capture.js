@@ -16,10 +16,13 @@
  *                                       raw commands never escape into the
  *                                       registry.
  *
- * Fail-open: any throw exits 0 silently — PostToolUseFailure hooks must not
- * block the model. Capture is silent: no hookSpecificOutput envelope
- * (the recurring-false-positive registry surface is the loop's self-model,
- * not the agent context).
+ * Fail-open: any throw exits 0 — PostToolUseFailure hooks must not block the
+ * model — but the failure is NOT silent: every invocation and every catch
+ * appends one JSON line to `.claude/coordination/.toolchain-failure-capture.debug.log`
+ * (gitignored via `*.log`), so "the event never fired" is distinguishable
+ * from "the hook ran and dropped/crashed." Capture itself stays silent: no
+ * hookSpecificOutput envelope (the recurring-false-positive registry surface
+ * is the loop's self-model, not the agent context).
  *
  * Companion recurrence tracker groups entries by
  * (rule_id="toolchain-failure", normalized_prefix, session_id) and files a
@@ -29,7 +32,8 @@
  * cross-class collapsing is impossible because rule_id is in the hash input.
  */
 
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   parseInput,
@@ -37,27 +41,9 @@ import {
   extractCommand,
 } from "./lib/protocol-adapter.js";
 import { appendDecisionLog } from "../../core/gate-decision-log.js";
-import { getSessionId } from "../../core/worktree-session-id.js";
+import { resolveSessionId } from "./lib/resolve-session-id.js";
 import { normalizePrefix } from "../../core/recurrence-tracker.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-
-const SESSION_ID_MAX_LEN = 64;
-// UUID v4 shape: 8-4-4-4-12 hex chars separated by hyphens.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * Resolve session_id for the current decision-log entry.
- * Trust harness UUID; fall back to worktree-scoped session id from
- * getSessionId(root), tagged session_id_tier=fallback so the recurrence
- * tracker can bound its span to 24h (per the plan's clean cutover rule).
- */
-function resolveSessionId(input, root) {
-  const raw = input?.session_id;
-  if (typeof raw === "string" && raw.length > 0 && raw.length <= SESSION_ID_MAX_LEN && UUID_RE.test(raw)) {
-    return { session_id: raw, session_id_tier: "real" };
-  }
-  return { session_id: getSessionId(root), session_id_tier: "fallback" };
-}
 
 // Toolchain-pattern set: commands we WANT to capture on failure. Adding a
 // new toolchain command means extending this list. Non-matching commands
@@ -80,20 +66,48 @@ function isToolchainCommand(command) {
   return TOOLCHAIN_PATTERNS.some((re) => re.test(command));
 }
 
+// Debug trace: one JSON line per invocation/outcome to a gitignored file.
+// Exists because the hook is fail-open — without it, "the harness never
+// fired the event" and "the hook crashed" are indistinguishable. Never
+// throws; a full command string is never logged (prefix-capped, same as
+// the decision log).
+const DEBUG_LOG_REL = join(".claude", "coordination", ".toolchain-failure-capture.debug.log");
+
+function emitDebug(root, record) {
+  try {
+    const line = JSON.stringify({ ts: new Date().toISOString(), ...record });
+    appendFileSync(join(root, DEBUG_LOG_REL), line + "\n", "utf8");
+  } catch {
+    // Debug trace must never break the fail-open contract.
+  }
+}
+
+// fallow-ignore-next-line complexity -- CRAP inflated by the subprocess-coverage blind spot (hook runs as a spawned process; exercised by hook integration tests)
 function main() {
-  // Fail-open: any throw exits 0 silently. PostToolUseFailure hooks must
+  // Fail-open: any throw exits 0 (traced). PostToolUseFailure hooks must
   // not block the model; the recurring-false-positive registry surface is
   // the observability channel.
+  let root;
   try {
     const stdin = readFileSync(0, "utf8");
     const input = parseInput(stdin);
+    root = resolveRoot();
 
-    if (normalizeToolName(input.tool_name) !== "bash") process.exit(0);
+    const toolName = normalizeToolName(input.tool_name);
+    if (toolName !== "bash") {
+      emitDebug(root, { outcome: "skip-non-bash", tool_name: toolName });
+      process.exit(0);
+    }
     const command = extractCommand(input.tool_input);
-    if (!command) process.exit(0);
-    if (!isToolchainCommand(command)) process.exit(0);
+    if (!command) {
+      emitDebug(root, { outcome: "skip-no-command" });
+      process.exit(0);
+    }
+    if (!isToolchainCommand(command)) {
+      emitDebug(root, { outcome: "skip-non-toolchain", command_prefix: normalizePrefix(command) });
+      process.exit(0);
+    }
 
-    const root = resolveRoot();
     const session = resolveSessionId(input, root);
 
     appendDecisionLog(root, {
@@ -106,8 +120,13 @@ function main() {
       session_id: session.session_id,
       session_id_tier: session.session_id_tier,
     });
-  } catch {
-    // Fail-open: capture failure must not block the model.
+    emitDebug(root, { outcome: "captured", command_prefix: normalizePrefix(command) });
+  } catch (err) {
+    // Fail-open: capture failure must not block the model — but it is traced.
+    if (!root) {
+      try { root = resolveRoot(); } catch { root = process.env.GATE_ROOT || process.cwd(); }
+    }
+    emitDebug(root, { outcome: "error", message: String(err && err.message || err).slice(0, 200) });
   }
   process.exit(0);
 }

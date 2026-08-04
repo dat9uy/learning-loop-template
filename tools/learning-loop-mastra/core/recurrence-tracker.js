@@ -126,7 +126,11 @@ export function findRecurrentGroups(root, options = {}) {
 }
 
 function generateFindingId(ruleId) {
-  const ts = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 15);
+  // Canonical finding-id stamp: YYMMDDTHHMMSS (matches hand-filed ids like
+  // meta-260804T1026Z-*). Milliseconds are dropped entirely — slicing raw
+  // digits previously kept one ms digit and dropped the T separator.
+  const digits = new Date().toISOString().replace(/[^0-9]/g, "");
+  const ts = `${digits.slice(2, 8)}T${digits.slice(8, 14)}`;
   // Hash-derived suffix: no raw prefix fragment can survive into the
   // committed registry via the id (red-team Critical: slugify preserves
   // base64url token bodies nearly intact).

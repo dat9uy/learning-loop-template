@@ -844,3 +844,23 @@ await test("checkAndEmit: toolchain-failure finding uses a toolchain-capture evi
     "toolchain-failure must NOT cite the gate-logic detector path",
   );
 });
+
+await test("checkAndEmit: emitted finding id uses the canonical YYMMDDTHHMMSS stamp", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "pnpm fallow:gate";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 3 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 1 * 60000, prefix, "toolchain-failure", sid),
+  ]);
+  await checkAndEmit(root);
+
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  const finding = JSON.parse(lines[lines.length - 1]);
+  assert.match(
+    finding.id,
+    /^meta-\d{6}T\d{6}Z-[0-9a-f]{8}$/,
+    "finding id stamp must match hand-filed ids (meta-260804T1026Z-*); the digit-slice bug kept one millisecond digit and dropped the T",
+  );
+});

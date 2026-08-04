@@ -70,6 +70,29 @@ function makeBashFailure(command, sessionId) {
   };
 }
 
+function readDebugLog() {
+  const logPath = join(root, ".claude", "coordination", ".toolchain-failure-capture.debug.log");
+  if (!existsSync(logPath)) return [];
+  return readFileSync(logPath, "utf8")
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+}
+
+await test("debug trace records capture and skip outcomes (fail-open stays observable)", () => {
+  setup();
+  try {
+    runHook(makeBashFailure("pnpm fallow:gate", "11111111-2222-3333-4444-555555555555"));
+    runHook(makeBashFailure("ls -la", "11111111-2222-3333-4444-555555555555"));
+    const trace = readDebugLog();
+    assert.strictEqual(trace.length, 2, "one debug line per invocation");
+    assert.strictEqual(trace[0].outcome, "captured");
+    assert.strictEqual(trace[1].outcome, "skip-non-toolchain");
+    assert.strictEqual(trace[1].command_prefix, "ls -la", "skip trace carries the normalized prefix, never the raw command");
+  } finally { teardown(); }
+});
+
 await test("captures pnpm fallow:gate failure", () => {
   setup();
   try {
