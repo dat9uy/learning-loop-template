@@ -173,6 +173,7 @@ const SHIM_NAME_TO_HOOK_KEY = Object.freeze({
   "write-coordination-gate.cjs": "write-gate",
   "inbound-state-gate.cjs": "inbound-gate",
   "recurrence-check-on-start.cjs": "recurrence-check-on-start",
+  "toolchain-failure-capture.cjs": "toolchain-failure-capture",
 });
 
 /**
