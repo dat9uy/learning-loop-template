@@ -126,21 +126,51 @@ export function findRecurrentGroups(root, options = {}) {
     });
   }
 
-  // Cross-session slow-burn pass: a prefix with >=5 occurrences across >=2
-  // distinct REAL-tier sessions in a trailing 7-day window, where no
-  // within-window single session crossed the per-session threshold, files
-  // a lower-confidence recurring-false-positive finding. The dedup layer
-  // and the hashed `recurrence_key` handle re-filing uniformly with the
-  // per-session pass.
-  //
-  // firedKeys is built from within-window per-session groups only; a stale
-  // out-of-window per-session burst does NOT enter firedKeys and so does
-  // NOT suppress a fresh slow-burn. The cross-session pass counts distinct
-  // REAL-tier session_ids only — fallback session_ids contribute to
-  // `count` but cannot satisfy the distinct-session requirement on their
-  // own (defeats single-worktree branch-switch false positive). The window
-  // is enforced at the grouping step, not at collapseFreshByKey.
+  // Cross-session slow-burn pass: sub-threshold-per-session failures that
+  // accumulate across >=2 REAL-tier sessions within 7 days file a lower-
+  // confidence finding. See findCrossSessionGroups for the guards.
+  recurrent.push(...findCrossSessionGroups(allEntries, recurrent));
+
+  return recurrent;
+}
+
+/**
+ * Cross-session slow-burn pass: a prefix with >=5 occurrences across >=2
+ * distinct REAL-tier sessions in a trailing 7-day window, where no
+ * within-window single session crossed the per-session threshold, files
+ * a lower-confidence recurring-false-positive finding. The dedup layer
+ * and the hashed `recurrence_key` handle re-filing uniformly with the
+ * per-session pass.
+ *
+ * `firedKeys` is built from within-window per-session groups only; a stale
+ * out-of-window per-session burst does NOT enter firedKeys and so does
+ * NOT suppress a fresh slow-burn. The cross-session pass counts distinct
+ * REAL-tier session_ids only — fallback session_ids contribute to `count`
+ * but cannot satisfy the distinct-session requirement on their own (defeats
+ * single-worktree branch-switch false positive). The window is enforced at
+ * the grouping step, not at collapseFreshByKey.
+ *
+ * @param {Array} allEntries — decision-log entries (ts-sorted), shared with the per-session pass.
+ * @param {Array} recurrent — within-window per-session groups, used to build the dedup firedKeys set.
+ * @returns {Array} cross-session slow-burn groups to append to `recurrent`.
+ */
+function findCrossSessionGroups(allEntries, recurrent) {
   const windowStart = Date.now() - CROSS_SESSION_WINDOW_MS;
+  const firedKeys = withinWindowFiredKeys(recurrent, windowStart);
+  const crossGroups = groupCrossSessionEntries(allEntries, windowStart);
+  return emitCrossSessionGroups(crossGroups, firedKeys);
+}
+
+/**
+ * Build the set of recurrence keys already covered by a within-window
+ * per-session group. A stale out-of-window per-session burst does NOT enter
+ * this set, so it cannot suppress a fresh slow-burn (red-team Finding 1).
+ *
+ * @param {Array} recurrent
+ * @param {number} windowStart
+ * @returns {Set<string>}
+ */
+function withinWindowFiredKeys(recurrent, windowStart) {
   /** @type {Set<string>} */
   const firedKeys = new Set();
   for (const g of recurrent) {
@@ -149,7 +179,21 @@ export function findRecurrentGroups(root, options = {}) {
       firedKeys.add(recurrenceKeyFor(g));
     }
   }
+  return firedKeys;
+}
 
+/**
+ * Group within-window entries by (rule_id, normalized_prefix), ignoring
+ * session_id. Null-rule_id, no-session, and out-of-window / NaN-ts entries
+ * are skipped. Fallback session_ids contribute to `count` but only REAL-tier
+ * ids are tracked in `realSessions` — the distinct-session requirement is
+ * real-tier-only (defeats single-worktree branch-switch false positive).
+ *
+ * @param {Array} allEntries
+ * @param {number} windowStart
+ * @returns {Map<string, { rule_id: string, command_prefix_normalized: string, entries: Array, realSessions: Set<string> }>}
+ */
+function groupCrossSessionEntries(allEntries, windowStart) {
   /** @type {Map<string, { rule_id: string, command_prefix_normalized: string, entries: Array, realSessions: Set<string> }>} */
   const crossGroups = new Map();
   for (const entry of allEntries) {
@@ -168,22 +212,30 @@ export function findRecurrentGroups(root, options = {}) {
     cg.entries.push(entry);
     if (entry.session_id_tier === "real") cg.realSessions.add(sid);
   }
+  return crossGroups;
+}
 
+/**
+ * Emit cross-session slow-burn groups that cross the (count, distinct-real-
+ * sessions) thresholds and are not already covered by a within-window
+ * per-session finding (`firedKeys`). Each group carries
+ * `cross_session_slow_burn: true` so `buildFinding` appends the lower-
+ * confidence suffix; the persisted finding shape is unchanged.
+ *
+ * @param {Map<string, { rule_id: string, command_prefix_normalized: string, entries: Array, realSessions: Set<string> }>} crossGroups
+ * @param {Set<string>} firedKeys
+ * @returns {Array}
+ */
+function emitCrossSessionGroups(crossGroups, firedKeys) {
+  const crossSession = [];
   for (const cg of crossGroups.values()) {
     if (cg.entries.length < CROSS_SESSION_THRESHOLD_N) continue;
     if (cg.realSessions.size < CROSS_SESSION_MIN_REAL_SESSIONS) continue;
-    const recurrenceKey = recurrenceKeyFor(cg);
-    if (firedKeys.has(recurrenceKey)) continue;
-    // Pick the latest real-tier entry's session_id for the surfaced
-    // `session_id` field; fall back to the latest entry overall.
-    const latestReal = [...cg.entries]
-      .filter((e) => e.session_id_tier === "real")
-      .sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0))[0];
-    const sessionId = latestReal?.session_id ?? cg.entries[cg.entries.length - 1].session_id;
-    recurrent.push({
+    if (firedKeys.has(recurrenceKeyFor(cg))) continue;
+    crossSession.push({
       rule_id: cg.rule_id,
       command_prefix_normalized: cg.command_prefix_normalized,
-      session_id: sessionId,
+      session_id: latestRealSessionId(cg.entries),
       count: cg.entries.length,
       first_ts: cg.entries[0].ts,
       last_ts: cg.entries[cg.entries.length - 1].ts,
@@ -192,8 +244,22 @@ export function findRecurrentGroups(root, options = {}) {
       cross_session_slow_burn: true,
     });
   }
+  return crossSession;
+}
 
-  return recurrent;
+/**
+ * Pick the latest REAL-tier entry's `session_id` for the surfaced group
+ * `session_id` field; fall back to the latest entry overall when no
+ * real-tier entry exists.
+ *
+ * @param {Array} entries
+ * @returns {string}
+ */
+function latestRealSessionId(entries) {
+  const latestReal = entries
+    .filter((e) => e.session_id_tier === "real")
+    .sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0))[0];
+  return latestReal?.session_id ?? entries[entries.length - 1].session_id;
 }
 
 function generateFindingId(ruleId) {
