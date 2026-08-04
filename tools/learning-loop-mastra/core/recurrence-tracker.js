@@ -5,6 +5,9 @@ import { readRegistry, writeEntryIfAbsent } from "./meta-state.js";
 const RECURRENCE_THRESHOLD_N = 3;
 const COMMAND_PREFIX_MAX_LEN = 50;
 const FALLBACK_TIER_SPAN_MS = 24 * 60 * 60 * 1000;
+const CROSS_SESSION_THRESHOLD_N = 5;
+const CROSS_SESSION_MIN_REAL_SESSIONS = 2;
+const CROSS_SESSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Normalize a command prefix for grouping.
@@ -122,6 +125,74 @@ export function findRecurrentGroups(root, options = {}) {
       sample_commands: entries.slice(0, 3).map((e) => e.command_prefix),
     });
   }
+
+  // Cross-session slow-burn pass: a prefix with >=5 occurrences across >=2
+  // distinct REAL-tier sessions in a trailing 7-day window, where no
+  // within-window single session crossed the per-session threshold, files
+  // a lower-confidence recurring-false-positive finding. The dedup layer
+  // and the hashed `recurrence_key` handle re-filing uniformly with the
+  // per-session pass.
+  //
+  // firedKeys is built from within-window per-session groups only; a stale
+  // out-of-window per-session burst does NOT enter firedKeys and so does
+  // NOT suppress a fresh slow-burn. The cross-session pass counts distinct
+  // REAL-tier session_ids only — fallback session_ids contribute to
+  // `count` but cannot satisfy the distinct-session requirement on their
+  // own (defeats single-worktree branch-switch false positive). The window
+  // is enforced at the grouping step, not at collapseFreshByKey.
+  const windowStart = Date.now() - CROSS_SESSION_WINDOW_MS;
+  /** @type {Set<string>} */
+  const firedKeys = new Set();
+  for (const g of recurrent) {
+    const lastMs = new Date(g.last_ts).getTime();
+    if (Number.isFinite(lastMs) && lastMs >= windowStart) {
+      firedKeys.add(recurrenceKeyFor(g));
+    }
+  }
+
+  /** @type {Map<string, { rule_id: string, command_prefix_normalized: string, entries: Array, realSessions: Set<string> }>} */
+  const crossGroups = new Map();
+  for (const entry of allEntries) {
+    if (!entry.rule_id) continue;
+    const tsMs = new Date(entry.ts).getTime();
+    if (!Number.isFinite(tsMs) || tsMs < windowStart) continue;
+    const sid = entry.session_id ?? "no-session";
+    if (sid === "no-session") continue;
+    const normalized = normalizePrefix(entry.command_prefix);
+    const key = `${entry.rule_id}::${normalized}`;
+    let cg = crossGroups.get(key);
+    if (!cg) {
+      cg = { rule_id: entry.rule_id, command_prefix_normalized: normalized, entries: [], realSessions: new Set() };
+      crossGroups.set(key, cg);
+    }
+    cg.entries.push(entry);
+    if (entry.session_id_tier === "real") cg.realSessions.add(sid);
+  }
+
+  for (const cg of crossGroups.values()) {
+    if (cg.entries.length < CROSS_SESSION_THRESHOLD_N) continue;
+    if (cg.realSessions.size < CROSS_SESSION_MIN_REAL_SESSIONS) continue;
+    const recurrenceKey = recurrenceKeyFor(cg);
+    if (firedKeys.has(recurrenceKey)) continue;
+    // Pick the latest real-tier entry's session_id for the surfaced
+    // `session_id` field; fall back to the latest entry overall.
+    const latestReal = [...cg.entries]
+      .filter((e) => e.session_id_tier === "real")
+      .sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0))[0];
+    const sessionId = latestReal?.session_id ?? cg.entries[cg.entries.length - 1].session_id;
+    recurrent.push({
+      rule_id: cg.rule_id,
+      command_prefix_normalized: cg.command_prefix_normalized,
+      session_id: sessionId,
+      count: cg.entries.length,
+      first_ts: cg.entries[0].ts,
+      last_ts: cg.entries[cg.entries.length - 1].ts,
+      sample_commands: cg.entries.slice(0, 3).map((e) => e.command_prefix),
+      sessions_crossing_threshold: cg.realSessions.size,
+      cross_session_slow_burn: true,
+    });
+  }
+
   return recurrent;
 }
 
@@ -213,6 +284,13 @@ function buildFinding(group, ruleById) {
   } else {
     evidenceCodeRef = "tools/learning-loop-mastra/core/gate-logic.js";
   }
+  const description =
+      `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) ` +
+      `(latest: ${group.session_id}) under rule ${group.rule_id}. ` +
+      `First seen: ${group.first_ts}. Last seen: ${group.last_ts}.` +
+      (group.cross_session_slow_burn
+        ? ` (cross-session slow-burn: no single session reached the per-session threshold of ${RECURRENCE_THRESHOLD_N})`
+        : "");
   return {
     id: generateFindingId(group.rule_id),
     entry_kind: "finding",
@@ -221,10 +299,7 @@ function buildFinding(group, ruleById) {
     affected_system: "gate-logic",
     subtype: "recurring-false-positive",
     recurrence_key: recurrenceKeyFor(group),
-    description:
-      `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) ` +
-      `(latest: ${group.session_id}) under rule ${group.rule_id}. ` +
-      `First seen: ${group.first_ts}. Last seen: ${group.last_ts}.`,
+    description,
     evidence_code_ref: evidenceCodeRef,
     mechanism_check: true,
     status: "open",
