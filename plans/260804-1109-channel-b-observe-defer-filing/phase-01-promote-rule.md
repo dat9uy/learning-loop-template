@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Promote the agent-checklist rule (TDD)"
-status: pending
+status: completed
 priority: P1
 effort: "1-2h"
 dependencies: []

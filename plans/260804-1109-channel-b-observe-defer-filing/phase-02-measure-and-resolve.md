@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Measure re-check + resolve/escalate criteria"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: ["1"]

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Auto-capture repeated toolchain-command failures"
-status: pending
+status: completed
 priority: P2
 effort: "1d"
 dependencies: ["1"]

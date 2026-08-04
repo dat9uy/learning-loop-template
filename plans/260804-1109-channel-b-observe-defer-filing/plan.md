@@ -1,7 +1,7 @@
 ---
 title: "channel-b-observe-defer-filing"
 description: "Close finding meta-260802T0000Z by (1) promoting an agent-checklist steering rule that forces agents to meta_state_report a gate/toolchain failure (category loop-anti-pattern, with session_id) BEFORE deferring it as out-of-scope, and (2) a mechanical PostToolUseFailure capture channel for REPEATED toolchain-command failures (N>=3 per session) that does not rely on agent compliance. Channel A (recurrence-tracker window fix) is already shipped to main; Channel B (agent-initiated filing on observe-and-defer) is the remaining gap, closed by the rule; Phase 3 adds mechanical capture of repeated toolchain failures (not single novel ones — the PostToolUseFailure payload carries no stderr). The rule auto-surfaces at SessionStart via buildProcessView. Measure-then-escalate: define a re-check; resolve the finding when the channel fires in vivo or attests present-by-construction."
-status: pending
+status: in-progress
 priority: P1
 effort: ""
 tags: [meta-state, rule, agent-checklist, channel-b, loop-anti-pattern, finding-closure]
