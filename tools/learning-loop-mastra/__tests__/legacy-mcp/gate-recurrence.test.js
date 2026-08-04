@@ -5,7 +5,12 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
-import { findRecurrentGroups, checkAndEmit, hashRecurrenceKey } from "../../core/recurrence-tracker.js";
+import {
+  findRecurrentGroups,
+  checkAndEmit,
+  hashRecurrenceKey,
+  normalizePrefix,
+} from "../../core/recurrence-tracker.js";
 import { writeEntryIfAbsent } from "../../core/meta-state.js";
 import { gateCheckRecurrenceTool } from "../../tools/handlers/gate-check-recurrence-tool.js";
 
@@ -863,4 +868,343 @@ await test("checkAndEmit: emitted finding id uses the canonical YYMMDDTHHMMSS st
     /^meta-\d{6}T\d{6}Z-[0-9a-f]{8}$/,
     "finding id stamp must match hand-filed ids (meta-260804T1026Z-*); the digit-slice bug kept one millisecond digit and dropped the T",
   );
+});
+
+// --- cross-session slow-burn tests ---
+//
+// Sub-threshold-per-session failures that accumulate across >=2 REAL-tier
+// sessions within a trailing 7-day window file a recurring-false-positive
+// finding. Distinct-real-session requirement: >=2. Threshold: >=5
+// occurrences. Window: trailing 7 days. The cross-session group is emitted
+// only when no within-window single-session group already fires (avoids
+// double-counting).
+
+const SIDS_REAL = [
+  "11111111-2222-3333-4444-555555555555",
+  "22222222-3333-4444-5555-666666666666",
+  "33333333-4444-5555-6666-777777777777",
+];
+
+await test("findRecurrentGroups: 2x in each of 3 REAL sessions (6 total, 3 sessions) within 7 days → 1 cross-session group", () => {
+  // This is the motivating case: the per-session pass returns 0 (each session
+  // has only 2 entries, below the per-session threshold of 3). The
+  // cross-session pass must surface it.
+  const now = Date.now();
+  const prefix = "cross-session-slow-burn";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[2]),
+    makeEntry(now - 30000, prefix, "rule-no-new-artifact-types", SIDS_REAL[2]),
+  ]);
+  const groups = findRecurrentGroups(root);
+  const cross = groups.filter((g) => g.cross_session_slow_burn === true);
+  assert.strictEqual(cross.length, 1, "cross-session slow-burn must produce exactly one group");
+  assert.strictEqual(cross[0].count, 6, "count must be the union across all within-window sessions");
+  assert.strictEqual(cross[0].sessions_crossing_threshold, 3, "3 distinct real sessions");
+  assert.strictEqual(cross[0].rule_id, "rule-no-new-artifact-types");
+  assert.strictEqual(cross[0].command_prefix_normalized, normalizePrefix(prefix));
+});
+
+await test("findRecurrentGroups: 2 occurrences in 1 session only → no group (distinct-real-session threshold not met)", () => {
+  const now = Date.now();
+  const prefix = "single-session-no-cross";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 0, "single-session sub-threshold is invisible to both passes");
+});
+
+await test("findRecurrentGroups: 4 occurrences across 2 real sessions within 7 days → no group (count threshold 5 not met)", () => {
+  const now = Date.now();
+  const prefix = "four-across-two";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 0, "4 total — below the 5-occurrence threshold");
+});
+
+await test("findRecurrentGroups: 2+2 across 2 real sessions where one session is >7 days old → no group (window bound)", () => {
+  const now = Date.now();
+  const prefix = "window-bound-mix";
+  writeEntries([
+    // Old session — 8 days ago, outside the 7-day window.
+    makeEntry(now - 8 * 24 * 60 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 8 * 24 * 60 * 60000 + 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    // Fresh session — 1 minute ago.
+    makeEntry(now - 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 30000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 0, "out-of-window session must not count toward the distinct-session requirement");
+});
+
+await test("findRecurrentGroups: stale >7-day per-session burst (3 in X) does NOT suppress a fresh cross-session slow-burn (2+2+2 across 3 real sessions) for the same prefix", () => {
+  // The stale per-session group fires (its 3-in-X shape is within the old
+  // per-session pass's full-log scope). The fresh cross-session slow-burn
+  // must also fire — the stale burst must NOT enter firedKeys.
+  const now = Date.now();
+  const prefix = "no-over-suppression-prefix";
+  const staleSid = "44444444-5555-6666-7777-888888888888";
+  writeEntries([
+    // Stale per-session burst: 3 in the same session, 10 days ago.
+    makeEntry(now - 10 * 24 * 60 * 60000, prefix, "rule-no-new-artifact-types", staleSid),
+    makeEntry(now - 10 * 24 * 60 * 60000 + 60000, prefix, "rule-no-new-artifact-types", staleSid),
+    makeEntry(now - 10 * 24 * 60 * 60000 + 120000, prefix, "rule-no-new-artifact-types", staleSid),
+    // Fresh cross-session slow-burn: 2+2+2 across 3 distinct real sessions, today.
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[2]),
+    makeEntry(now - 30000, prefix, "rule-no-new-artifact-types", SIDS_REAL[2]),
+  ]);
+  const groups = findRecurrentGroups(root);
+  const perSession = groups.filter((g) => !g.cross_session_slow_burn);
+  const cross = groups.filter((g) => g.cross_session_slow_burn === true);
+  assert.strictEqual(perSession.length, 1, "stale per-session burst fires");
+  assert.strictEqual(perSession[0].session_id, staleSid);
+  assert.strictEqual(cross.length, 1, "fresh cross-session slow-burn must NOT be suppressed by stale per-session burst");
+  assert.strictEqual(cross[0].count, 6);
+  assert.strictEqual(cross[0].sessions_crossing_threshold, 3);
+});
+
+await test("findRecurrentGroups: A=3 within window + B=2 → only the per-session group; no cross_session_slow_burn group", () => {
+  // A crossed the per-session threshold within the window → its key is in
+  // firedKeys; the cross-session pass skips that key.
+  const now = Date.now();
+  const prefix = "per-session-takes-precedence";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 1, "only the per-session group — cross-session pass skipped due to firedKeys");
+  assert.strictEqual(groups[0].count, 3);
+  assert.notStrictEqual(groups[0].cross_session_slow_burn, true, "no cross-session group must be emitted");
+});
+
+await test("findRecurrentGroups: A=3, B=3 (both within window) → two per-session groups, no cross-session group; collapseFreshByKey yields one finding with count === 6", async () => {
+  // The harder double-count guard: two per-session groups with the same
+  // prefix share a recurrence_key. collapseFreshByKey merges their counts
+  // (3 + 3 = 6, not 9). The cross-session pass must NOT emit a third group
+  // (otherwise count would double again → 9).
+  const now = Date.now();
+  const prefix = "double-count-guard-prefix";
+  writeEntries([
+    makeEntry(now - 8 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 7 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 6 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 2, "two per-session groups; cross-session pass must not emit a third");
+  assert.ok(
+    groups.every((g) => g.cross_session_slow_burn !== true),
+    "no group may be a cross-session slow-burn group when both sessions crossed the per-session threshold",
+  );
+
+  // Run through checkAndEmit to confirm the merged finding reports count=6,
+  // not 9 (no triple-count from a stray cross-session group).
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 1, "two per-session groups sharing a key merge to one finding");
+
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  assert.strictEqual(lines.length, 1);
+  const finding = JSON.parse(lines[0]);
+  const findingJson = lines[0];
+  // 6 occurrences, 2 sessions crossing threshold — the dedup-merger sums
+  // count to 6 (3 + 3) and increments sessions_crossing_threshold by 1
+  // (initial 1 + 1).
+  assert.ok(/Pattern recurred 6 time\(s\) across 2 session\(s\)/.test(finding.description), `description must report count=6 across 2 sessions (got: ${finding.description})`);
+  assert.ok(!findingJson.includes("cross-session slow-burn"), "description must NOT carry the cross-session slow-burn suffix when the per-session pass already fired");
+});
+
+await test("findRecurrentGroups: 5 null-rule_id entries across 2 sessions (3+2) → 0 groups (no null:: finding)", () => {
+  // Mirrors the per-session null-rule_id test, but split across 2 sessions
+  // so the cross-session pass is exercised. The cross-session pass must
+  // skip entries with no rule_id — otherwise a `null::` finding would be
+  // filed (the literal Red-team Finding 2 defect).
+  const now = Date.now();
+  const entries = [];
+  for (let i = 0; i < 3; i++) {
+    entries.push({
+      ts: new Date(now - i * 60000).toISOString(),
+      command_prefix: "docker",
+      rule_id: null,
+      decision: "escalate",
+      reason: "constraint matched",
+      matched_pattern: null,
+      skipped_via_override: false,
+      session_id: SIDS_REAL[0],
+      session_id_tier: "real",
+    });
+  }
+  for (let i = 0; i < 2; i++) {
+    entries.push({
+      ts: new Date(now - 60 * 60000 - i * 60000).toISOString(),
+      command_prefix: "docker",
+      rule_id: null,
+      decision: "escalate",
+      reason: "constraint matched",
+      matched_pattern: null,
+      skipped_via_override: false,
+      session_id: SIDS_REAL[1],
+      session_id_tier: "real",
+    });
+  }
+  writeEntries(entries);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 0, "null-rule_id entries must not file a `null::` finding");
+});
+
+await test("findRecurrentGroups: 5 fallback-tier entries across 2 distinct fallback session_ids within 7 days → no cross-session group", () => {
+  // The cross-session pass counts REAL-tier session_ids only. Two distinct
+  // fallback session_ids (which would be two branches of a single worktree)
+  // cannot satisfy the distinct-real-session requirement on their own.
+  const now = Date.now();
+  const prefix = "fallback-cross";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", "fallback-branchA", "fallback"),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", "fallback-branchA", "fallback"),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", "fallback-branchB", "fallback"),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", "fallback-branchB", "fallback"),
+    makeEntry(now - 60000, prefix, "rule-no-new-artifact-types", "fallback-branchA", "fallback"),
+  ]);
+  const groups = findRecurrentGroups(root);
+  // The per-session pass returns 0 (each fallback bucket has <= 3 entries
+  // and the span bound covers them; but the threshold is 3 and branchA has 3,
+  // so a single per-session group *might* fire on branchA). Either way, no
+  // cross-session group with cross_session_slow_burn=true must appear.
+  const cross = groups.filter((g) => g.cross_session_slow_burn === true);
+  assert.strictEqual(cross.length, 0, "fallback-only distinct sessions must not produce a cross-session slow-burn group");
+});
+
+await test("findRecurrentGroups: single worktree on two branches — 3 fallback + 3 fallback with two distinct fallback session_ids within 7 days → no cross-session finding", () => {
+  // The branch-switch false positive: a single worktree that switches
+  // branches produces two distinct fallback session_ids. The cross-session
+  // pass counts REAL-tier only; the per-session pass bounds fallback-tier
+  // groups to a 24h span. Together they must NOT fire a cross-session
+  // finding across two branches.
+  const now = Date.now();
+  const prefix = "branch-switch-fallback";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", "worktree-branchA", "fallback"),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", "worktree-branchA", "fallback"),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", "worktree-branchA", "fallback"),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", "worktree-branchB", "fallback"),
+    makeEntry(now - 60000, prefix, "rule-no-new-artifact-types", "worktree-branchB", "fallback"),
+    makeEntry(now - 30000, prefix, "rule-no-new-artifact-types", "worktree-branchB", "fallback"),
+  ]);
+  const groups = findRecurrentGroups(root);
+  const cross = groups.filter((g) => g.cross_session_slow_burn === true);
+  assert.strictEqual(cross.length, 0, "single-worktree branch switch must not fire a cross-session finding");
+});
+
+await test("findRecurrentGroups: 5 real-tier entries across 3 distinct real sessions (2+2+1 sub-threshold-per-session) → cross-session fires (positive control)", () => {
+  // Positive control confirming real-tier session_ids count toward the
+  // distinct-session requirement. Distribution is sub-threshold per
+  // session (2+2+1) so the per-session pass emits no group; the
+  // cross-session pass surfaces the union.
+  const now = Date.now();
+  const prefix = "real-tier-positive-control";
+  writeEntries([
+    makeEntry(now - 6 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[2]),
+  ]);
+  const groups = findRecurrentGroups(root);
+  const cross = groups.filter((g) => g.cross_session_slow_burn === true);
+  assert.strictEqual(cross.length, 1, "real-tier sub-threshold-per-session entries across 3 sessions must fire");
+  assert.strictEqual(cross[0].count, 5);
+  assert.strictEqual(cross[0].sessions_crossing_threshold, 3);
+});
+
+await test("checkAndEmit: cross-session slow-burn → files exactly one finding, description includes `cross-session slow-burn`", async () => {
+  // End-to-end check: the cross-session path through collapseFreshByKey →
+  // buildFinding → writeEntryIfAbsent must produce a finding whose
+  // description carries the cross-session slow-burn suffix, and whose
+  // recurrence_key is computed from the NORMALIZED prefix.
+  const now = Date.now();
+  const rawPrefix = "curl https://api.example.com?token=eyJhbGciOiJIUzI1NiJ9";
+  writeEntries([
+    makeEntry(now - 5 * 60000, rawPrefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, rawPrefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 3 * 60000, rawPrefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 2 * 60000, rawPrefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 60000, rawPrefix, "rule-no-new-artifact-types", SIDS_REAL[2]),
+    makeEntry(now - 30000, rawPrefix, "rule-no-new-artifact-types", SIDS_REAL[2]),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 1, "cross-session slow-burn → exactly one finding");
+
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  assert.strictEqual(lines.length, 1);
+  const finding = JSON.parse(lines[0]);
+  // recurrence_key is rule_id::sha256(rule_id::NORMALIZED_PREFIX)[:16].
+  const expectedNormalized = normalizePrefix(rawPrefix);
+  const expectedHash = hashRecurrenceKey("rule-no-new-artifact-types", expectedNormalized);
+  assert.strictEqual(
+    finding.recurrence_key,
+    `rule-no-new-artifact-types::${expectedHash}`,
+    "recurrence_key must hash the normalized prefix, not the raw prefix",
+  );
+  // Description must carry the cross-session slow-burn suffix AND must
+  // NOT leak the raw secret.
+  assert.ok(finding.description.includes("cross-session slow-burn"), "description must signal the lower-confidence cross-session source");
+  assert.ok(!finding.description.includes("eyJhbGciOiJIUzI1NiJ9"), "raw token must NOT appear in description");
+  assert.ok(!finding.description.includes("api.example.com"), "raw URL host must NOT appear in description");
+  assert.ok(!finding.description.includes("token="), "raw `token=` fragment must NOT appear in description");
+  // Whole-finding grep: no raw secret fragment anywhere.
+  const findingJson = lines[0];
+  assert.ok(!findingJson.includes("eyJhbGciOiJIUzI1NiJ9"), "raw token must NOT appear in finding JSON");
+  assert.ok(!findingJson.includes("api.example.com"), "raw URL host must NOT appear in finding JSON");
+  assert.ok(!findingJson.includes("token="), "raw `token=` fragment must NOT appear in finding JSON");
+});
+
+await test("findRecurrentGroups: malformed-ts entry is skipped by cross-session pass but does not crash", () => {
+  // A malformed `ts` (NaN) entry must be silently skipped by the
+  // cross-session pass (Number.isFinite guard) without breaking the
+  // surrounding valid entries' grouping.
+  const now = Date.now();
+  const prefix = "malformed-ts-mix";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 4 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[0]),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[1]),
+    makeEntry(now - 60000, prefix, "rule-no-new-artifact-types", SIDS_REAL[2]),
+    // Now add a malformed-ts entry for the same prefix on a different session.
+    {
+      ts: "not-a-date",
+      command_prefix: prefix,
+      rule_id: "rule-no-new-artifact-types",
+      decision: "escalate",
+      reason: "Promoted rule matched",
+      matched_pattern: "node -e",
+      skipped_via_override: false,
+      session_id: SIDS_REAL[2],
+      session_id_tier: "real",
+    },
+  ]);
+  const groups = findRecurrentGroups(root);
+  const cross = groups.filter((g) => g.cross_session_slow_burn === true);
+  assert.strictEqual(cross.length, 1, "the 5 valid entries still cross the threshold");
+  assert.strictEqual(cross[0].count, 5, "malformed-ts entry must NOT be counted");
+  assert.strictEqual(cross[0].sessions_crossing_threshold, 3);
 });
