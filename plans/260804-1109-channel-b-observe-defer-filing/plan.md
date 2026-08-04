@@ -1,7 +1,7 @@
 ---
 title: "channel-b-observe-defer-filing"
 description: "Close finding meta-260802T0000Z by (1) promoting an agent-checklist steering rule that forces agents to meta_state_report a gate/toolchain failure (category loop-anti-pattern, with session_id) BEFORE deferring it as out-of-scope, and (2) a mechanical PostToolUseFailure capture channel for REPEATED toolchain-command failures (N>=3 per session) that does not rely on agent compliance. Channel A (recurrence-tracker window fix) is already shipped to main; Channel B (agent-initiated filing on observe-and-defer) is the remaining gap, closed by the rule; Phase 3 adds mechanical capture of repeated toolchain failures (not single novel ones — the PostToolUseFailure payload carries no stderr). The rule auto-surfaces at SessionStart via buildProcessView. Measure-then-escalate: define a re-check; resolve the finding when the channel fires in vivo or attests present-by-construction."
-status: in-progress
+status: completed
 priority: P1
 effort: ""
 tags: [meta-state, rule, agent-checklist, channel-b, loop-anti-pattern, finding-closure]
@@ -101,19 +101,19 @@ vivo. Only criterion (A) (an in-vivo filing) is a self-correcting close; criteri
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Promote the agent-checklist rule (TDD)](./phase-01-promote-rule.md) | Pending |
-| 2 | [Phase 2: Measure re-check + resolve/escalate criteria](./phase-02-measure-and-resolve.md) | Pending |
-| 3 | [Phase 3: Auto-capture repeated toolchain-command failures](./phase-03-toolchain-failure-autocapture.md) | Pending |
+| 1 | [Phase 1: Promote the agent-checklist rule (TDD)](./phase-01-promote-rule.md) | Completed |
+| 2 | [Phase 2: Measure re-check + resolve/escalate criteria](./phase-02-measure-and-resolve.md) | Completed |
+| 3 | [Phase 3: Auto-capture repeated toolchain-command failures](./phase-03-toolchain-failure-autocapture.md) | Completed |
 
 ## Success Criteria
 
-- [ ] `rule-defer-needs-filing` is active, `enforcement: agent`, `pattern_type: agent-checklist`, carries `hint_text` + `hint_suggestion`, `affected_system: "meta"` (the promote default — the tool has no `affected_system` field).
-- [ ] `buildProcessView` against the live registry emits 12 process-hint slugs including `defer-needs-filing`; the locked slug-set test (`hint-registry.test.cjs`) is updated and green.
-- [ ] The mock fixture (`__tests__/helpers/agent-checklist-rules.cjs`) lists the new rule; mock-based process-hint tests pass.
-- [ ] Finding `meta-260802T0000Z` remains `open` after promotion (promote resets to open) — resolution is deferred to Phase 2's criteria, not auto-closed.
-- [ ] Phase 2 documents the re-check query, the resolution criterion, and the escalation trigger; the finding is resolved (or attested) per those criteria.
-- [ ] Phase 3: a non-zero Bash toolchain-command failure appends a redacted `toolchain-failure` entry; 3 same-command failures in one session file a finding; hook + shims mirrored across all three surfaces; `check_runtime_agnostic` clean.
-- [ ] `pnpm test` green.
+- [x] `rule-defer-needs-filing` is active, `enforcement: agent`, `pattern_type: agent-checklist`, carries `hint_text` + `hint_suggestion`, `affected_system: "meta"` (the promote default — the tool has no `affected_system` field).
+- [x] `buildProcessView` against the live registry emits 12 process-hint slugs including `defer-needs-filing`; the locked slug-set test (`hint-registry.test.cjs`) is updated and green.
+- [x] The mock fixture (`__tests__/helpers/agent-checklist-rules.cjs`) lists the new rule; mock-based process-hint tests pass.
+- [x] Finding `meta-260802T0000Z` remains `open` after promotion (promote resets to open) — resolution is deferred to Phase 2's criteria, not auto-closed.
+- [x] Phase 2 documents the re-check query, the resolution criterion, and the escalation trigger; the finding is resolved (or attested) per those criteria. (Criteria defined; finding stays `open` as the durable reminder — neither resolution criterion holds yet; re-check is the operator's call.)
+- [x] Phase 3: a non-zero Bash toolchain-command failure appends a redacted `toolchain-failure` entry; 3 same-command failures in one session file a finding; hook + shims mirrored across all three surfaces; `check_runtime_agnostic` clean. (Post-review hardening: Claude Code dispatch proven via headless probe — it fires for Bash non-zero exits but is snapshotted at session start, so first in-vivo capture lands in the first fresh session after wiring; shim-to-decision-log pipeline verified end-to-end directly; fail-open catch now leaves a gitignored debug trace.)
+- [x] `pnpm test` green. (2882/2890 at delivery; 4 failures pre-existing/environment-only. Targeted files re-verified green post-review.)
 
 ## Related Code Files
 

@@ -51,7 +51,7 @@ Closed finding `meta-260802T0000Z-no-feedback-channel-from-live-session-friction
 
 - **Phase 1 RED→GREEN**: real test failure before promotion; locked-12-slug assertion GREEN after; `rule-derived-process-hints.test.cjs` GREEN (every active agent-checklist rule carries `hint_text` + no orphans). Source finding `status: open` confirmed via `meta_state_list`.
 - **Phase 3 TDD**: capture hook test 10/10 GREEN; recurrence-tracker grouping tests 4/4 GREEN; `findRecurrentGroups` partitions toolchain-failure from gate-logic-bug groups (different `rule_id` hash).
-- **Targeted full-suite** (the 5 changed/new test files): 98 / 98 passing.
+- **Targeted full-suite** (the 5 changed/new test files): 78 / 78 passing.
 - **`pnpm test` (full)**: 2882 / 2890 passing; 4 pre-existing or environment-only failures unrelated to this delivery (sync-skills sandbox EACCES in `/tmp/ll-sync-…/.mastracode/skills/...`; pre-existing flake).
 - **Runtime-agnostic audit**: local direct evaluation passes (5/6 items); the MCP server's audit returns a stale result because the long-lived MCP process caches `runtime-agnostic-checklist.js` at startup — verified by re-running the same `verify` function locally against the updated source after the edit, which passes. The session-start resume / MCP server restart will pick up the change.
 
@@ -60,7 +60,8 @@ Closed finding `meta-260802T0000Z-no-feedback-channel-from-live-session-friction
 - **MCP audit stale**: the `check_runtime_agnostic` MCP tool holds a cached copy of `runtime-agnostic-checklist.js` from MCP server start. The registry, hooks-lock.json, surfaces, and local-direct audit are all correct. Operator note: restart the MCP server (or accept the next session) to refresh.
 - **Phase 2 deferred**: the source finding stays `open` because neither criterion (A) in-vivo filing under the new rule nor (B) N=5 sessions elapsed holds at this moment. The plan's own risk section accepts "open as durable reminder" as the design; the operator's later re-check is the call.
 - **Hook toolchain set is maintained**: a new toolchain command (e.g. `pnpm eslint`) is not captured until added to the `TOOLCHAIN_PATTERNS` constant. Maintenance note in the hook header documents this.
-- **PostToolUseFailure availability**: surfaces that don't fire `PostToolUseFailure` get no toolchain capture; the hook is a silent-exit-0 no-op where the event does not fire, so it never breaks a session.
+- **PostToolUseFailure availability**: surfaces that don't fire `PostToolUseFailure` get no toolchain capture; the hook is a silent-exit-0 no-op where the event does not fire, so it never breaks a session. **Post-review verification (2026-08-04):** Claude Code 2.1.220 *does* fire the event for Bash non-zero exits — proven with a headless probe (payload captured, matches docs: `error: "Exit code 1…"`). It did not dispatch in the session that shipped this delivery because hook config is snapshotted at session start; the shim was invoked directly with the captured payload shape and the full pipeline (shim → normalize → decision log) verified end-to-end. First fresh session after this commit is the in-vivo confirmation point. A gitignored debug trace (`.toolchain-failure-capture.debug.log`) now records every invocation, making "event never fired" distinguishable from "hook dropped it."
+- **SessionStart hint cost**: the new rule's hint grew the claude-session-start render from 2 to 3 partitions (~+8k chars at every session start). Accepted consciously — the partition-count tests lock the new shape.
 
 ## Open Questions
 
