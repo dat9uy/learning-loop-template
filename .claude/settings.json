@@ -51,6 +51,16 @@
           }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/coordination/hooks/toolchain-failure-capture.cjs"
+          }
+        ]
+      }
     ]
   },
   "autoMemoryEnabled": false

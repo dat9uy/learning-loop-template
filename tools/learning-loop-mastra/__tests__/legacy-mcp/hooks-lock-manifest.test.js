@@ -58,7 +58,7 @@ function loadManifest() {
   return parsed;
 }
 
-const ALLOWED_EVENTS = new Set(["PreToolUse", "UserPromptSubmit", "SessionStart"]);
+const ALLOWED_EVENTS = new Set(["PreToolUse", "UserPromptSubmit", "SessionStart", "PostToolUseFailure"]);
 const ALLOWED_KINDS = new Set(["shim", "direct", "adapter", "none"]);
 
 await test("hooks-lock.json exists at repo root and parses as JSON", () => {

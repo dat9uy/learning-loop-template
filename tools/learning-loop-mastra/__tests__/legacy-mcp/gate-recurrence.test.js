@@ -752,3 +752,115 @@ await test("writeEntryIfAbsent: valid finding writes once, second call suppresse
   assert.strictEqual(second.written, false);
   assert.strictEqual(second.suppressed_by.id, "meta-test-if-absent");
 });
+
+// --- toolchain-failure rule_id partition tests (Channel C, plans/260804-1109-channel-b-observe-defer-filing/phase-03) ---
+
+await test("findRecurrentGroups: toolchain-failure entries group under their own rule_id (3 same-command in one session)", () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "pnpm fallow:gate";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 3 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 1 * 60000, prefix, "toolchain-failure", sid),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 1, "3 toolchain-failure entries in one session → 1 group");
+  assert.strictEqual(groups[0].count, 3);
+  assert.strictEqual(groups[0].rule_id, "toolchain-failure");
+  assert.strictEqual(groups[0].command_prefix_normalized, "pnpm fallow:gate");
+});
+
+await test("findRecurrentGroups: toolchain-failure and gate-logic-bug entries do NOT collapse into each other", () => {
+  // A burst of 3 of each rule_id for the SAME prefix in the SAME session
+  // must produce 2 distinct groups (recurrence_key includes rule_id).
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "pnpm exec vitest run tools/some.test.js";
+  writeEntries([
+    makeEntry(now - 7 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 5 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 4 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-new-artifact-types", sid),
+    makeEntry(now - 2 * 60000, prefix, "rule-no-new-artifact-types", sid),
+    makeEntry(now - 1 * 60000, prefix, "rule-no-new-artifact-types", sid),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 2, "toolchain-failure and gate-logic-bug must remain distinct groups");
+  const tfcGroups = groups.filter((g) => g.rule_id === "toolchain-failure");
+  const gateGroups = groups.filter((g) => g.rule_id === "rule-no-new-artifact-types");
+  assert.strictEqual(tfcGroups.length, 1);
+  assert.strictEqual(tfcGroups[0].count, 3);
+  assert.strictEqual(gateGroups.length, 1);
+  assert.strictEqual(gateGroups[0].count, 3);
+});
+
+await test("checkAndEmit: toolchain-failure group emits a finding with subtype recurring-false-positive", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "pnpm run build";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 3 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 1 * 60000, prefix, "toolchain-failure", sid),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 1, "toolchain-failure burst → 1 finding filed");
+  assert.strictEqual(result.checked_groups, 1);
+
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  assert.strictEqual(lines.length, 1);
+  const finding = JSON.parse(lines[0]);
+  assert.strictEqual(finding.entry_kind, "finding");
+  assert.strictEqual(finding.subtype, "recurring-false-positive");
+  assert.strictEqual(finding.recurrence_key.startsWith("toolchain-failure::"), true, "recurrence_key must include the rule_id partition");
+  assert.ok(!finding.recurrence_key.includes("pnpm run build"), "raw prefix must NOT appear in recurrence_key (hashed)");
+});
+
+await test("checkAndEmit: toolchain-failure finding uses a toolchain-capture evidence_code_ref when no rule record exists", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "pnpm test:unit";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 3 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 1 * 60000, prefix, "toolchain-failure", sid),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 1);
+
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  const finding = JSON.parse(lines[lines.length - 1]);
+  // toolchain-failure has no rule record, so the buildFinding evidence_code_ref
+  // fallback must point to the capture hook (not the gate-logic detector
+  // path, which is the wrong referent for toolchain-captured findings).
+  assert.strictEqual(
+    finding.evidence_code_ref,
+    "tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js",
+    "toolchain-failure findings must cite the capture hook in evidence_code_ref",
+  );
+  assert.ok(
+    !finding.evidence_code_ref.includes("core/gate-logic.js"),
+    "toolchain-failure must NOT cite the gate-logic detector path",
+  );
+});
+
+await test("checkAndEmit: emitted finding id uses the canonical YYMMDDTHHMMSS stamp", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "pnpm fallow:gate";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 3 * 60000, prefix, "toolchain-failure", sid),
+    makeEntry(now - 1 * 60000, prefix, "toolchain-failure", sid),
+  ]);
+  await checkAndEmit(root);
+
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  const finding = JSON.parse(lines[lines.length - 1]);
+  assert.match(
+    finding.id,
+    /^meta-\d{6}T\d{6}Z-[0-9a-f]{8}$/,
+    "finding id stamp must match hand-filed ids (meta-260804T1026Z-*); the digit-slice bug kept one millisecond digit and dropped the T",
+  );
+});

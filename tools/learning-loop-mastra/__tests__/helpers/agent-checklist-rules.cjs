@@ -25,6 +25,7 @@ const MOCK_AGENT_CHECKLIST_RULES = [
   { id: "rule-assertinvariant-at-boundary", hint_order: 80 },
   { id: "rule-required-status-checks-verify-combined-status", hint_order: 100 },
   { id: "rule-no-plan-ids-in-stable-code-artifacts", hint_order: 110 },
+  { id: "rule-defer-needs-filing", hint_order: 120 },
 ];
 
 /** Slug the view derives for a rule — same derivation as buildProcessView. */

@@ -126,7 +126,11 @@ export function findRecurrentGroups(root, options = {}) {
 }
 
 function generateFindingId(ruleId) {
-  const ts = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 15);
+  // Canonical finding-id stamp: YYMMDDTHHMMSS (matches hand-filed ids like
+  // meta-260804T1026Z-*). Milliseconds are dropped entirely — slicing raw
+  // digits previously kept one ms digit and dropped the T separator.
+  const digits = new Date().toISOString().replace(/[^0-9]/g, "");
+  const ts = `${digits.slice(2, 8)}T${digits.slice(8, 14)}`;
   // Hash-derived suffix: no raw prefix fragment can survive into the
   // committed registry via the id (red-team Critical: slugify preserves
   // base64url token bodies nearly intact).
@@ -197,10 +201,18 @@ function collapseFreshByKey(recurrent, existingKeys) {
 
 function buildFinding(group, ruleById) {
   const ruleRecord = ruleById.get(group.rule_id);
-  const evidenceCodeRef =
-    (ruleRecord?.evidence_code_ref && typeof ruleRecord.evidence_code_ref === "string")
-      ? ruleRecord.evidence_code_ref
-      : "tools/learning-loop-mastra/core/gate-logic.js";
+  // evidence_code_ref resolution: rule record beats defaults; absent records
+  // fall back to the rule-class-specific capture hook (not the gate-logic
+  // detector). toolchain-failure has no rule record — its source is the
+  // PostToolUseFailure hook, so cite the hook as the referent.
+  let evidenceCodeRef;
+  if (ruleRecord?.evidence_code_ref && typeof ruleRecord.evidence_code_ref === "string") {
+    evidenceCodeRef = ruleRecord.evidence_code_ref;
+  } else if (group.rule_id === "toolchain-failure") {
+    evidenceCodeRef = "tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js";
+  } else {
+    evidenceCodeRef = "tools/learning-loop-mastra/core/gate-logic.js";
+  }
   return {
     id: generateFindingId(group.rule_id),
     entry_kind: "finding",

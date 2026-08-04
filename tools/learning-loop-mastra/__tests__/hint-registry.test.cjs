@@ -71,9 +71,9 @@ describe("hint registry invariants", () => {
     assert.deepStrictEqual(slugs, expected, "discoverability slugs (in registry order) must match the locked set");
   });
 
-  test("process entries cover the 11 expected slugs (9 rule-derived + 2 standalone) via buildProcessView", () => {
+  test("process entries cover the 12 expected slugs (10 rule-derived + 2 standalone) via buildProcessView", () => {
     // The rule-derived rows are no longer hand-mirrored in HINT_REGISTRY; the
-    // locked 11-slug set lives in the view (merged standalones + active
+    // locked 12-slug set lives in the view (merged standalones + active
     // agent-checklist rules). This hardcoded list is the deliberate drift
     // signal — a promotion/deactivation must update it consciously.
     const rules = metaState.readRegistry(PROJECT_ROOT).filter(
@@ -93,6 +93,7 @@ describe("hint registry invariants", () => {
       "file-edit-drift-and-fingerprints",
       "required-status-checks-verify-combined-status",
       "no-plan-ids-in-stable-code-artifacts",
+      "defer-needs-filing",
     ];
     assert.deepStrictEqual(slugs, expected, "process view slugs (in view order) must match the locked set");
   });
