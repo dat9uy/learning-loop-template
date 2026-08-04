@@ -1,11 +1,13 @@
 ---
 title: "recurrence-trigger-window"
 description: "Fix the gate-escalation recurrence trigger so the already-wired SessionStart auto-file fires for human-paced cadence. Replace the 10-min time axis with a per-session axis (full-log scan + dedup), hash command prefixes before they reach the committed registry, fix the stale evidence_code_ref to the gate-rule code (enabling read-time file-grounding co-location with accepted-limitation findings), and collapse the dedup filter to permanent-for-non-archived suppression. P4 (reopens linkage) is dissolved by PR 109's lifecycle migration — resolved is terminal, relationships are discovered at read time."
-status: pending
+status: completed
 priority: P1
 effort: ""
 tags: [gate, recurrence, meta-state, hook, security]
 created: 2026-08-02
+completed: 2026-08-04
+completion_note: "Shipped to main (commits ad87a6ec, f03bc39f, 160616b1). All 4 phases verified against live code: P1 session-axis grouping + session_id + hashed recurrence_key (recurrence-tracker.js findRecurrentGroups + hashRecurrenceKey; bash-gate.js resolveSessionId); P2 redaction + evidence_code_ref (generateFindingId hash-derived id, buildFinding ruleById); P3 permanent-for-non-archived suppression (resolveDedupIndex status!==archived); P4 integration regression green (rule-derived-process-hints.test.cjs 13 passed, hint-registry.test.cjs 10 passed). Frontmatter status was stale (pending) despite ship; reconciled 2026-08-04 during Channel B planning."
 source: plans/reports/investigation-260802-1606-recurrence-trigger-design-post-lifecycle.md
 supersedes: plans/260802-0135-recurrence-trigger-window/plan.md
 branch: fix/recurrence-trigger-window-v2
@@ -65,10 +67,10 @@ a time-based grace window (superseded — see P3); any new declared relationship
 
 | # | Phase | Status | Depends on |
 |---|-------|--------|------------|
-| 1 | [Phase 1: Session-axis grouping + session_id capture + hashed recurrence_key](./phase-01-session-axis-grouping.md) | Pending | — |
-| 2 | [Phase 2: Finding payload hygiene (id, description) + evidence_code_ref](./phase-02-redaction-and-code-ref.md) | Pending | 1 |
-| 3 | [Phase 3: Collapse dedup to permanent-for-non-archived (+ race-safe write)](./phase-03-permanent-suppression.md) | Pending | 2 |
-| 4 | [Phase 4: Integration regression + hook failure containment + runtime-agnostic audit](./phase-04-integration-regression.md) | Pending | 3 |
+| 1 | [Phase 1: Session-axis grouping + session_id capture + hashed recurrence_key](./phase-01-session-axis-grouping.md) | Completed | — |
+| 2 | [Phase 2: Finding payload hygiene (id, description) + evidence_code_ref](./phase-02-redaction-and-code-ref.md) | Completed | 1 |
+| 3 | [Phase 3: Collapse dedup to permanent-for-non-archived (+ race-safe write)](./phase-03-permanent-suppression.md) | Completed | 2 |
+| 4 | [Phase 4: Integration regression + hook failure containment + runtime-agnostic audit](./phase-04-integration-regression.md) | Completed | 3 |
 
 Phases are ordered by dependency: P1 changes the log-entry shape, grouping, **and the
 hashed `recurrence_key` together** (hashing rides P1 so no phase ordering can ever commit
