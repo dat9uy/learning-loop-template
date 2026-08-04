@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "TDD — failing tests for cross-session slow-burn detection"
-status: pending
+status: completed
 priority: P1
 effort: "~45m"
 dependencies: []

@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Implement cross-session grouping pass"
-status: pending
+status: completed
 priority: P1
 effort: "~45m"
 dependencies: [1]

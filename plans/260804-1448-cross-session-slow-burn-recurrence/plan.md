@@ -1,7 +1,7 @@
 ---
 title: "cross-session-slow-burn-recurrence"
 description: "Close the cross-session slow-burn gap in the recurrence tracker: sub-threshold-per-session toolchain failures that accumulate across sessions are mechanically invisible. Add a second grouping pass keyed on (rule_id, normalized_prefix), real-tier sessions only, with a trailing 7-day window, >=5 occurrences across >=2 distinct real sessions, that files a lower-confidence recurring-false-positive finding. Includes a within-window firedKeys guard and a rule_id:null guard."
-status: pending
+status: completed
 priority: P1
 effort: "~2-3h"
 tags: [recurrence-tracker, gate-logic, toolchain-failure, tdd]
@@ -49,9 +49,9 @@ The pass was adversarially red-teamed (see `## Red Team Review` below). The orig
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: TDD — failing tests for cross-session slow-burn detection](./phase-01-tdd-red-cross-session-tests.md) | Pending |
-| 2 | [Phase 2: Implement cross-session grouping pass](./phase-02-implement-cross-session-grouping-pass.md) | Pending |
-| 3 | [Phase 3: Verify, audit, resolve source finding](./phase-03-verify-audit-and-resolve.md) | Pending |
+| 1 | [Phase 1: TDD — failing tests for cross-session slow-burn detection](./phase-01-tdd-red-cross-session-tests.md) | Completed |
+| 2 | [Phase 2: Implement cross-session grouping pass](./phase-02-implement-cross-session-grouping-pass.md) | Completed |
+| 3 | [Phase 3: Verify, audit, resolve source finding](./phase-03-verify-audit-and-resolve.md) | Completed |
 
 ## Architecture
 
