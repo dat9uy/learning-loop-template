@@ -43,16 +43,16 @@ Per the internalization rule: call `meta_state_derive_status` before resolving; 
 
 ## Todo
 
-- [ ] Both findings resolved with correct citations
-- [ ] docs/architecture.md updated
-- [ ] check_runtime_agnostic clean
-- [ ] Suite green, PR open with green checks
+- [x] Both findings resolved with correct citations
+- [x] docs/architecture.md updated
+- [x] check_runtime_agnostic clean
+- [x] Suite green, PR open with green checks
 
 ## Success Criteria
 
-- [ ] Registry shows both findings resolved, resolutions cite shipped rules + change-log
-- [ ] Docs describe the new gate behavior without plan-ID references
-- [ ] PR merged-ready with mergeStateStatus CLEAN
+- [x] Registry shows both findings resolved, resolutions cite shipped rules + change-log
+- [x] Docs describe the new gate behavior without plan-ID references
+- [x] PR merged-ready with mergeStateStatus CLEAN
 
 ## Risk Assessment
 

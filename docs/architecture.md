@@ -223,6 +223,10 @@ Returns `ok`, `block`, or `escalate` for a given command. Splits on `;`, `&`, `|
 
 Temporarily overrides a promoted gate rule for the current session. The override is TTL'd (max 24h), audited in `runtime-state.jsonl`, and applies only to regex/glob rules enforced by the bash gate. Requires a non-empty `operator_note` for the audit trail. Reads and writes the `.gate-override` marker via `readModifyWriteOnAllSurfaces` for cross-surface consistency.
 
+#### Hook-bypass denial (registry data)
+
+The universal bash gate denies hook-bypass commit forms (long and short bypass flags) and destructive `core.hooksPath` overrides through the active promoted rule `rule-no-verify-bypass-denied`. The rule is consumed by all runtimes through the shared shim path; an intentional operator exception is the audited `gate_override` write path, never a hook-bypass flag.
+
 #### gate_check_recurrence
 
 Checks the gate's decision log (`.gate-decision.log` per surface) for recurring false-positive patterns. Reads the log via `readJsonlFromAllSurfaces` for cross-surface deduplication. Groups by `rule_id` + normalized command prefix; emits a meta-state `finding` when a pattern recurs at least 3 times within 10 minutes. Threshold and window are configurable.

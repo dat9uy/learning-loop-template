@@ -69,20 +69,20 @@ This appends an `archived` tombstone; `loadPromotedRules` filters non-active ent
 
 ## Todo
 
-- [ ] Test file created, full deny/allow/documented-deny/override matrix green
-- [ ] Footgun grep classified (known-benign vs actionable)
-- [ ] commit-msg hook advice string points at `gate_override`
-- [ ] Preview-mode sample matrix exact
-- [ ] Rule promoted active in live registry
-- [ ] Post-promotion verification (rule row + citation row + finding status)
-- [ ] Live deny + decision-log rule_id + real `gate_override` write path verified
-- [ ] `pnpm test:unit` green
+- [x] Test file created, full deny/allow/documented-deny/override matrix green
+- [x] Footgun grep classified (known-benign vs actionable)
+- [x] commit-msg hook advice string points at `gate_override`
+- [x] Preview-mode sample matrix exact
+- [x] Rule promoted active in live registry
+- [x] Post-promotion verification (rule row + citation row + finding status)
+- [x] Live deny + decision-log rule_id + real `gate_override` write path verified
+- [x] `pnpm test:unit` green
 
 ## Success Criteria
 
-- [ ] Test asserts deny (with rule_id) for all bypass forms incl. mixed-case hooksPath, `-n`, env injection; allow for clean commit / `--get`/`--unset`/hook-enabling config / `git log --grep=` / snapshot refresh; documented-deny for `-F`/heredoc literal tokens; expired override denies
-- [ ] `rule-no-verify-bypass-denied` active in `meta-state.jsonl`; rollback path (batch-delete tombstone) documented above
-- [ ] Gate-mechanics code untouched (changes: new test file + hook advice string + registry entry only)
+- [x] Test asserts deny (with rule_id) for all bypass forms incl. mixed-case hooksPath, `-n`, env injection; allow for clean commit / `--get`/`--unset`/hook-enabling config / `git log --grep=` / snapshot refresh; documented-deny for `-F`/heredoc literal tokens; expired override denies
+- [x] `rule-no-verify-bypass-denied` active in `meta-state.jsonl`; rollback path (batch-delete tombstone) documented above
+- [x] Gate-mechanics code untouched (changes: new test file + hook advice string + registry entry only)
 
 ## Risk Assessment
 

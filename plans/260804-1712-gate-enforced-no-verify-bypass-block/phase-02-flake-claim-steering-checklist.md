@@ -53,17 +53,17 @@ Rule id: `rule-flake-claim-verification`. Origin finding: same escalate finding 
 
 ## Todo
 
-- [ ] Rule promoted with valid items + hint fields + deliberate `hint_order`
-- [ ] Locked slug set updated; partition lock green (or consciously bumped)
-- [ ] Invariant test green
-- [ ] loop_get_instruction / loop_describe show the hint
-- [ ] `pnpm test:unit` green
+- [x] Rule promoted with valid items + hint fields + deliberate `hint_order`
+- [x] Locked slug set updated; partition lock green (or consciously bumped)
+- [x] Invariant test green
+- [x] loop_get_instruction / loop_describe show the hint
+- [x] `pnpm test:unit` green
 
 ## Success Criteria
 
-- [ ] `rule-flake-claim-verification` active, enforcement agent, hint fields present
-- [ ] Rule-derived process hint retrievable by slug
-- [ ] Both locked live-registry tests updated in the same commit and green
+- [x] `rule-flake-claim-verification` active, enforcement agent, hint fields present
+- [x] Rule-derived process hint retrievable by slug
+- [x] Both locked live-registry tests updated in the same commit and green
 
 ## Risk Assessment
 
