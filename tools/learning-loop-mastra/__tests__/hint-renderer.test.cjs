@@ -60,7 +60,7 @@ describe("hint renderer", () => {
     assert.strictEqual(typeof renderer.renderHints, "function");
   });
 
-  test("claude-session-start channel with real rules: 2 partitions, each under budget, all 27 hints", () => {
+  test("claude-session-start channel with real rules: 3 partitions, each under budget, all 28 hints", () => {
     const rulesById = realRulesById();
     const { partitions, provenance, warnings } = renderer.renderHints({
       channel: "claude-session-start",
@@ -68,11 +68,13 @@ describe("hint renderer", () => {
       rulesById,
     });
     assert.ok(Array.isArray(partitions), "partitions must be array");
-    // Current content sizes render as exactly 2 partitions (disc ≈ 5.0k,
-    // proc ≈ 7.8k at review time). The durable invariant is the per-partition
-    // budget below; the count locks the current shape so silent growth past
-    // the budget is a visible test change, not a silent harness truncation.
-    assert.strictEqual(partitions.length, 2, "claude-session-start must emit exactly 2 partitions at current content sizes");
+    // Current content sizes (with rule-defer-needs-filing promoted, 12 process
+    // rule-derived rows + 2 standalone) render as 3 partitions: discoverability,
+    // then process split across two budget-cap partitions. The durable invariant
+    // is the per-partition budget below; the count locks the current shape so
+    // silent growth past the budget is a visible test change, not a silent
+    // harness truncation.
+    assert.strictEqual(partitions.length, 3, "claude-session-start must emit exactly 3 partitions at current content sizes");
     for (const [i, p] of partitions.entries()) {
       assert.ok([...p].length <= STD_CHAR_BUDGET,
         `partition ${i} length ${[...p].length} must stay under ${STD_CHAR_BUDGET}`);
@@ -149,8 +151,8 @@ describe("hint renderer", () => {
       assert.ok(key in parsed, `sidecar payload must include ${key}`);
     }
     assert.ok(Array.isArray(parsed.discoverability_hints) && parsed.discoverability_hints.length === 16);
-    assert.ok(Array.isArray(parsed.process_hints) && parsed.process_hints.length === 11,
-      `process_hints must include 11 entries (resolved via rulesById); got ${parsed.process_hints.length}`);
+    assert.ok(Array.isArray(parsed.process_hints) && parsed.process_hints.length === 12,
+      `process_hints must include 12 entries (resolved via rulesById); got ${parsed.process_hints.length}`);
     assert.strictEqual(parsed.discoverability_hints_source, "core");
     assert.strictEqual(parsed.process_hints_source, "core");
   });
@@ -176,7 +178,7 @@ describe("hint renderer", () => {
     });
     // Every rendered hint must appear IN ONE partition (not split).
     // The 16 discoverability + 2 standalone process rows render their inline
-    // text; the 9 rule-derived rows render the mocked hint_text.
+    // text; the 10 rule-derived rows render the mocked hint_text.
     for (const e of registry.HINT_REGISTRY) {
       const substring = e.text
         ? e.text.slice(0, 80)
@@ -224,7 +226,7 @@ describe("hint renderer", () => {
     const factory = renderer.renderHints({ channel: "factory-session-start", charBudget: 999999, rulesById });
     // Different partitioning: claude is 2 partitions, factory is 1.
     assert.notStrictEqual(claude.partitions.length, factory.partitions.length);
-    // Concatenation parity: EVERY hint (all 27) appears in both renders.
+    // Concatenation parity: EVERY hint (all 28) appears in both renders.
     const claudeJoined = claude.partitions.join("\n");
     const factoryJoined = factory.partitions.join("\n");
     for (const e of registry.HINT_REGISTRY) {
