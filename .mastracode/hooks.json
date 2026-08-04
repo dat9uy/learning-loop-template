@@ -44,5 +44,13 @@
       "timeout": 10000,
       "description": "Learning-loop gate-log recurrence check"
     }
+  ],
+  "PostToolUseFailure": [
+    {
+      "type": "command",
+      "command": "node tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js",
+      "timeout": 5000,
+      "description": "Learning-loop toolchain-failure capture (recurring-false-positive input)"
+    }
   ]
 }

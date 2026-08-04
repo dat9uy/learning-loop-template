@@ -55,6 +55,7 @@ const UNIVERSAL_HOOK_PATHS = [
   "tools/learning-loop-mastra/hooks/universal/write-gate.js",
   "tools/learning-loop-mastra/hooks/universal/inbound-gate.js",
   "tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js",
+  "tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js",
 ];
 // Canonical hooks required for Req #5/Req #6 (Mastra Code declarative config)
 const REQUIRED_HOOK_COMMANDS = [

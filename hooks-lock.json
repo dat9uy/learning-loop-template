@@ -64,6 +64,15 @@
         ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/inbound-state-gate.cjs" },
         ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/inbound-gate.js" }
       }
+    },
+    "toolchain-failure-capture": {
+      "path": "tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js",
+      "event": "PostToolUseFailure",
+      "wiring": {
+        ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/toolchain-failure-capture.cjs" },
+        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/toolchain-failure-capture.cjs" },
+        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js" }
+      }
     }
   }
 }
