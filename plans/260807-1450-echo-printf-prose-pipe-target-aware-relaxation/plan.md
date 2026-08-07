@@ -1,7 +1,7 @@
 ---
 title: "echo/printf prose pipe-target-aware relaxation"
 description: "Resolve the locked echo/printf prose false-positive in the bash gate's promoted-rule PER-SEGMENT pass. `printf '%s\\n' '<json>'` and `echo \"<prose>\"` are DATA — banned promoted-rule tokens inside them cannot execute. The existing full-command-pass stripEchoProse already blanks echo prose; the per-segment pass does not, so it matches `|`-inside-quoted-echo-data first and false-escalates. Fix (Option A, red-team-corrected): in the per-segment pass, blank echo/printf quoted args ONLY when the segment has no redirect and is not followed by a single real `|`-pipe (`||`/`&&`/`;`/`&`/end are NOT pipes → blank). KEEP the full-command blanket stripEchoProse unchanged. No inert-set, no chain-walk — opens NO bypass. Resolves meta-260807T065133Z-6d1973a8 (if its events had no trailing redirect); relaxes the locked limitation at gate-logic-data-command-quotes.test.js:88."
-status: pending
+status: completed
 priority: P1
 effort: "0.75d"
 tags: [gate-logic, bash-gate, echo-prose, no-bypass, tdd]
@@ -171,9 +171,95 @@ inspects each, does not assert):
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: TDD red — Option A echo/printf regression tests](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: Implement per-segment safe echo/printf blank and wire](./phase-02-implement-stripechoprosesafe-and-wire-both-match-passes.md) | Pending |
-| 3 | [Phase 3: Verify suite, resolve and patch meta-state findings](./phase-03-verify-suite-resolve-and-patch-meta-state-findings.md) | Pending |
+| 1 | [Phase 1: TDD red — Option A echo/printf regression tests](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: Implement per-segment safe echo/printf blank and wire](./phase-02-implement-stripechoprosesafe-and-wire-both-match-passes.md) | Completed |
+| 3 | [Phase 3: Verify suite, resolve and patch meta-state findings](./phase-03-verify-suite-resolve-and-patch-meta-state-findings.md) | Completed |
+
+## Implementation Log — 2026-08-07
+
+Four corrections to the plan's design spec were required during implementation.
+Three were found by adversarial probing and one by the mandatory code-review
+subagent; each closed a bypass the plan's literal spec would have shipped. All
+four were confirmed against HEAD by differential testing, so "introduced by this
+diff" vs "pre-existing" is established rather than assumed.
+
+### 1. `followedByRealPipe` — `||` needs an empty-segment check (Critical)
+
+The plan specified: `parts[i+1] === "|"` AND `parts[i+3] === "|"` → treat as
+`||` → blank. That shape is also produced by a pipe CHAIN: `echo "banned" | cat
+| bash` splits to `[echo…, "|", " cat ", "|", " bash"]`. The literal rule would
+have classified it as logical-OR, blanked the prose, and reopened the exec-sink
+bypass the plan's Risk #1 exists to prevent.
+
+Implemented rule additionally requires the segment between the two `|` tokens to
+be empty (`parts[i+2].trim() === ""`), which is what genuine `||` produces.
+Locked by the `| cat | bash` test.
+
+### 2. `segmentHasRedirect` — `&>` splits across the tokenizer (Critical)
+
+`walkQuoteState` treats `&` as a delimiter, so in `echo "banned" &> /tmp/x &&
+bash /tmp/x` the `>` opens the NEXT part and an in-segment-only scan never sees
+it. Verified as a live bypass (returned `ok`). `segmentHasRedirect` now also
+returns true when the following delimiter is `&` and the next part starts with
+`>`, covering `&>` and `&>>`. Locked by tests for both forms.
+
+### 3. `exec` invalidates per-segment reasoning (Critical)
+
+`exec > /tmp/x ; echo "banned" ; bash /tmp/x` persists the prose without the
+echo segment carrying any redirect of its own. Confirmed introduced by this
+change (HEAD escalated, branch returned `ok`). Any `exec` segment now disables
+blanking for the whole command — reading fd state is unbounded, so the
+conservative over-approximation is the correct call. Locked by two tests.
+
+### 4. `printf -v VAR` assigns instead of printing (High — found by code review)
+
+The plan's threat model rests on "echo/printf output goes to the terminal unless
+piped or redirected". `printf -v VAR fmt args` does neither: it writes the
+formatted result into a shell variable, which a later segment executes —
+`printf -v x "%s" "<banned>" && sh -c "${x}"`. Six variants confirmed as
+regressions introduced by this diff (HEAD escalated, branch returned `ok`),
+including the attached `-vx` form and `eval`/`bash -c`/`bash <<<` sinks.
+
+`stripEchoProseSafe` now skips any `printf` segment carrying a `-v` flag. The
+flag is detected after `blankAllQuoted`, so genuine prose containing a quoted
+`"-v"` still relaxes. Locked by seven tests using the live rule pattern.
+
+### Goal 1 / Criterion 5 outcome: finding NOT resolved (patched instead)
+
+The plan treated the 3 recurrence events' tails as permanently unknowable
+(decision-log `command_prefix` truncates at ~120 chars; `recurrence_key` hashes
+only the first 50 via `normalizePrefix`). They were recoverable from the
+originating session transcript. All three are:
+
+```
+printf '%s\n' '<json tool_input>' | node tools/learning-loop-mastra/hooks/universal/bash-gate.js; echo "---exit=$?---"
+```
+
+A **real pipe**, not a redirect. Option A preserves prose on any real pipe, so
+these events correctly still escalate — verified empirically (actual →
+`escalate`; identical payload with the trailing pipe removed → `ok`). Per the
+validated decision rule (Validation Session 1, Q1: resolve-or-patch-with-evidence),
+`meta-260807T065133Z-6d1973a8` was **patched with the recovered shape and left
+open**, not resolved. The residual false positive is now documented with
+certainty rather than hedged; its only known fix is pipe-target classification,
+which the red team rejected as unsound.
+
+Goals 2-6 are met and verified. Siblings `meta-260807T054940Z-92fb5b00`
+(`pnpm test:one … 2>&1 |`) and `meta-202608040535131Z-a5a14e16` (`pnpm exec
+vitest run …`) were shape-verified as real test invocations, not echo prose;
+both patched and left open. `meta-260801T1549Z-…` confirmed already `resolved`;
+not re-resolved. `meta-260716T2220Z` dropped as the resolved grep/jq class.
+
+### New finding filed
+
+`meta-260807T1538Z-pre-existing-not-introduced-by-the-echo-prose-relaxation-pro`
+— promoted-rule regexes match raw shell text, so a banned token composed from
+pieces is never seen. Three confirmed shapes, one root cause: adjacent-quote
+concatenation (`echo "widgetctl"" run evil" | bash`), printf format/argument
+split, and cross-segment composition through a shell variable. All verified
+identical on HEAD and on this branch, so they are pre-existing and orthogonal;
+filed rather than fixed here. Full dataflow through shell variables is out of
+reach for a regex gate and is recorded as a bounded limitation.
 
 ## Success Criteria
 

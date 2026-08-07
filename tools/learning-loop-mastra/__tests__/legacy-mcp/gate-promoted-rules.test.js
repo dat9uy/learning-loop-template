@@ -401,14 +401,16 @@ describe("gate promoted rules G8 stripMessageFlags", () => {
     assert.strictEqual(result.decision, "ok");
   });
 
-  test("echo quoted string with create still escalates — known heredoc limitation", () => {
+  test("echo quoted string with create returns ok — printing is not creating", () => {
+    // Echo prose is printed data, not an action. Blanking is withheld when the
+    // output could reach something executable (real pipe or redirect); see
+    // gate-logic-echo-prose-pipe-target.test.js for those locks.
     const result = applyPromotedRules(
       'echo "create new convention"',
       null,
       [activeRule]
     );
-    assert.strictEqual(result.decision, "escalate");
-    assert.strictEqual(result.rule_id, "rule-no-new-artifact-types");
+    assert.strictEqual(result.decision, "ok");
   });
 
   test("raw command without message flag returns escalate", () => {

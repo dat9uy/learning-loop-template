@@ -416,15 +416,97 @@ export function stripDataCommandQuotes(command) {
 // Non-executing output verbs: echo/printf. Their quoted args are printed prose,
 // not commands — banned tokens inside them cannot execute — so blanking creates
 // no bypass (same false-positive class stripDataCommandQuotes closes for
-// grep/jq). Applied only in the full-command pass (see applyPromotedRules) so
-// echo prose on one side of a REAL pipe cannot pair with a read-only
-// grep/tail/head on the other to false-escalate. The per-segment pass and
-// matchConstraintPattern keep the locked echo-limitation behavior (echo prose
-// still escalates within one segment). Executed-body verbs (bash -c, sh -c,
-// python -c, awk, sed) are NOT here — their quoted bodies run.
+// grep/jq). This blanket form is used by the full-command pass, where echo prose
+// on one side of a REAL pipe cannot pair with a read-only grep/tail/head on the
+// other to false-escalate. The per-segment pass uses the stricter
+// stripEchoProseSafe below (blanking withheld on a redirect or a real pipe),
+// and matchConstraintPattern strips no echo prose at all. Executed-body verbs
+// (bash -c, sh -c, python -c, awk, sed) are NOT here — their quoted bodies run.
 const ECHO_PROSE_COMMANDS = new Set(["echo", "printf"]);
 function stripEchoProse(command) {
   return blankQuotedArgsFor(command, ECHO_PROSE_COMMANDS);
+}
+
+// True when the segment at `parts[i]` sends its output to a file. A redirect
+// persists the printed prose somewhere a sibling segment can later execute
+// (`echo "banned" > f && bash f`), so a redirecting echo segment must keep its
+// prose visible.
+//
+// The in-segment scan reuses blankAllQuoted rather than adding a tokenizer: it
+// drops quoted bodies (so `echo "a > b"` — data — reads clean) and drops
+// backslash-escaped chars (so a literal `\>` is not a redirect), while emitting
+// unquoted chars verbatim.
+//
+// `&>` and `&>>` (redirect stdout+stderr) need the extra check: walkQuoteState
+// treats `&` as a delimiter, so the `>` opens the NEXT part and the in-segment
+// scan cannot see it. Missing that splits the redirect across the tokenizer
+// boundary and blanks prose that is in fact being persisted.
+function segmentHasRedirect(parts, i) {
+  if (/[<>]/.test(blankAllQuoted(parts[i]))) return true;
+  return parts[i + 1] === "&" && /^\s*>/.test(parts[i + 2] ?? "");
+}
+
+// True when the segment at `parts[i]` pipes its stdout into the next segment.
+// `parts` comes from splitKeepingDelims: [segment, delim, segment, delim, …],
+// so parts[i+1] is the delimiter that follows the segment.
+//
+// Only a real `|` routes stdout onward. `;`, `&`, `&&` and end-of-command do
+// not — `echo "X" && bash` runs bash with its OWN stdin. `||` is emitted as two
+// adjacent `|` delimiter tokens with an EMPTY segment between them; that empty
+// segment is what distinguishes logical-OR from a pipe CHAIN (`a | b | c`,
+// where the middle segment is non-empty and the first pipe is real). Getting
+// that distinction wrong in the permissive direction would blank prose feeding
+// a real pipeline and reopen the exec-sink bypass, so the empty-segment check
+// is required, not cosmetic.
+function followedByRealPipe(parts, i) {
+  if (parts[i + 1] !== "|") return false;
+  const isLogicalOr = parts[i + 3] === "|" && parts[i + 2].trim() === "";
+  return !isLogicalOr;
+}
+
+// `printf -v VAR ...` does NOT print — it assigns the formatted result to a
+// shell variable, which a later segment can then execute:
+//   printf -v x "banned cmd" && sh -c "$x"
+// That makes it an assignment, not prose, so its args are never blanked. The
+// flag is read AFTER blankAllQuoted so a quoted literal (`printf "%s" "-v"` —
+// genuinely prose) does not trip it. Matches both `-v x` and attached `-vx`.
+function printfAssignsToVariable(segment) {
+  return /(^|\s)-v/.test(blankAllQuoted(segment));
+}
+
+// Per-segment echo/printf prose blanking, withheld wherever the printed output
+// could reach something that executes it. Blanks a segment's quoted args iff
+// the segment has no redirect AND is not followed by a real `|` pipe.
+//
+// This is deliberately narrower than the blanket stripEchoProse above, which
+// the full-command pass keeps using. Promoted-rule-only tokens (vitest,
+// artifact) have NO matchConstraintPattern backstop — applyPromotedRules is
+// their only gate — so this relaxation has to be non-bypassable on its own
+// rather than leaning on a downstream check. Preserving on ANY real pipe,
+// regardless of target, is what buys that: classifying pipe targets as
+// inert-vs-executing is unsound (tee/dd/cat persist, and the exec-sink tail is
+// unbounded). Quote-kind awareness comes from blankInertQuoted: single quotes
+// are always inert, double quotes only when free of `$(`/backtick.
+function stripEchoProseSafe(command) {
+  if (typeof command !== "string" || !command) return command;
+  const parts = splitKeepingDelims(command);
+  // `exec` rewrites the shell's own file descriptors for every LATER segment
+  // (`exec > f ; echo "banned" ; bash f` persists the prose without the echo
+  // segment carrying any redirect of its own), which invalidates the
+  // per-segment reasoning below. Reading fd state is unbounded, so any exec
+  // segment simply disables blanking for the whole command.
+  if (parts.some((p) => segmentVerb(p) === "exec")) return command;
+  let changed = false;
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i].length === 1 && (parts[i] === ";" || parts[i] === "&" || parts[i] === "|")) continue;
+    const verb = segmentVerb(parts[i]);
+    if (!ECHO_PROSE_COMMANDS.has(verb)) continue;
+    if (verb === "printf" && printfAssignsToVariable(parts[i])) continue;
+    if (segmentHasRedirect(parts, i) || followedByRealPipe(parts, i)) continue;
+    parts[i] = blankInertQuoted(parts[i]);
+    changed = true;
+  }
+  return changed ? parts.join("") : command;
 }
 
 // Loop CLI inline-JSON argv: the canonical loop tool surface is
@@ -523,6 +605,14 @@ export function stripCliArgvPayload(command) {
  * Strips message flags, node-eval bodies, and pure-data-command pattern args
  * before matching to avoid false positives. Returns the first matching
  * constraint type, or null.
+ *
+ * Deliberately strips NO echo/printf prose, unlike both promoted-rule passes.
+ * These are the first-class boundaries (docker, sudo, package-manager,
+ * vendor-api, side-effect-import) and stay maximally conservative: `echo
+ * "docker run" | bash` is caught here regardless of pipe target. Note the
+ * converse — promoted rules such as rule-no-raw-stdout-vitest have no entry in
+ * CONSTRAINT_PATTERNS, so this function is not a backstop for them. That is why
+ * stripEchoProseSafe has to be non-bypassable on its own.
  */
 export function matchConstraintPattern(command) {
   if (!command || typeof command !== "string") return null;
@@ -1083,7 +1173,14 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // Per-segment: a forbidden token in any leg of a compound command
         // (splitSegments splits on ; & |, honoring quotes). This remains the
         // primary match surface so substring rules behave exactly as before.
-        for (const segment of splitSegments(command)) {
+        // stripEchoProseSafe runs once over the whole command first, because
+        // deciding whether an echo segment's prose is inert needs the sibling
+        // delimiter that splitSegments discards. It blanks echo/printf quoted
+        // args only where the printed output cannot reach anything executable
+        // (no redirect, no real `|`); a redirect or a real pipe preserves the
+        // prose, so the bypass shapes still match here.
+        const echoSafe = stripEchoProseSafe(command);
+        for (const segment of splitSegments(echoSafe)) {
           const stripped = stripMessageFlags(segment);
           const nodeStripped = stripNodeEvalBody(stripped);
           const dataStripped = stripDataCommandQuotes(nodeStripped);

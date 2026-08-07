@@ -100,9 +100,11 @@ describe("cli argv payload: real violations and locked limitations (must match)"
     escalate(`node ${CLI_BIN} meta_state_list '{}' ; pnpm test 2>&1 | tail`);
   });
 
-  test("case 5: echo \"pnpm test | grep\" → escalate (locked echo limitation)", () => {
-    // echo is not a data command; the locked echo limitation is out of scope.
-    escalate('echo "pnpm test | grep foo"');
+  test("case 5: echo \"pnpm test | grep\" → ok (printed prose, no pipe target)", () => {
+    // Printed prose is data. Bypass shapes (real pipe to an exec sink, or a
+    // redirect that persists the output) still escalate — locked in
+    // gate-logic-echo-prose-pipe-target.test.js.
+    ok('echo "pnpm test | grep foo"');
   });
 
   test("case 6: pnpm exec vitest run piped to tail → escalate (real violation)", () => {

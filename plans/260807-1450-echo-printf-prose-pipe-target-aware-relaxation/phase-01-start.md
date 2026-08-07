@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "TDD red — Option A echo/printf regression tests"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []

@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Implement per-segment safe echo/printf blank and wire"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [1]
