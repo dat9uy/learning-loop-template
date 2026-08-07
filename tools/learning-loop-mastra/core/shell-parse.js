@@ -27,6 +27,20 @@ export { parse } from "shell-quote";
 // (e.g. `sudo` always escalates by matchConstraintPattern).
 const COMMAND_PREFIXES = new Set(["sudo", "time", "nice", "nohup", "command"]);
 
+// Prefix flags that take a DETACHED value, keyed by the prefix they belong
+// to (`nice -n 5 bash`, `sudo -u root bash`). Arity is per-prefix — `time
+// -p` takes no value while `sudo -p` does — so the skip applies only to
+// flags of the prefix actually seen. Without this, a flag's value (`5`,
+// `root`) would be mistaken for the verb and the real executor would slip
+// through.
+const PREFIX_VALUE_FLAGS = {
+  nice: new Set(["-n", "--adjustment"]),
+  sudo: new Set([
+    "-u", "--user", "-g", "--group", "-h", "--host",
+    "-p", "--prompt", "-C", "--close-from", "-T", "--command-timeout",
+  ]),
+};
+
 // Logical-op op-strings that split segments but are NOT real pipes (no stdout
 // routing). Real pipe is `|`; everything else splits without setting
 // pipeTarget.
@@ -122,14 +136,33 @@ function newSegment() {
 
 function finalizeSegment(seg) {
   // Determine verb: first non-prefix, non-env-assignment string token.
+  // Env-assignments may be lowercase (`path=x bash`) — bash accepts both.
+  // After a command-prefix, flag tokens (and detached values of
+  // value-taking prefix flags) are skipped so `nice -n 5 bash` and
+  // `time -p bash` still resolve verb=bash.
   // Verb matching uses `basename(verb)` so PATH-qualified verbs normalize.
   const tokens = seg._tokens;
   let verbIdx = -1;
   let verb = null;
+  let lastPrefix = null;
+  let skipValueOfFlag = false;
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
-    if (COMMAND_PREFIXES.has(t.value)) continue;
-    if (/^[A-Z_][A-Z0-9_]*=/.test(t.value)) continue; // env-assignment
+    if (skipValueOfFlag) {
+      skipValueOfFlag = false;
+      continue;
+    }
+    if (COMMAND_PREFIXES.has(t.value)) {
+      lastPrefix = t.value;
+      continue;
+    }
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t.value)) continue; // env-assignment
+    if (t.value.startsWith("-") && t.value.length > 1) {
+      if (lastPrefix && PREFIX_VALUE_FLAGS[lastPrefix]?.has(t.value)) {
+        skipValueOfFlag = true;
+      }
+      continue; // prefix flag (e.g. `-p` in `time -p bash`)
+    }
     verbIdx = i;
     verb = basename(t.value);
     break;

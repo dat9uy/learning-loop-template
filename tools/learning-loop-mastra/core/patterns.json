@@ -8,7 +8,9 @@
   "meta-state-verify-cmd-allowlist": ["node", "pnpm", "npm", "git", "cat", "ls", "grep", "rg", "test", "echo"],
   "gate-verbs": [
     "bash", "sh", "dash", "zsh", "ksh", "eval",
-    "exec", "source", "env", "xargs", ".",
+    "exec", "source", ".",
+    { "verb": "env", "indirection": true },
+    { "verb": "xargs", "indirection": true },
     { "verb": "node", "flags": ["-e", "--eval", "-p", "--print"] },
     { "verb": "python", "flags": ["-c"] },
     { "verb": "python3", "flags": ["-c"] },

@@ -370,6 +370,30 @@ test("gate-verb:bash + recorded observation → ok; without → block", () => {
   assert.strictEqual(observed.decision, "ok");
 });
 
+test("gate-verb observation older than the operator marker → escalate (staleness parity with the constraint path)", () => {
+  const root = makeRoot();
+  writeRuntimeState(root, [
+    {
+      id: "obs-bash",
+      kind: "budget-state",
+      status: "active",
+      affected_system: "gate-verb:bash",
+      timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    },
+  ]);
+  // Fresh operator state-change marker → the hour-old observation is stale.
+  const markerPath = join(root, "marker.json");
+  writeFileSync(markerPath, JSON.stringify({ timestamp: new Date().toISOString() }));
+  process.env.GATE_MARKER_PATH = markerPath;
+  try {
+    const result = evaluateBashGate({ command: "bash tools/scripts/vitest-failures.sh", root });
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.inbound_gate, true);
+  } finally {
+    delete process.env.GATE_MARKER_PATH;
+  }
+});
+
 test("pnpm test full suite (no pipe) → ok", () => {
   const root = makeRoot();
   writeNoRawStdoutRule(root);

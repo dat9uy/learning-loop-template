@@ -35,24 +35,33 @@ const CONSTRAINT_PATTERNS = Object.fromEntries(
 // Gate-verbs: structured list of executor verbs (direct + indirection) that
 // become observation-gated constraints. Loaded from patterns.json — NOT a
 // hardcoded list. Each entry is either a bare string ("bash") for verb-only
-// match, or an object {verb, flags} for verb+flag match (e.g. node -e).
+// match, or an object {verb, flags} for verb+flag match (e.g. node -e), or
+// {verb, indirection: true} for verbs that only count when followed by an
+// executor (env bash, xargs bash).
 // Verb matching uses basename normalization so PATH-qualified /bin/bash
-// matches the bash entry. Indirection verbs (env, xargs, find -exec) are
-// matched via the indirection predicate in matchGateVerb.
+// matches the bash entry.
 const GATE_VERBS = (() => {
   const raw = PATTERNS_RAW["gate-verbs"];
   if (!Array.isArray(raw)) return [];
   return raw.map((entry) =>
     typeof entry === "string"
-      ? { verb: entry, flags: null }
-      : { verb: entry.verb, flags: Array.isArray(entry.flags) ? entry.flags : null },
+      ? { verb: entry, flags: null, indirection: false }
+      : {
+          verb: entry.verb,
+          flags: Array.isArray(entry.flags) ? entry.flags : null,
+          indirection: entry.indirection === true,
+        },
   );
 })();
 
-// Indirection verbs: env/xargs that ONLY count as gate-verbs when followed
-// by an executor (env bash, xargs bash). `find` is in GATE_VERBS with the
-// -exec/-execdir/-ok flag set; exec/source/. are direct entries.
-const INDIRECTION_VERBS = new Set(["env", "xargs"]);
+// Indirection verbs (env, xargs) ONLY count as gate-verbs when followed by
+// an executor. Derived from the same patterns.json config as GATE_VERBS so
+// the match path and the observation path (file-readers.js, also config-
+// derived) can never drift: removing a verb from config removes it from
+// both. `find` is a verb+flag entry (-exec/-execdir/-ok), not indirection.
+const INDIRECTION_VERBS = new Set(
+  GATE_VERBS.filter((e) => e.indirection).map((e) => e.verb),
+);
 
 // `records-evidence` was the only observation-based unlock for `records/evidence/**`.
 // It was migrated to meta-state (the meta-surface reframe) and the unlock removed.
@@ -696,13 +705,19 @@ export function matchGateVerb(command) {
       if (match) return `gate-verb:${match}`;
     }
 
-    // Indirection predicate: env/xargs ONLY match when the following arg
-    // is itself a gate-verb.
-    if (isIndirection && seg.args.length > 0) {
-      const arg0 = basename(seg.args[0]);
-      const argMatch = matchVerbAgainstGateList(arg0, []);
-      if (argMatch) {
-        return `gate-verb:${seg.verb}`;
+    // Indirection predicate: env/xargs ONLY match when a following arg is
+    // itself a gate-verb. Scan ALL args — env-assignments (`FOO=bar`,
+    // lowercase included) and flag tokens (`-i`, `--`, `-0`, `-I{}`) may be
+    // interposed before the wrapped command, so checking only args[0]
+    // misses `env FOO=bar bash -c …` and `xargs -0 bash`.
+    if (isIndirection) {
+      for (const arg of seg.args) {
+        if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) continue; // env-assignment
+        if (arg.startsWith("-")) continue; // flag (incl. `--`)
+        const argMatch = matchVerbAgainstGateList(basename(arg), []);
+        if (argMatch) {
+          return `gate-verb:${seg.verb}`;
+        }
       }
     }
   }
@@ -712,15 +727,31 @@ export function matchGateVerb(command) {
 // Returns the matched verb key (e.g. "zsh", "node") if the verb matches a
 // gate-verb entry; null otherwise. `args` is the segment's arg list (after
 // the verb) — used for verb+flag entries (e.g. node -e, python -c).
+// Indirection entries never match here directly; they only match via the
+// indirection predicate in matchGateVerb.
+// Flag matching covers three real forms: detached (`node -e`), attached
+// value (`node --eval=…`), and single-char clusters (`perl -ne`, `node -pe`).
 function matchVerbAgainstGateList(verb, args) {
   if (!verb) return null;
   const key = basename(verb);
   for (const entry of GATE_VERBS) {
     if (entry.verb !== key) continue;
+    if (entry.indirection) continue; // matched via indirection predicate only
     if (entry.flags === null) return key; // verb-only entry
-    // verb+flag: requires the segment args to include at least one of the
-    // required flags.
-    const hasFlag = entry.flags.some((f) => args.includes(f));
+    const hasFlag = entry.flags.some((f) =>
+      args.some(
+        (a) =>
+          a === f ||
+          a.startsWith(f + "=") ||
+          // single-char short flag inside a cluster (`-e` in `-ne`, `-pe`)
+          (f.length === 2 &&
+            f[0] === "-" &&
+            a.length > 2 &&
+            a[0] === "-" &&
+            a[1] !== "-" &&
+            a.slice(1).includes(f[1])),
+      ),
+    );
     if (hasFlag) return key;
   }
   return null;

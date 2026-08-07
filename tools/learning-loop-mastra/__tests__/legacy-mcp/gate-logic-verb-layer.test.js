@@ -233,3 +233,56 @@ describe("matchGateVerb: indirection predicate precision", () => {
     assert.strictEqual(matchGateVerb(`find . -name '*.js'`), null);
   });
 });
+
+// ─── F. Interposed-token evasion shapes — the wrapped executor must be
+// found past assignments, flags, and prefix values ───
+
+describe("matchGateVerb: interposed-token evasion shapes", () => {
+  test("env with interposed assignment before executor → gate-verb:env", () => {
+    assert.strictEqual(matchGateVerb(`env FOO=bar bash -c evil`), "gate-verb:env");
+  });
+
+  test("env with flags before executor → gate-verb:env", () => {
+    assert.strictEqual(matchGateVerb(`env -i bash`), "gate-verb:env");
+    assert.strictEqual(matchGateVerb(`env -- bash`), "gate-verb:env");
+  });
+
+  test("xargs with flags before executor → gate-verb:xargs", () => {
+    assert.strictEqual(matchGateVerb(`xargs -0 bash`), "gate-verb:xargs");
+    assert.strictEqual(matchGateVerb(`echo x | xargs -I{} sh -c {}`), "gate-verb:xargs");
+  });
+
+  test("lowercase env-assignment prefix does not hide the verb", () => {
+    assert.strictEqual(matchGateVerb(`path=x bash -c evil`), "gate-verb:bash");
+  });
+
+  test("nice/time with flags before executor → gate-verb:bash", () => {
+    assert.strictEqual(matchGateVerb(`nice -n 5 bash`), "gate-verb:bash");
+    assert.strictEqual(matchGateVerb(`time -p bash`), "gate-verb:bash");
+  });
+
+  test("sudo with value-flag before executor → gate-verb:bash", () => {
+    assert.strictEqual(matchGateVerb(`sudo -u root bash`), "gate-verb:bash");
+  });
+});
+
+// ─── G. Attached and clustered flag forms of verb+flag entries ───
+
+describe("matchGateVerb: attached/clustered flag forms", () => {
+  test("node --eval=… (attached long-flag value) → gate-verb:node", () => {
+    assert.strictEqual(matchGateVerb(`node --eval=console.log(2)`), "gate-verb:node");
+  });
+
+  test("node -pe (clustered short flags) → gate-verb:node", () => {
+    assert.strictEqual(matchGateVerb(`node -pe "1+1"`), "gate-verb:node");
+  });
+
+  test("perl -ne / -pe (clustered) → gate-verb:perl", () => {
+    assert.strictEqual(matchGateVerb(`perl -ne 'print'`), "gate-verb:perl");
+    assert.strictEqual(matchGateVerb(`perl -pe 's/a/b/'`), "gate-verb:perl");
+  });
+
+  test("find -ok (detached) still matches verb+flag", () => {
+    assert.strictEqual(matchGateVerb(`find . -ok bash -c evil \\;`), "gate-verb:find");
+  });
+});
