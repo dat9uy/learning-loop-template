@@ -3,7 +3,8 @@
  * All readers are fail-open: return empty defaults on error.
  */
 
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { assertinvariantSync } from "./operation-invariant.js";
 // Consume the shared runtime-state read path so the sidecar parse is no
@@ -24,6 +25,25 @@ import {
 
 const AFFECTED_SYSTEM_TO_CONSTRAINTS = {
   vnstock: ["vendor-api", "package-manager"],
+  // Gate-verb observations: identity mapping so an operator can satisfy a
+  // `gate-verb:<verb>` constraint by recording a runtime-state entry whose
+  // affected_system names the constraint directly (e.g.
+  // `runtime_state_record({affected_system: "gate-verb:bash", ...})`).
+  // The verb set comes from patterns.json config — the same source the
+  // gate matches against — so the observation path and the match path can
+  // never drift apart.
+  ...Object.fromEntries(
+    (JSON.parse(
+      readFileSync(
+        join(dirname(fileURLToPath(import.meta.url)), "patterns.json"),
+        "utf8",
+      ),
+    )["gate-verbs"] || []).map((entry) => {
+      const verb = typeof entry === "string" ? entry : entry.verb;
+      const constraint = `gate-verb:${verb}`;
+      return [constraint, [constraint]];
+    }),
+  ),
 };
 
 /**

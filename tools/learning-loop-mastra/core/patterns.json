@@ -5,5 +5,19 @@
   "vendor-api": "\\bcurl\\b.*api|import\\s+vnstock(?!_data)\\b",
   "side-effect-import": "import\\s+vnstock_data\\b|.*runtime_state_record\\s*\\(",
   "message_flags": ["-m", "--message", "--title", "--description", "--body"],
-  "meta-state-verify-cmd-allowlist": ["node", "pnpm", "npm", "git", "cat", "ls", "grep", "rg", "test", "echo"]
+  "meta-state-verify-cmd-allowlist": ["node", "pnpm", "npm", "git", "cat", "ls", "grep", "rg", "test", "echo"],
+  "gate-verbs": [
+    "bash", "sh", "dash", "zsh", "ksh", "eval",
+    "exec", "source", "env", "xargs", ".",
+    { "verb": "node", "flags": ["-e", "--eval", "-p", "--print"] },
+    { "verb": "python", "flags": ["-c"] },
+    { "verb": "python3", "flags": ["-c"] },
+    { "verb": "ruby", "flags": ["-e"] },
+    { "verb": "perl", "flags": ["-e", "-E"] },
+    { "verb": "find", "flags": ["-exec", "-execdir", "-ok"] }
+  ],
+  "inert-sinks": ["tail", "head", "grep", "rg", "cat", "wc", "sort", "uniq"],
+  "data-verbs": ["grep", "egrep", "fgrep", "rg", "jq"],
+  "echo-prose-verbs": ["echo", "printf"],
+  "command-prefixes": ["sudo", "time", "nice", "nohup", "command"]
 }
