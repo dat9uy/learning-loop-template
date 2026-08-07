@@ -84,6 +84,7 @@ describe("hint registry invariants", () => {
     const expected = [
       "pnpm-test-discipline",
       "pr-body-registry-deltas",
+      "flake-claim-verification",
       "runtime-agnostic-audit",
       "tool-integration-same-commit-dep",
       "fallow-gate-triage",

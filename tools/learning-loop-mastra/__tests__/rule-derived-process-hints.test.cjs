@@ -286,6 +286,6 @@ describe("rule-derived process hints", () => {
     const expectedViewLen = registry.HINT_REGISTRY.filter((e) => e.kind === "process").length + rulesById.size;
     assert.strictEqual(view.length, expectedViewLen, `buildProcessView produces ${expectedViewLen} rows (2 standalones + ${rulesById.size} derived)`);
     assert.strictEqual(view[0].slug, "pnpm-test-discipline");
-    assert.strictEqual(view[8].slug, "file-edit-drift-and-fingerprints");
+    assert.strictEqual(view[9].slug, "file-edit-drift-and-fingerprints");
   });
 });
