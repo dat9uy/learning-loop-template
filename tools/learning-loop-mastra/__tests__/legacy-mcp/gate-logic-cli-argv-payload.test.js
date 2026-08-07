@@ -31,7 +31,6 @@ import { fileURLToPath } from "node:url";
 import {
   applyPromotedRules,
   matchConstraintPattern,
-  stripCliArgvPayload,
 } from "../../core/gate-logic.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -134,51 +133,11 @@ describe("cli argv payload: spoofed recognition (must match — no over-blanking
   });
 });
 
-describe("stripCliArgvPayload: unit behavior", () => {
-  test("blanks the single-quoted JSON of a canonical loop.mjs segment", () => {
-    assert.strictEqual(
-      stripCliArgvPayload(`node ${CLI_BIN} meta_state_resolve '{"id":"x","resolution":"pnpm test | tail"}'`),
-      `node ${CLI_BIN} meta_state_resolve ''`,
-    );
-  });
-
-  test("blanks the double-quoted JSON argv when free of $(/backtick", () => {
-    assert.strictEqual(
-      stripCliArgvPayload(`node ${CLI_BIN} meta_state_resolve "{\\"id\\":\\"x\\",\\"r\\":\\"pnpm test | tail\\"}"`),
-      `node ${CLI_BIN} meta_state_resolve ""`,
-    );
-  });
-
-  test("preserves a double-quoted $(...) argv verbatim (no bypass)", () => {
-    const cmd = `node ${CLI_BIN} meta_state_resolve "$(pnpm test 2>&1 | tail)"`;
-    assert.strictEqual(stripCliArgvPayload(cmd), cmd);
-  });
-
-  test("leaves a sibling real-pipe segment intact (segment-scoped, case 4d)", () => {
-    const out = stripCliArgvPayload(`node ${CLI_BIN} meta_state_list '{}' ; pnpm test 2>&1 | tail`);
-    assert.ok(out.includes("pnpm test 2>&1 | tail"), `sibling segment must stay visible: ${out}`);
-    assert.ok(!out.includes(`'{}'`), `loop CLI quoted argv must be blanked: ${out}`);
-  });
-
-  test("no-ops on the --args-file form (no quoted JSON to blank)", () => {
-    const cmd = `node ${CLI_BIN} meta_state_resolve --args-file /tmp/x.json`;
-    assert.strictEqual(stripCliArgvPayload(cmd), cmd);
-  });
-
-  test("no-ops on spoofed recognition shapes (no over-blanking)", () => {
-    const a = `node ./loop.mjs meta_state_resolve 'pnpm test 2>&1 | tail'`;
-    assert.strictEqual(stripCliArgvPayload(a), a);
-    const b = `node evil.mjs 'pnpm test 2>&1 | tail' loop.mjs`;
-    assert.strictEqual(stripCliArgvPayload(b), b);
-    const c = `node /some/other/runner.mjs --name "loop.mjs" --cmd 'pnpm test 2>&1 | tail'`;
-    assert.strictEqual(stripCliArgvPayload(c), c);
-  });
-
+describe("cli argv payload: verb recognition (decision-level locks)", () => {
   test("recognizes the loop CLI segment after a command prefix (sudo)", () => {
-    assert.strictEqual(
-      stripCliArgvPayload(`sudo node ${CLI_BIN} meta_state_resolve '{"r":"pnpm test | tail"}'`),
-      `sudo node ${CLI_BIN} meta_state_resolve ''`,
-    );
+    // sudo is a command prefix; the canonical script path is recognized after
+    // it, so the inline JSON argv is blanked and the banned token does not fire.
+    ok(`sudo node ${CLI_BIN} meta_state_resolve '{"r":"pnpm test | tail"}'`);
   });
 });
 

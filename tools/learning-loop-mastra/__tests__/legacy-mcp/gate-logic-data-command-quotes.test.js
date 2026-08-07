@@ -1,16 +1,15 @@
-// Unit tests for stripDataCommandQuotes (gate-logic.js).
+// Decision-level locks for data-command quoted-arg blanking (gate-logic.js).
 //
 // Locks: banned tokens inside a quoted pattern argument to a pure-data
 // command (grep/egrep/fgrep/rg/jq) are DATA and must not satisfy a rule.
-// Mirrors the gate-logic-quoted-strings.test.js idiom (matchConstraintPattern
-// + applyPromotedRules with inline rules).
+// Asserted through the public surface (matchConstraintPattern +
+// applyPromotedRules with inline rules) rather than strip-helper internals.
 
 import assert from "node:assert";
 import { describe, test } from "vitest";
 import {
   matchConstraintPattern,
   applyPromotedRules,
-  stripDataCommandQuotes,
 } from "../../core/gate-logic.js";
 
 const VITEST_RULE = {
@@ -22,7 +21,7 @@ const VITEST_RULE = {
   pattern: "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b",
 };
 
-describe("stripDataCommandQuotes: false-positive cases (must NOT match)", () => {
+describe("data-command quote blanking: false-positive cases (must NOT match)", () => {
   test('grep -E "pnpm test|grep" file → ok (the observed scout FP)', () => {
     const result = applyPromotedRules('grep -E "pnpm test|grep" /tmp/x.log', null, [VITEST_RULE]);
     assert.strictEqual(result.decision, "ok", `expected ok, got ${result.decision}`);
@@ -72,7 +71,7 @@ describe("stripDataCommandQuotes: false-positive cases (must NOT match)", () => 
   });
 });
 
-describe("stripDataCommandQuotes: real violations preserved (must match)", () => {
+describe("data-command quote blanking: real violations preserved (must match)", () => {
   test("vitest run … | tail → escalate (real pipe, no quotes)", () => {
     const result = applyPromotedRules("pnpm exec vitest run x.test.js 2>&1 | tail -30", null, [VITEST_RULE]);
     assert.strictEqual(result.decision, "escalate");
@@ -105,33 +104,33 @@ describe("stripDataCommandQuotes: real violations preserved (must match)", () =>
   });
 });
 
-describe("stripDataCommandQuotes: verb recognition edge cases", () => {
-  test("returns input unchanged when no data command present", () => {
-    assert.strictEqual(stripDataCommandQuotes("ls -la"), "ls -la");
-    // No data command — quoted regions (none here) and delimiters preserved.
-    assert.strictEqual(stripDataCommandQuotes("pnpm exec vitest run x | tail"), "pnpm exec vitest run x | tail");
-  });
-
-  test("blanks the pattern of a leading grep", () => {
-    assert.strictEqual(stripDataCommandQuotes('grep -E "pnpm test" file'), 'grep -E "" file');
+describe("data-command verb recognition (decision-level locks)", () => {
+  test("no data command present → nothing blanked (real violation still escalates)", () => {
+    // The blanking must only fire on data-command verbs; a command without one
+    // keeps every token visible to the rule.
+    const result = applyPromotedRules("pnpm exec vitest run x | tail", null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(matchConstraintPattern("ls -la"), null);
   });
 
   test("does NOT treat grep as a verb when it is an echo argument", () => {
-    // `echo grep "create"` — echo is the verb; the quoted arg is echo data and
-    // must NOT be blanked (echo limitation).
-    assert.strictEqual(stripDataCommandQuotes('echo grep "create new convention"'), 'echo grep "create new convention"');
+    // `echo grep "docker run"` — echo is the verb; the quoted arg is echo
+    // prose, which the constraint path never blanks, so the banned token
+    // stays visible (same invariant as the echo-prose → exec-sink locks in
+    // gate-logic-quoted-strings.test.js).
+    assert.strictEqual(matchConstraintPattern('echo grep "docker run x"'), "docker");
   });
 
-  test("recognizes grep after a command prefix (sudo)", () => {
-    assert.strictEqual(stripDataCommandQuotes('sudo grep "docker" file'), 'sudo grep "" file');
-  });
-
-  test("preserves delimiters across a data segment and a real segment", () => {
-    assert.strictEqual(stripDataCommandQuotes('grep "a|b" file; docker run x'), 'grep "" file; docker run x');
+  test("preserves segment boundaries across a data segment and a real segment", () => {
+    // The grep pattern (data) is blanked; the second segment's unquoted
+    // banned token is a real violation and must still be caught.
+    assert.strictEqual(matchConstraintPattern('grep "a|b" file; docker run x'), "docker");
+    const result = applyPromotedRules('grep "pnpm test|tail" x; pnpm test 2>&1 | tail', null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "escalate");
   });
 });
 
-describe("stripEchoProse: full-command-pass echo-prose false positives (must NOT match)", () => {
+describe("full-command-pass: echo-prose false positives (must NOT match)", () => {
   test('echo "pnpm test" label piped to a real grep → ok (echo prose + real pipe)', () => {
     // The banned token lives only in the echo label; the | grep is a real
     // read-only pipe. The full-command pass must not bridge them. This is the
@@ -152,7 +151,7 @@ describe("stripEchoProse: full-command-pass echo-prose false positives (must NOT
   });
 });
 
-describe("stripEchoProse: executed-body verbs still escalate (no new false negative)", () => {
+describe("executed-body verbs still escalate (no new false negative)", () => {
   test('bash -c "vitest run" | tail → escalate (executed body, NOT prose)', () => {
     // bash -c runs its quoted body, so the banned token is a real violation.
     // stripEchoProse must NOT blank bash-c quotes — only echo/printf prose.
