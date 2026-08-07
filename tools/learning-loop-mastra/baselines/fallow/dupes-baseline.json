@@ -1,8 +1,8 @@
 {
   "clone_groups": [
-    "core/gate-logic.js:328-333|core/gate-logic.js:565-570",
-    "core/gate-logic.js:871-896|core/gate-logic.js:975-998",
-    "core/gate-logic.js:900-922|core/shell-parse.js:235-257",
+    "core/gate-logic.js:337-342|core/gate-logic.js:574-579",
+    "core/gate-logic.js:1006-1029|core/gate-logic.js:902-927",
+    "core/gate-logic.js:931-953|core/shell-parse.js:268-290",
     "core/hint-renderer.js:115-126|core/hint-renderer.js:142-151",
     "core/hint-renderer.js:160-175|core/hint-renderer.js:192-202",
     "core/loop-introspect.js:173-182|core/loop-introspect.js:201-210",

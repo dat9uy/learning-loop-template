@@ -19,6 +19,9 @@
       "complexity_critical": {
         "count": 2
       },
+      "complexity_high": {
+        "count": 1
+      },
       "complexity_moderate": {
         "count": 2
       },
