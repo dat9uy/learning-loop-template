@@ -18,7 +18,7 @@ import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
-import { classifyPolicyTokens } from "./shell-parse.js";
+import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
 import { readRegistry, metaStateRuleEntrySchema, readFileIndex } from "./meta-state.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
@@ -332,15 +332,18 @@ export function stripNodeEvalBody(segment) {
 const DATA_COMMANDS = new Set(["grep", "egrep", "fgrep", "rg", "jq"]);
 const COMMAND_PREFIXES = new Set(["sudo", "time", "nice", "nohup", "command"]);
 
-// First executable token of a segment, skipping leading env-assignments
-// (FOO=bar) and one command prefix (sudo/time/nice/nohup/command).
+// First executable token of a segment. Delegates to the shared flag-aware
+// resolver in shell-parse.js so this strip chain resolves verbs exactly the
+// way the per-segment policy view does: env-assignments, command-prefixes
+// (sudo/time/nice/nohup/command), prefix flags, and the detached values of
+// value-taking prefix flags (`nice -n 5`) are skipped, and the verb is
+// basename-normalized. Without the flag skip, `nice -n 5 echo "x" | tail`
+// resolved its verb as `5`, leaving echo prose un-blanked and
+// false-escalating the full-command pass.
 function segmentVerb(segment) {
   const tokens = segment.trim().split(/\s+/);
-  let i = 0;
-  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i++;
-  if (i < tokens.length && COMMAND_PREFIXES.has(tokens[i])) i++;
-  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i++;
-  return tokens[i] || null;
+  const idx = resolveVerbIndex(tokens);
+  return idx === -1 ? null : basename(tokens[idx]);
 }
 
 // State machine for `blankAllQuoted` — quote-aware content blanking. Differs

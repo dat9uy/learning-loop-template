@@ -16,6 +16,7 @@ import {
 } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 import { checkObservationStaleness } from "./inbound-state.js";
+import { isObservationStaleByAge } from "./observation-staleness.js";
 import { hasSurfacePreflightMarker } from "./runtime-tracking.js";
 import { SURFACES } from "./surfaces.js";
 
@@ -130,7 +131,20 @@ export function evaluateBashGate({ command, root }) {
   const gateVerbMatch = matchGateVerb(command);
   if (gateVerbMatch) {
     const observations = readRuntimeObservations(resolvedRoot);
-    const observationStatus = checkObservationExists(gateVerbMatch, observations);
+    let observationStatus = checkObservationExists(gateVerbMatch, observations);
+    // Gate-verb observations are age-bounded: unlike the marker-mode
+    // staleness below (which only flips when a fresh operator marker
+    // post-dates the observation), a `gate-verb:<verb>` observation expires
+    // on age alone after OBSERVATION_STALENESS_WINDOW_MS (30 min). This is
+    // what makes the recorded allowance a bounded window rather than an
+    // indefinite one. Scoped to gate-verb constraints; the vnstock
+    // constraint path keeps marker-mode semantics.
+    if (
+      observationStatus.found &&
+      isObservationStaleByAge(observationStatus.observation, Date.now())
+    ) {
+      observationStatus = { found: false };
+    }
     const gateVerbResult = makeGateDecision(gateVerbMatch, observationStatus);
     // Staleness check, mirroring the constraint path — a stale observation
     // must not yield a plain `ok` for gate-verbs any more than for

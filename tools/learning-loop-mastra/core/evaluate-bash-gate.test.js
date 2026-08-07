@@ -378,10 +378,13 @@ test("gate-verb observation older than the operator marker → escalate (stalene
       kind: "budget-state",
       status: "active",
       affected_system: "gate-verb:bash",
-      timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
     },
   ]);
-  // Fresh operator state-change marker → the hour-old observation is stale.
+  // Fresh operator state-change marker → the 10-min-old observation is stale
+  // by marker (markerTime > updated_at) while still inside the 30-min age
+  // window for gate-verb observations, so marker-mode staleness is what
+  // escalates here.
   const markerPath = join(root, "marker.json");
   writeFileSync(markerPath, JSON.stringify({ timestamp: new Date().toISOString() }));
   process.env.GATE_MARKER_PATH = markerPath;
