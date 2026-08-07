@@ -1,7 +1,7 @@
 ---
 title: "bash-gate CLI argv payload strip"
 description: "Resolve rule-no-raw-stdout-vitest false-escalation on loop CLI invocations whose inline JSON argument (data, not a shell command) contains the banned test-pipe pattern. Resolves meta-260807T1347Z-...-cli-invocations-whose. Patches (does NOT resolve) meta-260807T065133Z-6d1973a8 with verified shape evidence — its 3 recurrence events are the echo/printf prose class, a different locked limitation."
-status: pending
+status: completed
 priority: P1
 effort: "1.5d"
 tags: [gate-logic, bash-gate, scope-drift, tdd]
@@ -110,21 +110,21 @@ threat-modeling exercise. Therefore:
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: TDD red — CLI argv payload regression tests](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: Implement stripCliArgvPayload and wire match sites](./phase-02-implement-stripcliargvpayload-and-wire-match-sites.md) | Pending |
-| 3 | [Phase 3: Verify suite, resolve finding, patch recurrence](./phase-03-verify-suite-and-resolve-meta-state-findings.md) | Pending |
+| 1 | [Phase 1: TDD red — CLI argv payload regression tests](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: Implement stripCliArgvPayload and wire match sites](./phase-02-implement-stripcliargvpayload-and-wire-match-sites.md) | Completed |
+| 3 | [Phase 3: Verify suite, resolve finding, patch recurrence](./phase-03-verify-suite-and-resolve-meta-state-findings.md) | Completed |
 
 ## Success Criteria
 
-- [ ] New regression test file proves cases 4/4b → `ok`, case 7 → `escalate`, cases 1/4d/5/6 → `escalate`, case 3 → `ok` (lock); negative recognition cases (non-canonical `loop.mjs`, trailing-token spoof) → `escalate`
-- [ ] `stripCliArgvPayload` wired into the two `applyPromotedRules` sites only (NOT `matchConstraintPattern`); recognition anchored to the canonical script-path token; verb normalized (`node`/`nodejs`/basename-`node`)
-- [ ] Quote-kind-aware blanking: single-quoted always blanked; double-quoted blanked only if free of `$(`/backtick
-- [ ] Static guard test: no `CLI_TOOLS` handler imports `child_process` or calls `execSync`/`spawnSync` with argv-derived input
-- [ ] `gate-logic-quoted-strings.test.js`, `gate-logic-data-command-quotes.test.js`, `gate-promoted-rules.test.js`, `cli-bash-gate-guard.test.js` stay green
-- [ ] `pnpm test` exit 0; `runtime-agnostic.test.js` green (gate-logic is universal-hook core shared across 3 runtimes)
-- [ ] `meta_state_resolve` succeeds for `meta-260807T1347Z` (resolve payload contains the trigger phrase so the inline-JSON path is exercised)
-- [ ] `meta_state_patch` adds verified shape evidence to `meta-260807T065133Z-6d1973a8`; it stays `open`
-- [ ] `meta_state_refresh_file_index` blast radius acknowledged; sibling findings' evidence lines re-checked
+- [x] New regression test file proves cases 4/4b → `ok`, case 7 → `escalate`, cases 1/4d/5/6 → `escalate`, case 3 → `ok` (lock); negative recognition cases (non-canonical `loop.mjs`, trailing-token spoof) → `escalate`
+- [x] `stripCliArgvPayload` wired into the two `applyPromotedRules` sites only (NOT `matchConstraintPattern`); recognition anchored to the canonical script-path token; verb normalized (`node`/`nodejs`/basename-`node`)
+- [x] Quote-kind-aware blanking: single-quoted always blanked; double-quoted blanked only if free of `$(`/backtick
+- [x] Static guard test: no `CLI_TOOLS` handler imports `child_process` or calls `execSync`/`spawnSync` with argv-derived input
+- [x] `gate-logic-quoted-strings.test.js`, `gate-logic-data-command-quotes.test.js`, `gate-promoted-rules.test.js`, `cli-bash-gate-guard.test.js` stay green
+- [x] `pnpm test` exit 0; `runtime-agnostic.test.js` green (gate-logic is universal-hook core shared across 3 runtimes)
+- [x] `meta_state_resolve` succeeds for `meta-260807T1347Z` (resolve payload contains the trigger phrase so the inline-JSON path is exercised)
+- [x] `meta_state_patch` adds verified shape evidence to `meta-260807T065133Z-6d1973a8`; it stays `open`
+- [x] `meta_state_refresh_file_index` blast radius acknowledged; sibling findings' evidence lines re-checked
 
 ## Risk Assessment
 

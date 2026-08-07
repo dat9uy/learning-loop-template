@@ -383,19 +383,25 @@ function splitKeepingDelims(command) {
   return out;
 }
 
-// Blank quoted args of every segment whose verb is in `verbSet`. Shared core
-// for stripDataCommandQuotes (pure-data verbs) and stripEchoProse (non-
-// executing output verbs): both blank non-executing quoted prose so rule
-// regexes do not false-positive on banned tokens that cannot run.
-function blankQuotedArgsFor(command, verbSet) {
+// Blank quoted args of every segment whose verb matches `verbMatch`. Shared
+// core for stripDataCommandQuotes (pure-data verbs), stripEchoProse (non-
+// executing output verbs), and stripCliArgvPayload (loop CLI inline-JSON
+// argv): all blank non-executing quoted prose so rule regexes do not
+// false-positive on banned tokens that cannot run. `verbMatch` is either a
+// Set of verb names (matched against segmentVerb) or a predicate
+// `(segment) => boolean`; `blanker` defaults to `blankAllQuoted`.
+function blankQuotedArgsFor(command, verbMatch, blanker = blankAllQuoted) {
   if (typeof command !== "string" || !command) return command;
+  const match = typeof verbMatch === "function"
+    ? verbMatch
+    : (segment) => verbMatch.has(segmentVerb(segment));
   const parts = splitKeepingDelims(command);
   let changed = false;
   for (let i = 0; i < parts.length; i++) {
     // Delimiter tokens are single chars ; & | — never blanked verbs.
     if (parts[i].length === 1 && (parts[i] === ";" || parts[i] === "&" || parts[i] === "|")) continue;
-    if (verbSet.has(segmentVerb(parts[i]))) {
-      parts[i] = blankAllQuoted(parts[i]);
+    if (match(parts[i])) {
+      parts[i] = blanker(parts[i]);
       changed = true;
     }
   }
@@ -419,6 +425,96 @@ export function stripDataCommandQuotes(command) {
 const ECHO_PROSE_COMMANDS = new Set(["echo", "printf"]);
 function stripEchoProse(command) {
   return blankQuotedArgsFor(command, ECHO_PROSE_COMMANDS);
+}
+
+// Loop CLI inline-JSON argv: the canonical loop tool surface is
+//   `node .../bin/loop.mjs <tool> '<json>'`
+// where the quoted JSON argument is user-supplied DATA (it is JSON.parse'd +
+// zod-dispatched by bin/loop.mjs — never exec'd; see the static bypass guard
+// in gate-logic-cli-argv-payload.test.js). A banned test-pipe pattern inside
+// that JSON is not a real violation. stripCliArgvPayload blanks that quoted
+// argv so rule regexes see only the command verb. Same false-positive class
+// stripDataCommandQuotes closes for grep/jq and stripNodeEvalBody for `node -e`.
+//
+// Quote-kind-aware (the critical bypass guard): single-quoted regions are
+// always inert (POSIX: no expansion) → blanked. Double-quoted regions are
+// blanked ONLY when free of command substitution (`$(...)` and backticks) —
+// a double-quoted `"$(pnpm test | tail)"` is shell-expanded before node runs,
+// so it IS a real execution and must stay visible to the regex.
+//
+// Recognition is anchored: the script-path token must end with `bin/loop.mjs`
+// and sit positionally right after the node-family verb (skipping env-assigns
+// and one command prefix, mirroring segmentVerb). NOT `/loop\.mjs\b/` anywhere
+// (that would blank `node evil.mjs ... loop.mjs` or `--name "loop.mjs"`).
+// Accepted limitation: `node --inspect .../bin/loop.mjs` (a node flag between
+// verb and script) is not recognized — conservative (no bypass; may
+// false-positive). The canonical loop CLI form has no such flag.
+
+// Node-family verb: `node`, `nodejs`, or an absolute/basename path ending in
+// either (e.g. `/usr/bin/node`, `./nodejs`).
+const NODE_VERB_RE = /(^|\/)(node|nodejs)$/;
+
+// True for a segment that is a canonical `node .../bin/loop.mjs <tool> ...`
+// invocation. Positional: the token immediately after the node-family verb
+// must end with `bin/loop.mjs`.
+function isLoopCliSegment(segment) {
+  const tokens = segment.trim().split(/\s+/);
+  let i = 0;
+  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i++;
+  if (i < tokens.length && COMMAND_PREFIXES.has(tokens[i])) i++;
+  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i++;
+  const verb = tokens[i];
+  if (!verb || !NODE_VERB_RE.test(verb)) return false;
+  const scriptToken = tokens[i + 1];
+  return Boolean(scriptToken) && /bin\/loop\.mjs$/.test(scriptToken);
+}
+
+// Index of the closing `"` for a double-quoted region opening at `start` (the
+// `"` index), honoring `\"` escapes. Returns the `"` index, or the last index
+// for an unterminated region.
+function findDquoteEnd(segment, start) {
+  let i = start + 1;
+  while (i < segment.length) {
+    if (segment[i] === "\\") { i += 2; continue; }
+    if (segment[i] === '"') return i;
+    i++;
+  }
+  return segment.length - 1;
+}
+
+// Quote-kind-aware blanker. Single-quoted → always blanked (inert).
+// Double-quoted → blanked only when free of `$(` and backtick (a double-quoted
+// command substitution is real execution → preserved verbatim). Outside quotes
+// → emitted as-is; backslash escapes are preserved to keep the result
+// shell-parseable.
+function blankInertQuoted(segment) {
+  let out = "";
+  let i = 0;
+  while (i < segment.length) {
+    const ch = segment[i];
+    if (ch === "'") {
+      const end = segment.indexOf("'", i + 1);
+      out += "''";
+      i = end === -1 ? segment.length : end + 1;
+    } else if (ch === '"') {
+      const end = findDquoteEnd(segment, i);
+      const region = segment.slice(i, end + 1);
+      out += /\$\(/.test(region) || /`/.test(region) ? region : '""';
+      i = end + 1;
+    } else if (ch === "\\") {
+      out += segment.slice(i, i + 2);
+      i += 2;
+    } else {
+      out += ch;
+      i += 1;
+    }
+  }
+  return out;
+}
+
+// fallow-ignore-next-line unused-export -- public API consumed by gate-logic-cli-argv-payload.test.js
+export function stripCliArgvPayload(command) {
+  return blankQuotedArgsFor(command, isLoopCliSegment, blankInertQuoted);
 }
 
 /**
@@ -991,7 +1087,8 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
           const stripped = stripMessageFlags(segment);
           const nodeStripped = stripNodeEvalBody(stripped);
           const dataStripped = stripDataCommandQuotes(nodeStripped);
-          if (re.test(dataStripped)) {
+          const cliStripped = stripCliArgvPayload(dataStripped);
+          if (re.test(cliStripped)) {
             matched = true;
             break;
           }
@@ -1008,13 +1105,19 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // to false-positive. stripEchoProse extends the same reasoning to
         // echo/printf: a banned token living only in an echo label on one side
         // of a real read-only pipe (grep/tail/head) cannot pair with it to
-        // false-escalate. Executed-body verbs (bash -c, sh -c, python -c, awk,
-        // sed) are deliberately NOT stripped here — their quoted bodies run, so
-        // a banned token in `bash -c "vitest run" | tail` is a real violation.
-        // stripDataCommandQuotes/stripEchoProse preserve ; & | (quote-aware
-        // split) so spanning patterns still match real violations.
+        // false-escalate. stripCliArgvPayload extends it to the loop CLI
+        // inline-JSON argv (canonical `node .../bin/loop.mjs <tool> <quoted>`):
+        // a banned token living only in that JSON data cannot run, so it cannot
+        // pair with a real pipe to false-escalate. The blanking is quote-kind-
+        // aware — a double-quoted `$(...)` argv is real execution and stays
+        // visible (see stripCliArgvPayload). Executed-body verbs (bash -c, sh -c,
+        // python -c, awk, sed) are deliberately NOT stripped here — their quoted
+        // bodies run, so a banned token in `bash -c "vitest run" | tail` is a
+        // real violation. stripDataCommandQuotes/stripEchoProse/stripCliArgvPayload
+        // preserve ; & | (quote-aware split) so spanning patterns still match
+        // real violations.
         if (!matched) {
-          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripNodeEvalBody(stripMessageFlags(command))));
+          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripCliArgvPayload(stripNodeEvalBody(stripMessageFlags(command)))));
           if (re.test(fullStripped)) {
             matched = true;
           }

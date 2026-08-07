@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "TDD red — CLI argv payload regression tests"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: []

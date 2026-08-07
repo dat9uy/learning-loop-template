@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Verify suite, resolve finding, patch recurrence"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [2]
