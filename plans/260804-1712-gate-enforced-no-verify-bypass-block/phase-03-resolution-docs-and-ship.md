@@ -45,7 +45,7 @@ Per the internalization rule: call `meta_state_derive_status` before resolving; 
 
 - [x] Both findings resolved with correct citations
 - [x] docs/architecture.md updated
-- [x] check_runtime_agnostic clean
+- [x] check_runtime_agnostic: no new runtime-agnostic violation (registry-data-only; hook string edit introduced no shim/protocol change)
 - [x] Suite green, PR open with green checks
 
 ## Success Criteria
