@@ -747,7 +747,9 @@ function matchVerbAgainstGateList(verb, args) {
  * blank (replace with whitespace) any quoted-data arg belonging to an
  * inert-side segment that survives the withholds.
  */
-export function applyInertSinkBlanking(command) {
+// Module-internal: consumed by applyPromotedRules only; not part of the
+// module's exported surface.
+function applyInertSinkBlanking(command) {
   if (!command || typeof command !== "string") return command || "";
   const view = classifyPolicyTokens(command);
 
