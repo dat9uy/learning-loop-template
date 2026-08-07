@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Flake diagnosis (Finding C)"
-status: pending
+status: completed
 priority: P2
 effort: "0.5-1d"
 dependencies: ["1"]

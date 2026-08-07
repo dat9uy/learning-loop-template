@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Strip-helper retirement (Finding A)"
-status: pending
+status: completed
 priority: P2
 effort: "1.5-2d"
 dependencies: ["2"]

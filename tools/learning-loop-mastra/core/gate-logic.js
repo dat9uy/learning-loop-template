@@ -1540,9 +1540,10 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // applyInertSinkBlanking runs once over the whole command first, because
         // deciding whether an echo segment's prose is inert needs the sibling
         // pipe target that splitSegments discards. It blanks echo/printf quoted
-        // args only where the printed output routes to a configured inert sink;
-        // a redirect, an exec segment, or a pipe to anything else preserves the
-        // prose, so the bypass shapes still match here.
+        // args where the segment has no real pipe at all (bare `echo "x"` —
+        // the common case) or where the printed output routes to a configured
+        // inert sink; a redirect, an exec segment, or a pipe to anything else
+        // preserves the prose, so the bypass shapes still match here.
         const echoSafe = applyInertSinkBlanking(command);
         for (const segment of splitSegments(echoSafe)) {
           const stripped = stripMessageFlags(segment);

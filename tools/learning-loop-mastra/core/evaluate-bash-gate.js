@@ -139,13 +139,22 @@ export function evaluateBashGate({ command, root }) {
     // what makes the recorded allowance a bounded window rather than an
     // indefinite one. Scoped to gate-verb constraints; the vnstock
     // constraint path keeps marker-mode semantics.
+    let ageExpired = false;
     if (
       observationStatus.found &&
       isObservationStaleByAge(observationStatus.observation, Date.now())
     ) {
       observationStatus = { found: false };
+      ageExpired = true;
     }
     const gateVerbResult = makeGateDecision(gateVerbMatch, observationStatus);
+    // Distinguish "observation expired" from "never recorded" in the
+    // operator-facing reason — the remediation (record a fresh one) is the
+    // same, but the accurate cause avoids confusion when an operator
+    // recorded the observation earlier in the session.
+    if (ageExpired && gateVerbResult.observation_required) {
+      gateVerbResult.reason = `Constraint "${gateVerbMatch}" detected. The recorded gate-verb observation has expired (gate-verb allowances are age-bounded). Record a fresh observation before proceeding.`;
+    }
     // Staleness check, mirroring the constraint path — a stale observation
     // must not yield a plain `ok` for gate-verbs any more than for
     // docker/sudo constraints.

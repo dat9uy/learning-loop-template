@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Unblock the test runner (Finding B)"
-status: pending
+status: completed
 priority: P1
 effort: "0.5-1d"
 dependencies: []

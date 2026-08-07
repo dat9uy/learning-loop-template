@@ -158,6 +158,10 @@ describe("gate-verb observation window", () => {
         "ok",
         "a gate-verb observation older than the staleness window must not satisfy the constraint (bounded 30-min allowance)",
       );
+      assert.ok(
+        /expired/.test(result.reason ?? ""),
+        `the reason should say the observation expired (not "no observation found"): ${result.reason}`,
+      );
     }),
   );
 });

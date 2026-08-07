@@ -1,7 +1,7 @@
 ---
 title: "gate-logic PR119 leftover fixes"
 description: "Fix the four open findings left by merged PR #119 (observation-gated verb layer on quote-aware parse substrate): test-runner gate-verb friction (B), applyPromotedRules full-command legacy-verb false-positive (D), strip-helper retirement (A), and two pre-existing gate-logic flakes (C). TDD, security-boundary."
-status: pending
+status: completed
 priority: P1
 effort: "3.5-5d"
 tags: [gate-logic, security-boundary, tdd, pr119]
@@ -52,11 +52,11 @@ The four findings are interrelated:
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Unblock the test runner (Finding B)](./phase-01-b-unblock-test-runner.md) | Pending |
-| 2 | [Phase 2: Flag-aware full-command pass (Finding D)](./phase-02-d-flag-aware-full-command.md) | Pending |
-| 3 | [Phase 3: Strip-helper retirement (Finding A)](./phase-03-a-strip-helper-retirement.md) | Pending |
-| 4 | [Phase 4: Flake diagnosis (Finding C)](./phase-04-c-flake-diagnosis.md) | Pending |
-| 5 | [Phase 5: Verify and resolve findings](./phase-05-verify-resolve.md) | Pending |
+| 1 | [Phase 1: Unblock the test runner (Finding B)](./phase-01-b-unblock-test-runner.md) | Completed |
+| 2 | [Phase 2: Flag-aware full-command pass (Finding D)](./phase-02-d-flag-aware-full-command.md) | Completed |
+| 3 | [Phase 3: Strip-helper retirement (Finding A)](./phase-03-a-strip-helper-retirement.md) | Completed (re-scoped) |
+| 4 | [Phase 4: Flake diagnosis (Finding C)](./phase-04-c-flake-diagnosis.md) | Completed (non-reproduction) |
+| 5 | [Phase 5: Verify and resolve findings](./phase-05-verify-resolve.md) | Completed |
 
 Dependencies: Phase 2 → Phase 1 (run tests cleanly via the canonical runner).
 Phase 3 → Phase 2 (D's flag-aware resolver lets the full-command pass drop
@@ -112,26 +112,26 @@ the unblocked runner). Phase 5 → all.
 
 ## Success Criteria
 
-- [ ] `runtime_state_record({affected_system:"gate-verb:bash", kind:"budget-state",
+- [x] `runtime_state_record({affected_system:"gate-verb:bash", kind:"budget-state",
   id:"gate-verb:bash", source_ref:..., timestamp:...})` is accepted (after
   `gate_mark_preflight({surface:"runtime-state"})`), and — while active and **≤30 min
   old by age-based expiry added in this phase** — satisfies the `gate-verb:bash`
   constraint; older than 30 min it does NOT (Finding B).
-- [ ] `time -p echo X | tail` and `nice -n 5 echo X | tail` return `ok` against the
+- [x] `time -p echo X | tail` and `nice -n 5 echo X | tail` return `ok` against the
   vitest rule; the 44 echo-prose bypass locks and the verb-layer tests stay green (Finding D).
-- [ ] The **3** test files that import strip-helper internals no longer do; deleted
+- [x] The **3** test files that import strip-helper internals no longer do; deleted
   helpers have zero live references (unreferenced-function sweep, incl. leaf helpers);
   the full gate-logic suite stays green (Finding A).
-- [ ] A new regression lock `matchConstraintPattern('echo "docker run evil" | bash')`
+- [x] A new regression lock `matchConstraintPattern('echo "docker run evil" | bash')`
   → `"docker"` is added BEFORE the Phase 3 migration and stays green (Finding A, red-team #8).
-- [ ] `gate-logic-quoted-strings.test.js:88-99` asserts the corrected `null` result
+- [x] `gate-logic-quoted-strings.test.js:88-99` asserts the corrected `null` result
   once `stripNodeEvalBody` is quote-aware — or remains a locked limitation with a
   re-scoped finding if that migration is deferred (Finding A sub-item).
-- [ ] The two flake tests pass deterministically in the FULL suite across repeated
+- [x] The two flake tests pass deterministically in the FULL suite across repeated
   runs, or the finding is closed with reproduction evidence (Finding C).
-- [ ] Full suite green (3089+), `pnpm fallow:gate` green (baselines re-saved via the
+- [x] Full suite green (3089+), `pnpm fallow:gate` green (baselines re-saved via the
   `fallow dead-code/health/dupes --save-baseline` subcommands), `check_runtime_agnostic` clean.
-- [ ] All four meta-state findings resolved (or re-scoped with evidence) via loop tools
+- [x] All four meta-state findings resolved (or re-scoped with evidence) via loop tools
   (meta-state writes use `affected_system:"gate-logic"`).
 
 ## Open questions
@@ -139,6 +139,28 @@ the unblocked runner). Phase 5 → all.
 - Phase 3 scope: full live-path → `shell-parse` unification (large, what the finding
   literally asks) vs bounded test-migration + partial deletion (YAGNI). Decision
   deferred to the Phase 3 entry gate; the fallback re-scopes the finding if needed.
+
+## Outcome (2026-08-08)
+
+- **Phase 1 (B):** shipped as planned — enum derives `gate-verb:*` from
+  `patterns.json`; 30-min age expiry added to the bash gate for `gate-verb:*`.
+  Side effects absorbed: manifest wire budget raised (enum growth ~1.4 KB),
+  context-savings snapshot refreshed, one evaluate-bash-gate staleness test
+  updated to keep marker-mode semantics inside the new age window.
+- **Phase 2 (D):** option (b) shipped — shared `resolveVerbIndex` in
+  `shell-parse.js`; `segmentVerb` delegates. 11 prefixed-echo locks added.
+- **Phase 3 (A):** entry-gate decision = **fallback re-scope**. All remaining
+  helpers are load-bearing (reference sweep); the 3 test files migrated;
+  `matchConstraintPattern` echo→exec-sink locks added; only the genuinely dead
+  set deleted (`stripEchoProseSafe` + 3 satellites). Full unification deferred.
+  `quoted-strings:88-99` remains a documented locked limitation
+  (`stripNodeEvalBody` not upgraded).
+- **Phase 4 (C):** closed with non-reproduction evidence — 3 full-suite runs,
+  the two named tests green every time; no polluter mechanism reproduced.
+- **Phase 5:** full suite green ×2 (3108 tests), `pnpm fallow:gate` green (no
+  baseline re-save needed), runtime-agnostic test + `check_runtime_agnostic`
+  clean. All four findings resolved in meta-state (A re-scoped, C by
+  non-reproduction).
 
 ## Red Team Review
 
