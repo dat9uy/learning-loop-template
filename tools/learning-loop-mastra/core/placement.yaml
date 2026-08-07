@@ -213,3 +213,6 @@ files:
   - path: git-diff.js
     role: facade
     summary: readBranchTouchedPaths — read-only git-diff reader providing the touched-path set for the gap builder.
+  - path: shell-parse.js
+    role: primitive
+    summary: Parse-only quote-aware tokenizer. Re-exports shell-quote parse + classifyPolicyTokens policy-view builder (no gate behavior).

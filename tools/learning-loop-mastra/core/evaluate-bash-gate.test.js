@@ -332,6 +332,12 @@ test("bare vitest run --bail=1 (no pipe) → ok", () => {
 test("vitest-failures.sh (parser, not vitest run) → ok", () => {
   const root = makeRoot();
   writeNoRawStdoutRule(root);
+  // `bash` is an observation-gated gate-verb; record the observation the
+  // sanctioned workflow requires, then assert the no-raw-stdout rule does
+  // not trip on the parser script.
+  writeRuntimeState(root, [
+    { id: "obs-bash", kind: "budget-state", status: "active", affected_system: "gate-verb:bash", timestamp: new Date().toISOString() },
+  ]);
   const result = evaluateBashGate({ command: "bash tools/scripts/vitest-failures.sh", root });
   assert.strictEqual(result.decision, "ok");
 });
@@ -339,8 +345,53 @@ test("vitest-failures.sh (parser, not vitest run) → ok", () => {
 test("vitest-failures.sh piped to head (display truncation of parsed output) → ok", () => {
   const root = makeRoot();
   writeNoRawStdoutRule(root);
+  writeRuntimeState(root, [
+    { id: "obs-bash", kind: "budget-state", status: "active", affected_system: "gate-verb:bash", timestamp: new Date().toISOString() },
+  ]);
   const result = evaluateBashGate({ command: "bash tools/scripts/vitest-failures.sh 2>&1 | head -40", root });
   assert.strictEqual(result.decision, "ok");
+});
+
+// Gate-verb observation path, end to end through the runtime-state
+// projection (the unit tests for matchGateVerb/makeGateDecision use
+// synthetic observation objects; this pair proves the recorded-observation
+// unlock actually reaches the decision).
+test("gate-verb:bash + recorded observation → ok; without → block", () => {
+  const blockedRoot = makeRoot();
+  const blocked = evaluateBashGate({ command: "bash tools/scripts/vitest-failures.sh", root: blockedRoot });
+  assert.strictEqual(blocked.decision, "block");
+  assert.strictEqual(blocked.constraint_type, "gate-verb:bash");
+
+  const observedRoot = makeRoot();
+  writeRuntimeState(observedRoot, [
+    { id: "obs-bash", kind: "budget-state", status: "active", affected_system: "gate-verb:bash", timestamp: new Date().toISOString() },
+  ]);
+  const observed = evaluateBashGate({ command: "bash tools/scripts/vitest-failures.sh", root: observedRoot });
+  assert.strictEqual(observed.decision, "ok");
+});
+
+test("gate-verb observation older than the operator marker → escalate (staleness parity with the constraint path)", () => {
+  const root = makeRoot();
+  writeRuntimeState(root, [
+    {
+      id: "obs-bash",
+      kind: "budget-state",
+      status: "active",
+      affected_system: "gate-verb:bash",
+      timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    },
+  ]);
+  // Fresh operator state-change marker → the hour-old observation is stale.
+  const markerPath = join(root, "marker.json");
+  writeFileSync(markerPath, JSON.stringify({ timestamp: new Date().toISOString() }));
+  process.env.GATE_MARKER_PATH = markerPath;
+  try {
+    const result = evaluateBashGate({ command: "bash tools/scripts/vitest-failures.sh", root });
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.inbound_gate, true);
+  } finally {
+    delete process.env.GATE_MARKER_PATH;
+  }
 });
 
 test("pnpm test full suite (no pipe) → ok", () => {

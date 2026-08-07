@@ -85,12 +85,15 @@ describe("stripDataCommandQuotes: real violations preserved (must match)", () =>
     assert.strictEqual(result.decision, "escalate");
   });
 
-  test('echo "pnpm test | grep" → escalate (echo limitation preserved)', () => {
-    // echo is NOT a data command (locked accepted limitation, see
-    // gate-promoted-rules.test.js echo test). Banned tokens in an echo arg
-    // still escalate.
+  test('echo "pnpm test | grep" → ok (printed prose, no pipe target)', () => {
+    // Printed prose is data: the `|` satisfying the rule is inside the quotes,
+    // so nothing can execute it. The per-segment pass blanks echo/printf quoted
+    // args when the segment has no redirect and no real `|` pipe. Bypass shapes
+    // (real pipe, redirect) still escalate — locked in
+    // gate-logic-echo-prose-pipe-target.test.js, which matters here because
+    // rule-no-raw-stdout-vitest has no matchConstraintPattern backstop.
     const result = applyPromotedRules('echo "pnpm test foo | grep bar"', null, [VITEST_RULE]);
-    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.decision, "ok");
   });
 
   test('matchConstraintPattern: bash -c "docker run" → docker (bash-c preserved)', () => {

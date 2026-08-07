@@ -18,6 +18,7 @@ import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
+import { classifyPolicyTokens } from "./shell-parse.js";
 import { readRegistry, metaStateRuleEntrySchema, readFileIndex } from "./meta-state.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
@@ -29,6 +30,37 @@ const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "
 
 const CONSTRAINT_PATTERNS = Object.fromEntries(
   Object.entries(PATTERNS_RAW).map(([key, pattern]) => [key, new RegExp(pattern)])
+);
+
+// Gate-verbs: structured list of executor verbs (direct + indirection) that
+// become observation-gated constraints. Loaded from patterns.json — NOT a
+// hardcoded list. Each entry is either a bare string ("bash") for verb-only
+// match, or an object {verb, flags} for verb+flag match (e.g. node -e), or
+// {verb, indirection: true} for verbs that only count when followed by an
+// executor (env bash, xargs bash).
+// Verb matching uses basename normalization so PATH-qualified /bin/bash
+// matches the bash entry.
+const GATE_VERBS = (() => {
+  const raw = PATTERNS_RAW["gate-verbs"];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((entry) =>
+    typeof entry === "string"
+      ? { verb: entry, flags: null, indirection: false }
+      : {
+          verb: entry.verb,
+          flags: Array.isArray(entry.flags) ? entry.flags : null,
+          indirection: entry.indirection === true,
+        },
+  );
+})();
+
+// Indirection verbs (env, xargs) ONLY count as gate-verbs when followed by
+// an executor. Derived from the same patterns.json config as GATE_VERBS so
+// the match path and the observation path (file-readers.js, also config-
+// derived) can never drift: removing a verb from config removes it from
+// both. `find` is a verb+flag entry (-exec/-execdir/-ok), not indirection.
+const INDIRECTION_VERBS = new Set(
+  GATE_VERBS.filter((e) => e.indirection).map((e) => e.verb),
 );
 
 // `records-evidence` was the only observation-based unlock for `records/evidence/**`.
@@ -383,19 +415,25 @@ function splitKeepingDelims(command) {
   return out;
 }
 
-// Blank quoted args of every segment whose verb is in `verbSet`. Shared core
-// for stripDataCommandQuotes (pure-data verbs) and stripEchoProse (non-
-// executing output verbs): both blank non-executing quoted prose so rule
-// regexes do not false-positive on banned tokens that cannot run.
-function blankQuotedArgsFor(command, verbSet) {
+// Blank quoted args of every segment whose verb matches `verbMatch`. Shared
+// core for stripDataCommandQuotes (pure-data verbs), stripEchoProse (non-
+// executing output verbs), and stripCliArgvPayload (loop CLI inline-JSON
+// argv): all blank non-executing quoted prose so rule regexes do not
+// false-positive on banned tokens that cannot run. `verbMatch` is either a
+// Set of verb names (matched against segmentVerb) or a predicate
+// `(segment) => boolean`; `blanker` defaults to `blankAllQuoted`.
+function blankQuotedArgsFor(command, verbMatch, blanker = blankAllQuoted) {
   if (typeof command !== "string" || !command) return command;
+  const match = typeof verbMatch === "function"
+    ? verbMatch
+    : (segment) => verbMatch.has(segmentVerb(segment));
   const parts = splitKeepingDelims(command);
   let changed = false;
   for (let i = 0; i < parts.length; i++) {
     // Delimiter tokens are single chars ; & | — never blanked verbs.
     if (parts[i].length === 1 && (parts[i] === ";" || parts[i] === "&" || parts[i] === "|")) continue;
-    if (verbSet.has(segmentVerb(parts[i]))) {
-      parts[i] = blankAllQuoted(parts[i]);
+    if (match(parts[i])) {
+      parts[i] = blanker(parts[i]);
       changed = true;
     }
   }
@@ -410,15 +448,187 @@ export function stripDataCommandQuotes(command) {
 // Non-executing output verbs: echo/printf. Their quoted args are printed prose,
 // not commands — banned tokens inside them cannot execute — so blanking creates
 // no bypass (same false-positive class stripDataCommandQuotes closes for
-// grep/jq). Applied only in the full-command pass (see applyPromotedRules) so
-// echo prose on one side of a REAL pipe cannot pair with a read-only
-// grep/tail/head on the other to false-escalate. The per-segment pass and
-// matchConstraintPattern keep the locked echo-limitation behavior (echo prose
-// still escalates within one segment). Executed-body verbs (bash -c, sh -c,
-// python -c, awk, sed) are NOT here — their quoted bodies run.
+// grep/jq). This blanket form is used by the full-command pass, where echo prose
+// on one side of a REAL pipe cannot pair with a read-only grep/tail/head on the
+// other to false-escalate. The per-segment pass uses the stricter
+// stripEchoProseSafe below (blanking withheld on a redirect or a real pipe),
+// and matchConstraintPattern strips no echo prose at all. Executed-body verbs
+// (bash -c, sh -c, python -c, awk, sed) are NOT here — their quoted bodies run.
 const ECHO_PROSE_COMMANDS = new Set(["echo", "printf"]);
 function stripEchoProse(command) {
   return blankQuotedArgsFor(command, ECHO_PROSE_COMMANDS);
+}
+
+// True when the segment at `parts[i]` sends its output to a file. A redirect
+// persists the printed prose somewhere a sibling segment can later execute
+// (`echo "banned" > f && bash f`), so a redirecting echo segment must keep its
+// prose visible.
+//
+// The in-segment scan reuses blankAllQuoted rather than adding a tokenizer: it
+// drops quoted bodies (so `echo "a > b"` — data — reads clean) and drops
+// backslash-escaped chars (so a literal `\>` is not a redirect), while emitting
+// unquoted chars verbatim.
+//
+// `&>` and `&>>` (redirect stdout+stderr) need the extra check: walkQuoteState
+// treats `&` as a delimiter, so the `>` opens the NEXT part and the in-segment
+// scan cannot see it. Missing that splits the redirect across the tokenizer
+// boundary and blanks prose that is in fact being persisted.
+function segmentHasRedirect(parts, i) {
+  if (/[<>]/.test(blankAllQuoted(parts[i]))) return true;
+  return parts[i + 1] === "&" && /^\s*>/.test(parts[i + 2] ?? "");
+}
+
+// True when the segment at `parts[i]` pipes its stdout into the next segment.
+// `parts` comes from splitKeepingDelims: [segment, delim, segment, delim, …],
+// so parts[i+1] is the delimiter that follows the segment.
+//
+// Only a real `|` routes stdout onward. `;`, `&`, `&&` and end-of-command do
+// not — `echo "X" && bash` runs bash with its OWN stdin. `||` is emitted as two
+// adjacent `|` delimiter tokens with an EMPTY segment between them; that empty
+// segment is what distinguishes logical-OR from a pipe CHAIN (`a | b | c`,
+// where the middle segment is non-empty and the first pipe is real). Getting
+// that distinction wrong in the permissive direction would blank prose feeding
+// a real pipeline and reopen the exec-sink bypass, so the empty-segment check
+// is required, not cosmetic.
+function followedByRealPipe(parts, i) {
+  if (parts[i + 1] !== "|") return false;
+  const isLogicalOr = parts[i + 3] === "|" && parts[i + 2].trim() === "";
+  return !isLogicalOr;
+}
+
+// `printf -v VAR ...` does NOT print — it assigns the formatted result to a
+// shell variable, which a later segment can then execute:
+//   printf -v x "banned cmd" && sh -c "$x"
+// That makes it an assignment, not prose, so its args are never blanked. The
+// flag is read AFTER blankAllQuoted so a quoted literal (`printf "%s" "-v"` —
+// genuinely prose) does not trip it. Matches both `-v x` and attached `-vx`.
+function printfAssignsToVariable(segment) {
+  return /(^|\s)-v/.test(blankAllQuoted(segment));
+}
+
+// Per-segment echo/printf prose blanking, withheld wherever the printed output
+// could reach something that executes it. Blanks a segment's quoted args iff
+// the segment has no redirect AND is not followed by a real `|` pipe.
+//
+// This is deliberately narrower than the blanket stripEchoProse above, which
+// the full-command pass keeps using. Promoted-rule-only tokens (vitest,
+// artifact) have NO matchConstraintPattern backstop — applyPromotedRules is
+// their only gate — so this relaxation has to be non-bypassable on its own
+// rather than leaning on a downstream check. Preserving on ANY real pipe,
+// regardless of target, is what buys that: classifying pipe targets as
+// inert-vs-executing is unsound (tee/dd/cat persist, and the exec-sink tail is
+// unbounded). Quote-kind awareness comes from blankInertQuoted: single quotes
+// are always inert, double quotes only when free of `$(`/backtick.
+function stripEchoProseSafe(command) {
+  if (typeof command !== "string" || !command) return command;
+  const parts = splitKeepingDelims(command);
+  // `exec` rewrites the shell's own file descriptors for every LATER segment
+  // (`exec > f ; echo "banned" ; bash f` persists the prose without the echo
+  // segment carrying any redirect of its own), which invalidates the
+  // per-segment reasoning below. Reading fd state is unbounded, so any exec
+  // segment simply disables blanking for the whole command.
+  if (parts.some((p) => segmentVerb(p) === "exec")) return command;
+  let changed = false;
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i].length === 1 && (parts[i] === ";" || parts[i] === "&" || parts[i] === "|")) continue;
+    const verb = segmentVerb(parts[i]);
+    if (!ECHO_PROSE_COMMANDS.has(verb)) continue;
+    if (verb === "printf" && printfAssignsToVariable(parts[i])) continue;
+    if (segmentHasRedirect(parts, i) || followedByRealPipe(parts, i)) continue;
+    parts[i] = blankInertQuoted(parts[i]);
+    changed = true;
+  }
+  return changed ? parts.join("") : command;
+}
+
+// Loop CLI inline-JSON argv: the canonical loop tool surface is
+//   `node .../bin/loop.mjs <tool> '<json>'`
+// where the quoted JSON argument is user-supplied DATA (it is JSON.parse'd +
+// zod-dispatched by bin/loop.mjs — never exec'd; see the static bypass guard
+// in gate-logic-cli-argv-payload.test.js). A banned test-pipe pattern inside
+// that JSON is not a real violation. stripCliArgvPayload blanks that quoted
+// argv so rule regexes see only the command verb. Same false-positive class
+// stripDataCommandQuotes closes for grep/jq and stripNodeEvalBody for `node -e`.
+//
+// Quote-kind-aware (the critical bypass guard): single-quoted regions are
+// always inert (POSIX: no expansion) → blanked. Double-quoted regions are
+// blanked ONLY when free of command substitution (`$(...)` and backticks) —
+// a double-quoted `"$(pnpm test | tail)"` is shell-expanded before node runs,
+// so it IS a real execution and must stay visible to the regex.
+//
+// Recognition is anchored: the script-path token must end with `bin/loop.mjs`
+// and sit positionally right after the node-family verb (skipping env-assigns
+// and one command prefix, mirroring segmentVerb). NOT `/loop\.mjs\b/` anywhere
+// (that would blank `node evil.mjs ... loop.mjs` or `--name "loop.mjs"`).
+// Accepted limitation: `node --inspect .../bin/loop.mjs` (a node flag between
+// verb and script) is not recognized — conservative (no bypass; may
+// false-positive). The canonical loop CLI form has no such flag.
+
+// Node-family verb: `node`, `nodejs`, or an absolute/basename path ending in
+// either (e.g. `/usr/bin/node`, `./nodejs`).
+const NODE_VERB_RE = /(^|\/)(node|nodejs)$/;
+
+// True for a segment that is a canonical `node .../bin/loop.mjs <tool> ...`
+// invocation. Positional: the token immediately after the node-family verb
+// must end with `bin/loop.mjs`.
+function isLoopCliSegment(segment) {
+  const tokens = segment.trim().split(/\s+/);
+  let i = 0;
+  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i++;
+  if (i < tokens.length && COMMAND_PREFIXES.has(tokens[i])) i++;
+  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i++;
+  const verb = tokens[i];
+  if (!verb || !NODE_VERB_RE.test(verb)) return false;
+  const scriptToken = tokens[i + 1];
+  return Boolean(scriptToken) && /bin\/loop\.mjs$/.test(scriptToken);
+}
+
+// Index of the closing `"` for a double-quoted region opening at `start` (the
+// `"` index), honoring `\"` escapes. Returns the `"` index, or the last index
+// for an unterminated region.
+function findDquoteEnd(segment, start) {
+  let i = start + 1;
+  while (i < segment.length) {
+    if (segment[i] === "\\") { i += 2; continue; }
+    if (segment[i] === '"') return i;
+    i++;
+  }
+  return segment.length - 1;
+}
+
+// Quote-kind-aware blanker. Single-quoted → always blanked (inert).
+// Double-quoted → blanked only when free of `$(` and backtick (a double-quoted
+// command substitution is real execution → preserved verbatim). Outside quotes
+// → emitted as-is; backslash escapes are preserved to keep the result
+// shell-parseable.
+function blankInertQuoted(segment) {
+  let out = "";
+  let i = 0;
+  while (i < segment.length) {
+    const ch = segment[i];
+    if (ch === "'") {
+      const end = segment.indexOf("'", i + 1);
+      out += "''";
+      i = end === -1 ? segment.length : end + 1;
+    } else if (ch === '"') {
+      const end = findDquoteEnd(segment, i);
+      const region = segment.slice(i, end + 1);
+      out += /\$\(/.test(region) || /`/.test(region) ? region : '""';
+      i = end + 1;
+    } else if (ch === "\\") {
+      out += segment.slice(i, i + 2);
+      i += 2;
+    } else {
+      out += ch;
+      i += 1;
+    }
+  }
+  return out;
+}
+
+// fallow-ignore-next-line unused-export -- public API consumed by gate-logic-cli-argv-payload.test.js
+export function stripCliArgvPayload(command) {
+  return blankQuotedArgsFor(command, isLoopCliSegment, blankInertQuoted);
 }
 
 /**
@@ -427,6 +637,14 @@ function stripEchoProse(command) {
  * Strips message flags, node-eval bodies, and pure-data-command pattern args
  * before matching to avoid false positives. Returns the first matching
  * constraint type, or null.
+ *
+ * Deliberately strips NO echo/printf prose, unlike both promoted-rule passes.
+ * These are the first-class boundaries (docker, sudo, package-manager,
+ * vendor-api, side-effect-import) and stay maximally conservative: `echo
+ * "docker run" | bash` is caught here regardless of pipe target. Note the
+ * converse — promoted rules such as rule-no-raw-stdout-vitest have no entry in
+ * CONSTRAINT_PATTERNS, so this function is not a backstop for them. That is why
+ * stripEchoProseSafe has to be non-bypassable on its own.
  */
 export function matchConstraintPattern(command) {
   if (!command || typeof command !== "string") return null;
@@ -456,6 +674,418 @@ export function checkObservationExists(constraintType, observations) {
       (obs.constraint_type === constraintType || obs.constraint === constraintType)
   );
   return match ? { found: true, observation: match } : { found: false };
+}
+
+/**
+ * Gate-verb constraint match. Walks the policy view (from
+ * classifyPolicyTokens) and returns the FIRST gate-verb constraint_type
+ * hit as a string (e.g. "gate-verb:bash") or null. Checks BOTH each
+ * segment's verb AND each pipe-target verb, so `printf evil | bash` is
+ * caught even though `bash` is the second verb.
+ *
+ * Indirection verbs (env, xargs) only match when followed by a gate-verb
+ * arg; `env FOO=bar` alone is not indirection.
+ *
+ * Verb matching uses basename normalization so PATH-qualified `/bin/bash`
+ * matches the `bash` entry. Command-prefixes (sudo/time/nice/nohup/command)
+ * are skipped by classifyPolicyTokens, so `sudo bash` resolves verb=bash.
+ */
+export function matchGateVerb(command) {
+  if (!command || typeof command !== "string") return null;
+  const view = classifyPolicyTokens(command);
+
+  for (const seg of view.segments) {
+    // Indirection verbs (env, xargs) only match via the indirection
+    // predicate below — they must NOT match as direct gate-verbs. A bare
+    // `env FOO=bar` is just env-assignment plumbing, not indirection.
+    const isIndirection = INDIRECTION_VERBS.has(seg.verb);
+
+    if (!isIndirection) {
+      const match = matchVerbAgainstGateList(seg.verb, seg.args);
+      if (match) return `gate-verb:${match}`;
+    }
+
+    // Indirection predicate: env/xargs ONLY match when a following arg is
+    // itself a gate-verb. Scan ALL args — env-assignments (`FOO=bar`,
+    // lowercase included) and flag tokens (`-i`, `--`, `-0`, `-I{}`) may be
+    // interposed before the wrapped command, so checking only args[0]
+    // misses `env FOO=bar bash -c …` and `xargs -0 bash`.
+    if (isIndirection) {
+      for (const arg of seg.args) {
+        if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) continue; // env-assignment
+        if (arg.startsWith("-")) continue; // flag (incl. `--`)
+        const argMatch = matchVerbAgainstGateList(basename(arg), []);
+        if (argMatch) {
+          return `gate-verb:${seg.verb}`;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// Returns the matched verb key (e.g. "zsh", "node") if the verb matches a
+// gate-verb entry; null otherwise. `args` is the segment's arg list (after
+// the verb) — used for verb+flag entries (e.g. node -e, python -c).
+// Indirection entries never match here directly; they only match via the
+// indirection predicate in matchGateVerb.
+// Flag matching covers three real forms: detached (`node -e`), attached
+// value (`node --eval=…`), and single-char clusters (`perl -ne`, `node -pe`).
+function matchVerbAgainstGateList(verb, args) {
+  if (!verb) return null;
+  const key = basename(verb);
+  for (const entry of GATE_VERBS) {
+    if (entry.verb !== key) continue;
+    if (entry.indirection) continue; // matched via indirection predicate only
+    if (entry.flags === null) return key; // verb-only entry
+    const hasFlag = entry.flags.some((f) =>
+      args.some(
+        (a) =>
+          a === f ||
+          a.startsWith(f + "=") ||
+          // single-char short flag inside a cluster (`-e` in `-ne`, `-pe`)
+          (f.length === 2 &&
+            f[0] === "-" &&
+            a.length > 2 &&
+            a[0] === "-" &&
+            a[1] !== "-" &&
+            a.slice(1).includes(f[1])),
+      ),
+    );
+    if (hasFlag) return key;
+  }
+  return null;
+}
+
+/**
+ * Inert-sink blanking — replaces `stripEchoProseSafe` on the parse
+ * substrate. When a real pipe's target verb is a configured inert sink
+ * (tail/head/grep/cat/wc/sort/uniq), the inert-side segment's quoted data
+ * args can be blanked before regex matching — printed prose is DATA, not
+ * code, and cannot execute on `tail`.
+ *
+ * Three no-bypass withholds (red-team #3):
+ *   1. Redirect withhold: a segment with hasRedirect is NOT blanked (the
+ *      output is persisted to a file a trusted verb can later run).
+ *   2. Exec withhold: any exec segment disables blanking globally (exec
+ *      re-routes the shell's fds; the next echo's stdout is persisted).
+ *   3. Executor-pipe withhold: a real pipe whose target is a gate-verb is
+ *      NOT an inert sink — the verb layer gates the gate-verb
+ *      anyway, but this defense keeps the promoted-rule pass honest.
+ *
+ * Implementation: walk the command char-by-char with quote state, build
+ * a parallel token array (mirroring classifyPolicyTokens output), and
+ * blank (replace with whitespace) any quoted-data arg belonging to an
+ * inert-side segment that survives the withholds.
+ */
+// Module-internal: consumed by applyPromotedRules only; not part of the
+// module's exported surface.
+function applyInertSinkBlanking(command) {
+  if (!command || typeof command !== "string") return command || "";
+  const view = classifyPolicyTokens(command);
+
+  // Exec withhold: any exec segment disables blanking globally.
+  if (view.containsExec) return command;
+
+  // Determine which segments may be blanked. The policy view carries the
+  // pipe-chain detection, so the three withholds from the legacy strip
+  // helper (redirect, exec, real-pipe-preservation) are replaced by
+  // conditions on the policy view. The new inert-sink allowlist EXTENDS
+  // blanking: when the pipe chain ends at an inert sink, the prose is
+  // provably inert (the data cannot run on the sink). Otherwise, the
+  // legacy "no real pipe" relaxation applies.
+  const blankableSegmentIdx = new Set();
+  for (let i = 0; i < view.segments.length; i++) {
+    const seg = view.segments[i];
+    if (seg.verb !== "echo" && seg.verb !== "printf") continue;
+    if (seg.verb === "printf" && hasPrintfVAssignment(seg.args)) continue;
+    if (seg.hasRedirect) continue;
+
+    // If this segment is NOT followed by a real pipe → blank (legacy
+    // "no real pipe" relaxation; logical ops `;`, `&&`, `||`, `&` are
+    // not pipes).
+    if (seg._joiningOp !== "|") {
+      blankableSegmentIdx.add(i);
+      continue;
+    }
+
+    // Real pipe: blank only if EVERY downstream segment in the chain is an
+    // inert sink and no segment in the chain has a redirect. Checking only
+    // the chain end is not enough: `echo x | cat > f` persists the prose
+    // via the sink's redirect, and `echo x | tee f | tail` persists it
+    // mid-chain via a non-inert verb — both are the persisted-prose class.
+    let j = i;
+    while (j < view.segments.length - 1 && view.segments[j]._joiningOp === "|") {
+      j++;
+    }
+    let chainInert = true;
+    for (let k = i; k <= j; k++) {
+      const s = view.segments[k];
+      if (s.hasRedirect || (k > i && !isInertSinkSegment(s))) {
+        chainInert = false;
+        break;
+      }
+    }
+    if (chainInert) {
+      blankableSegmentIdx.add(i);
+    }
+  }
+  if (blankableSegmentIdx.size === 0) return command;
+
+  // Rebuild the command, blanking quoted-content belonging to blankable
+  // segments. Walk the command char-by-char with quote state and segment
+  // counter — increment segment counter on logical-op / pipe boundaries.
+  // The rebuild preserves `$(...)` and backtick substitutions: when a
+  // token contains command substitution inside quotes, the content is
+  // EXECUTED (not prose) and must stay visible to the regex.
+  let result = "";
+  let i = 0;
+  let segIdx = 0;
+  let bufBlankable = blankableSegmentIdx.has(segIdx);
+  let inSingle = false;
+  let inDouble = false;
+  let escape = false;
+  let tokenBuf = ""; // current word content (whitespace-separated)
+  let tokenQuoted = false;
+  let tokenHasCommandSubst = false; // `$(...)` or backticks inside this token
+  let dollarSeen = false; // `$` outside a single-quote, candidate for `$(`
+
+  function flushToken() {
+    if (tokenBuf.length > 0) {
+      // Blank only when the token is simple quoted data — no command
+      // substitution and not the result of a substitution. Tokens with
+      // `$(...)` or backticks are EXECUTED (not prose) and stay visible.
+      if (bufBlankable && tokenQuoted && !tokenHasCommandSubst) {
+        // Replace quoted args with whitespace (preserves overall string
+        // shape so per-segment length and token positions stay stable).
+        result += " ".repeat(tokenBuf.length);
+      } else {
+        result += tokenBuf;
+      }
+      tokenBuf = "";
+      tokenQuoted = false;
+      tokenHasCommandSubst = false;
+    }
+  }
+
+  function flushOp(op) {
+    flushToken();
+    result += op;
+  }
+
+  while (i < command.length) {
+    const ch = command[i];
+
+    if (escape) {
+      tokenBuf += ch;
+      escape = false;
+      i++;
+      continue;
+    }
+
+    if (!inSingle && !inDouble) {
+      if (ch === "\\") {
+        escape = true;
+        tokenBuf += ch;
+        i++;
+        continue;
+      }
+      if (ch === "'") {
+        inSingle = true;
+        tokenQuoted = true;
+        tokenBuf += ch; // keep quote chars so the rebuild preserves quoting
+        i++;
+        continue;
+      }
+      if (ch === '"') {
+        inDouble = true;
+        tokenQuoted = true;
+        tokenBuf += ch;
+        i++;
+        continue;
+      }
+      // Backtick substitution outside double quotes: backticks are command
+      // substitution even when unquoted (POSIX).
+      if (ch === "`") {
+        tokenHasCommandSubst = true;
+        tokenBuf += ch;
+        i++;
+        continue;
+      }
+      if (ch === "$") {
+        dollarSeen = true;
+        tokenBuf += ch;
+        i++;
+        continue;
+      }
+      if (dollarSeen && ch === "(") {
+        tokenHasCommandSubst = true;
+        tokenBuf += ch;
+        dollarSeen = false;
+        i++;
+        continue;
+      }
+      if (/\s/.test(ch)) {
+        flushToken();
+        result += ch;
+        dollarSeen = false;
+        i++;
+        continue;
+      }
+      // Op recognition — longest match first, only outside quotes.
+      const three = command.slice(i, i + 3);
+      if (three === "<<<" || three === ">>>" || three === "&>>") {
+        flushOp(three);
+        i += 3;
+        continue;
+      }
+      const two = command.slice(i, i + 2);
+      if (
+        two === "&&" ||
+        two === "||" ||
+        two === ">>" ||
+        two === "<<" ||
+        two === "&>" ||
+        two === ">&" ||
+        two === "|&" ||
+        two === "<&"
+      ) {
+        flushOp(two);
+        // `&&` / `||` split segments in classifyPolicyTokens (LOGICAL_OPS),
+        // so the walker's segment counter must advance in lockstep —
+        // otherwise later segments inherit the blankability of an earlier
+        // echo segment and their quoted args get wrongly blanked.
+        if (two === "&&" || two === "||") {
+          segIdx++;
+          bufBlankable = blankableSegmentIdx.has(segIdx);
+        }
+        i += 2;
+        continue;
+      }
+      if ("|&;<>()".includes(ch)) {
+        // Logical ops + pipes split segments.
+        if (ch === "|" || ch === ";" || ch === "&" || ch === "(" || ch === ")") {
+          flushOp(ch);
+          if (ch === "|" || ch === ";" || ch === "&") {
+            // Segment boundary (logical or pipe).
+            segIdx++;
+            bufBlankable = blankableSegmentIdx.has(segIdx);
+          }
+        } else {
+          flushOp(ch);
+        }
+        i++;
+        continue;
+      }
+      tokenBuf += ch;
+      i++;
+      continue;
+    }
+
+    if (inSingle) {
+      if (ch === "'") {
+        inSingle = false;
+        tokenBuf += ch;
+        i++;
+        continue;
+      }
+      tokenBuf += ch;
+      i++;
+      continue;
+    }
+
+    // inDouble: backslash-escapes work, `"` closes, `$(...)` and
+    // backticks are command substitution (executed, not prose).
+    if (ch === "\\") {
+      escape = true;
+      tokenBuf += ch;
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      inDouble = false;
+      tokenBuf += ch;
+      i++;
+      continue;
+    }
+    if (ch === "`") {
+      tokenHasCommandSubst = true;
+      tokenBuf += ch;
+      i++;
+      continue;
+    }
+    if (ch === "$") {
+      dollarSeen = true;
+      tokenBuf += ch;
+      i++;
+      continue;
+    }
+    if (dollarSeen && ch === "(") {
+      tokenHasCommandSubst = true;
+      tokenBuf += ch;
+      dollarSeen = false;
+      i++;
+      continue;
+    }
+    // Non-special inside double quotes: literal (whitespace inside quotes
+    // does NOT split tokens — preserved into the trailing flush).
+    tokenBuf += ch;
+    dollarSeen = false;
+    i++;
+    continue;
+  }
+
+  flushToken();
+  return result;
+}
+
+// Inert-sinks: verbs that cannot execute (tail/head/grep/cat/etc.). When a
+// real pipe's target verb is an inert sink, the inert-side segment's
+// quoted data cannot run there, so promoted-rule blanking can safely
+// suppress it. Loaded from patterns.json — operator-owned config; new
+// entries are a recorded change-log decision.
+//
+// awk/sed deliberately held back (red-team #1 dual-role): they are both
+// stdin readers AND execution-capable; the executed-body vs stdin-reader
+// distinction is not cleanly parseable. If friction later recurs, a
+// separate recorded decision adds them with an exec-vs-read predicate.
+const INERT_SINKS = new Set(PATTERNS_RAW["inert-sinks"] || []);
+
+// Inert-sink test for a pipe-chain end segment. Beyond the configured
+// verb allowlist, `node <script>.{js,mjs,cjs}` (no eval flags) counts as
+// inert: the script file is the executed unit and the piped prose is stdin
+// data to it — the original bash-gate hook shape (`printf ... | node
+// core/bash-gate.js`). Eval flags (-e/--eval/-p/--print) are gate-verb
+// matches via the verb layer and must never count as inert.
+function isInertSinkSegment(seg) {
+  const verb = basename(seg.verb);
+  if (INERT_SINKS.has(verb)) return true;
+  if (verb !== "node") return false;
+  const EVAL_FLAGS = new Set(["-e", "--eval", "-p", "--print"]);
+  if (seg.args.some((a) => EVAL_FLAGS.has(a))) return false;
+  return seg.args.some((a) => /\.(mjs|cjs|js)$/.test(a));
+}
+
+// Local basename for verb normalization (PATH-qualified /bin/bash -> bash).
+// Kept private; the broader module may add a similar helper in future.
+function basename(p) {
+  if (typeof p !== "string") return p;
+  const i = p.lastIndexOf("/");
+  return i === -1 ? p : p.slice(i + 1);
+}
+
+// printf -v detection: the flag is `-v` (or attached `-vX`) — the verb
+// writes the formatted result into a variable instead of stdout. Args
+// are an assignment payload, not prose. The flag is the FIRST arg token
+// (after tokenization), preceded by whitespace; literal `-v` inside a
+// quoted arg is NOT a -v assignment — it's a string the verb is asked
+// to print, exactly the case the old `printfAssignsToVariable` regex
+// (which checks for `-v` preceded by start-of-segment or whitespace)
+// distinguished.
+function hasPrintfVAssignment(args) {
+  if (args.length === 0) return false;
+  const first = args[0];
+  return first === "-v" || first.startsWith("-v");
 }
 
 /**
@@ -987,11 +1617,19 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // Per-segment: a forbidden token in any leg of a compound command
         // (splitSegments splits on ; & |, honoring quotes). This remains the
         // primary match surface so substring rules behave exactly as before.
-        for (const segment of splitSegments(command)) {
+        // stripEchoProseSafe runs once over the whole command first, because
+        // deciding whether an echo segment's prose is inert needs the sibling
+        // delimiter that splitSegments discards. It blanks echo/printf quoted
+        // args only where the printed output cannot reach anything executable
+        // (no redirect, no real `|`); a redirect or a real pipe preserves the
+        // prose, so the bypass shapes still match here.
+        const echoSafe = applyInertSinkBlanking(command);
+        for (const segment of splitSegments(echoSafe)) {
           const stripped = stripMessageFlags(segment);
           const nodeStripped = stripNodeEvalBody(stripped);
           const dataStripped = stripDataCommandQuotes(nodeStripped);
-          if (re.test(dataStripped)) {
+          const cliStripped = stripCliArgvPayload(dataStripped);
+          if (re.test(cliStripped)) {
             matched = true;
             break;
           }
@@ -1008,13 +1646,19 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // to false-positive. stripEchoProse extends the same reasoning to
         // echo/printf: a banned token living only in an echo label on one side
         // of a real read-only pipe (grep/tail/head) cannot pair with it to
-        // false-escalate. Executed-body verbs (bash -c, sh -c, python -c, awk,
-        // sed) are deliberately NOT stripped here — their quoted bodies run, so
-        // a banned token in `bash -c "vitest run" | tail` is a real violation.
-        // stripDataCommandQuotes/stripEchoProse preserve ; & | (quote-aware
-        // split) so spanning patterns still match real violations.
+        // false-escalate. stripCliArgvPayload extends it to the loop CLI
+        // inline-JSON argv (canonical `node .../bin/loop.mjs <tool> <quoted>`):
+        // a banned token living only in that JSON data cannot run, so it cannot
+        // pair with a real pipe to false-escalate. The blanking is quote-kind-
+        // aware — a double-quoted `$(...)` argv is real execution and stays
+        // visible (see stripCliArgvPayload). Executed-body verbs (bash -c, sh -c,
+        // python -c, awk, sed) are deliberately NOT stripped here — their quoted
+        // bodies run, so a banned token in `bash -c "vitest run" | tail` is a
+        // real violation. stripDataCommandQuotes/stripEchoProse/stripCliArgvPayload
+        // preserve ; & | (quote-aware split) so spanning patterns still match
+        // real violations.
         if (!matched) {
-          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripNodeEvalBody(stripMessageFlags(command))));
+          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripCliArgvPayload(stripNodeEvalBody(stripMessageFlags(command)))));
           if (re.test(fullStripped)) {
             matched = true;
           }

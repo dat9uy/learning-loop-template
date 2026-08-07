@@ -7,6 +7,7 @@
 
 import {
   matchConstraintPattern,
+  matchGateVerb,
   checkObservationExists,
   makeGateDecision,
   loadPromotedRules,
@@ -119,6 +120,41 @@ export function evaluateBashGate({ command, root }) {
           constraintResult.observation_id = staleness.observation_id;
         }
       }
+    }
+  }
+
+  // --- Gate-verb constraint check (executor + indirection verbs) ---
+  // Observation-gated, same decision shape as docker/sudo. Runs alongside
+  // matchConstraintPattern — either match escalates; the more severe wins
+  // (hard_block dominates).
+  const gateVerbMatch = matchGateVerb(command);
+  if (gateVerbMatch) {
+    const observations = readRuntimeObservations(resolvedRoot);
+    const observationStatus = checkObservationExists(gateVerbMatch, observations);
+    const gateVerbResult = makeGateDecision(gateVerbMatch, observationStatus);
+    // Staleness check, mirroring the constraint path — a stale observation
+    // must not yield a plain `ok` for gate-verbs any more than for
+    // docker/sudo constraints.
+    if (!gateVerbResult.hard_block) {
+      const staleness = checkObservationStaleness(observations, resolvedRoot);
+      if (staleness.stale) {
+        gateVerbResult.inbound_gate = true;
+        if (gateVerbResult.decision === "ok") {
+          gateVerbResult.decision = "escalate";
+          gateVerbResult.reason = staleness.reason;
+          gateVerbResult.observation_id = staleness.observation_id;
+        }
+      }
+    }
+    // Gate-verb result replaces the existing constraint result if it's
+    // stricter (hard_block) or if no constraint result exists yet.
+    if (!constraintResult || gateVerbResult.hard_block) {
+      constraintResult = gateVerbResult;
+    } else if (
+      constraintResult.decision === "ok" &&
+      gateVerbResult.decision !== "ok"
+    ) {
+      constraintResult = gateVerbResult;
     }
   }
 
