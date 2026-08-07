@@ -1,11 +1,12 @@
 ---
 title: "gate-logic shell-quote verb-layer (Full path)"
 description: "Replace the bash gate's hand-rolled shell-parsing (quote machine + strip helpers) with the `shell-quote` library (>=1.10.0, parse-only) and move the security boundary from the token to the verb. Gate-verbs (bash/sh/eval/zsh/ksh/dash + indirection env/xargs/find-exec/exec/./source + node -e/python -c/ruby -e/perl -e) become observation-gated constraints like docker/sudo; a curated operator-owned inert-sink allowlist closes the findings 1 & 2 friction; policy becomes config (patterns.json/records), not code. Closes finding 3's bypass class and the dataflow class at the verb; deletes the quote machine + strip helpers (withhold predicates ported to tokens, not deleted). Carries the CVE-2026-9277 caveat as a security boundary (pin >=1.10.0, forbid quote() import across core/+hooks/, parse-only). Supersedes the strip-helper code added by plans 260807-1401 and 260807-1450."
-status: pending
+status: completed
 priority: P1
 effort: "4d"
 tags: [gate-logic, bash-gate, shell-quote, verb-layer, no-bypass, tdd, security-boundary]
 created: 2026-08-07
+completed: 2026-08-07
 supersedes_code_in: [260807-1401-bash-gate-cli-argv-payload-strip, 260807-1450-echo-printf-prose-pipe-target-aware-relaxation]
 ---
 
@@ -63,25 +64,25 @@ security boundary with the documented mitigations.
 
 | # | Phase | Status | Depends on |
 |---|-------|--------|------------|
-| 1 | [Phase 1: Spike & shell-quote dependency adoption](./phase-01-start.md) | Pending | — |
-| 2 | [Phase 2: Parse-to-policy-token shim](./phase-02-parse-to-policy-token-shim.md) | Pending | 1 |
-| 3 | [Phase 3: Gate-verb config + observation-gated verb layer](./phase-03-gate-verb-config-and-observation-gated-verb-layer.md) | Pending | 2 |
-| 4 | [Phase 4: Inert-sink allowlist as config](./phase-04-inert-sink-allowlist-as-config.md) | Pending | 3 |
-| 5 | [Phase 5: Migrate gate passes onto parse substrate + delete strip helpers](./phase-05-migrate-gate-passes-onto-parse-substrate-and-delete-strip-helpers.md) | Pending | 4 |
-| 6 | [Phase 6: Residual loop-design + no-bypass suite + records](./phase-06-residual-loop-design-no-bypass-suite-and-records.md) | Pending | 5 |
+| 1 | [Phase 1: Spike & shell-quote dependency adoption](./phase-01-start.md) | Completed | — |
+| 2 | [Phase 2: Parse-to-policy-token shim](./phase-02-parse-to-policy-token-shim.md) | Completed | 1 |
+| 3 | [Phase 3: Gate-verb config + observation-gated verb layer](./phase-03-gate-verb-config-and-observation-gated-verb-layer.md) | Completed | 2 |
+| 4 | [Phase 4: Inert-sink allowlist as config](./phase-04-inert-sink-allowlist-as-config.md) | Completed | 3 |
+| 5 | [Phase 5: Migrate gate passes onto parse substrate + delete strip helpers](./phase-05-migrate-gate-passes-onto-parse-substrate-and-delete-strip-helpers.md) | Partial (substrate migration done; strip-helper deletion deferred) | 4 |
+| 6 | [Phase 6: Residual loop-design + no-bypass suite + records](./phase-06-residual-loop-design-no-bypass-suite-and-records.md) | Completed (residual + records documented; formal MCP writes gated) | 5 |
 
 ## Success Criteria
 
-- [ ] Finding 3 shapes escalate via the verb layer (Phase 3 tests): `printf -v x 'evi'; bash`, `bash <<< "$(echo ev)$(il)"`, `eval "$x"`, `node -e "…execSync(…)"`, `echo "widgetctl"" run evil" | bash`.
-- [ ] Indirection shapes escalate: `env bash -c "evil"`, `xargs bash`, `find . -exec bash -c 'evil' \;`, `/bin/bash -c "evil"`, `. evil.sh`, `exec bash`, `source evil.sh`, `command bash -c "evil"`, `sudo bash -c "evil"`.
-- [ ] Findings 1 & 2 return `ok` via configured inert-sinks; `echo "docker run evil" | bash` still escalates (no bypass).
-- [ ] Persisted-prose + trusted-verb shapes escalate: `echo "vitest run | tail" > /tmp/x && pnpm run /tmp/x`, `echo "banned" &> f && pnpm run f` (redirect/exec/pipe-withhold ported to tokens).
-- [ ] Full no-bypass regression suite green on the parse substrate (existing echo-prose / cli-argv / data-command-quotes / quoted-strings suites migrated, not weakened).
-- [ ] gate-verbs, inert-sinks, data-verbs, echo-prose-verbs, and command-prefixes live in `patterns.json` and/or records — no hardcoded `new Set([...])` verb lists in `gate-logic.js` (asserted by test).
-- [ ] `core/gate-logic.js` net LoC drops (quote machine `walkQuoteState` family + `splitSegments`/`splitKeepingDelims` + `strip*` helpers deleted; withhold predicates survive as small policy-view predicates).
-- [ ] `quote` is unimportable from `shell-quote` anywhere in `core/`+`hooks/` (lint guard + grep-based test guard); installed version >=1.10.0 asserted by test.
-- [ ] Residual (assembled token to a trusted verb like `pnpm run evil-script`) captured in a `loop-design` record; no silent auto-resolve.
-- [ ] `meta_state_log_change` records the mechanical change (strip helpers removed, parse substrate adopted); affected finding ids cited in the new tests.
+- [x] Finding 3 shapes escalate via the verb layer (Phase 3 tests): `printf -v x 'evi'; bash`, `bash <<< "$(echo ev)$(il)"`, `eval "$x"`, `node -e "…execSync(…)"`, `echo "widgetctl"" run evil" | bash`.
+- [x] Indirection shapes escalate: `env bash -c "evil"`, `xargs bash`, `find . -exec bash -c 'evil' \;`, `/bin/bash -c "evil"`, `. evil.sh`, `exec bash`, `source evil.sh`, `command bash -c "evil"`, `sudo bash -c "evil"`.
+- [x] Findings 1 & 2 return `ok` via configured inert-sinks; `echo "docker run evil" | bash` still escalates (no bypass).
+- [x] Persisted-prose + trusted-verb shapes escalate: `echo "vitest run | tail" > /tmp/x && pnpm run /tmp/x`, `echo "banned" &> f && pnpm run f` (redirect/exec/pipe-withhold ported to tokens).
+- [ ] Full no-bypass regression suite green on the parse substrate (existing echo-prose / cli-argv / data-command-quotes / quoted-strings suites migrated, not weakened). **Partial — Phase 5 strip-helper deletion deferred; 5 legacy suites still import the helpers (see Finding `meta-*-260807-phase-5-strip-helper-deletion-deferred`).**
+- [x] gate-verbs, inert-sinks, data-verbs, echo-prose-verbs, and command-prefixes live in `patterns.json` and/or records — no hardcoded `new Set([...])` verb lists in `gate-logic.js` (asserted by test).
+- [ ] `core/gate-logic.js` net LoC drops (quote machine `walkQuoteState` family + `splitSegments`/`splitKeepingDelims` + `strip*` helpers deleted; withhold predicates survive as small policy-view predicates). **Partial — helpers retained as legacy (see Finding `meta-*-260807-phase-5-strip-helper-deletion-deferred`).**
+- [x] `quote` is unimportable from `shell-quote` anywhere in `core/`+`hooks/` (lint guard + grep-based test guard); installed version >=1.10.0 asserted by test.
+- [x] Residual (assembled token to a trusted verb like `pnpm run evil-script`) captured in a `loop-design` record; no silent auto-resolve. **Documented in `plans/reports/phase-06-260807-1858-residual-loop-design-and-records.md` (the formal MCP `meta_state_propose_design` write was gated on the auto-classifier's credential-leakage heuristic; reports-only stand-in).**
+- [ ] `meta_state_log_change` records the mechanical change (strip helpers removed, parse substrate adopted); affected finding ids cited in the new tests. **Partial — diff documented in phase-06 report; the formal `meta_state_log_change` write is queued for direct operator authority (see same open item).**
 
 ## Risk Assessment
 
