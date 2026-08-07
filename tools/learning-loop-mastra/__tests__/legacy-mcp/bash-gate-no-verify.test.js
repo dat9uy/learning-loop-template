@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 const UNIVERSAL_HOOK = new URL("../../hooks/universal/bash-gate.js", import.meta.url).pathname;
 const RULE_ID = "rule-no-verify-bypass-denied";
 const PATTERN =
-  "git[\\s][^|;&]*\\b(commit|push|cherry-pick|revert|merge)\\b[^|;&]*--no-verify|git[\\s][^|;&]*\\bcommit\\b[^|;&]*[\\s]-n([\\s]|$)|[cC][oO][rR][eE][.][hH][oO][oO][kK][sS][pP][aA][tT][hH][\\s]*(=|\\s+)(/dev/null|NUL)|GIT_CONFIG_KEY_[0-9]+=[cC][oO][rR][eE][.][hH][oO][oO][kK][sS][pP][aA][tT][hH]";
+  "git[\\s][^|;&]*\\b(commit|push|cherry-pick|revert|merge)\\b[^|;&]*--no-verify|git[\\s][^|;&]*\\bcommit\\b[^|;&]*[\\s]-n([\\s]|$)|[cC][oO][rR][eE][.][hH][oO][oO][kK][sS][pP][aA][tT][hH][\\s]*(=|\\s+)(/dev/null|NUL)|GIT_CONFIG_KEY_[0-9]+=[cC][oO][rR][eE][.][hH][oO][oO][kK][sS][pP][aA][tT][hH][^|;&]*GIT_CONFIG_VALUE_[0-9]+=(/dev/null|NUL)";
 
 let root;
 
@@ -109,6 +109,7 @@ test("promoted hook-bypass rule denies bypasses and preserves safe commands", ()
     "git config --get core.hooksPath",
     "git config --unset core.hooksPath",
     "git config core.hooksPath .husky",
+    "GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=.husky git commit -m x",
     'git log --all --grep="no-verify"',
     "pnpm test:one -u tools/example.test.js",
   ]) {

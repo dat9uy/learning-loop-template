@@ -59,7 +59,7 @@ if (hits.length) {
     `commit-msg: rejected — plan-ID / phase-number / finding-code lineage is banned in commit messages\n` +
       `by rule-no-plan-ids-in-stable-code-artifacts. Describe the change directly; keep plan lineage in plan docs and git history.\n` +
       `Offending line(s):\n${detail}\n` +
-      `Use gate_override for an intentional operator exception; keep plan lineage in plan docs and git history.`,
+      `Use gate_override for an intentional operator exception.`,
   );
   process.exit(1);
 }
