@@ -1,14 +1,18 @@
 // Tests for the one-time migration of committed `gate-verb:*` budget-state
-// rows into the session-local substrate (Plan 260809-0037 Phase 4).
+// rows into the session-local substrate.
 //
 // The migration script (scripts/migrate-runtime-state-ephemeral-rows.mjs):
 //   - partitions `affected_system.startsWith("gate-verb:") && kind === "budget-state"`
-//     (kind-gated — red-team #10; a durable ledger-event under gate-verb: stays);
-//   - runs under `withRegistryLock` (red-team #5 — no concurrent append clobber);
-//   - rewrites the committed file via `.tmp + renameSync` (red-team #9 — atomic);
+//     (kind-gated — a durable ledger-event under gate-verb: stays);
+//   - runs under `withRegistryLock` (no concurrent append clobber);
+//   - rewrites the committed file via `.tmp + renameSync` (atomic);
 //   - writes a `.bak-<ts>` backup before the rewrite;
 //   - is idempotent (re-run is a no-op);
-//   - back-fills `durability:"ephemeral"` + recomputes the fingerprint.
+//   - back-fills `durability:"ephemeral"` and bumps versions past any
+//     same-id rows already in the local substrate (no same-id/same-version
+//     duplicates);
+//   - recomputes the fingerprint (identity — the hash covers a fixed field
+//     subset that excludes `durability` and `version`).
 //
 // Note: the test lives under tools/learning-loop-mastra/__tests__/ (not
 // scripts/__tests__/) because the vitest config discovers
@@ -87,7 +91,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-describe("migration partitions gate-verb budget-state rows (kind-gated, red-team #10)", () => {
+describe("migration partitions gate-verb budget-state rows (kind-gated)", () => {
   test("migrates gate-verb:* budget-state rows to local; leaves durable + gate-verb ledger-event committed", () => {
     writeCommitted(root, [
       gateVerbRow("gate-verb:bash"),
@@ -112,7 +116,28 @@ describe("migration partitions gate-verb budget-state rows (kind-gated, red-team
     const local = readJsonl(root, RUNTIME_STATE_LOCAL_FILENAME);
     assert.strictEqual(local.length, 2, "both gate-verb rows land in local");
     assert.ok(local.every((r) => r.durability === "ephemeral"), "durability back-filled");
-    assert.ok(local.every((r) => verifyRow(r)), "fingerprints recomputed over durability field");
+    assert.ok(local.every((r) => verifyRow(r)), "fingerprints recomputed and verify");
+  });
+
+  test("migrated versions bump past same-id rows already in the local substrate", () => {
+    writeCommitted(root, [gateVerbRow("gate-verb:node", { timestamp: "2026-08-08T13:13:00Z" })]);
+    // The record tool wrote a same-id allowance to local BEFORE the migration
+    // ran (the phase window between the routing shipping and the migration).
+    mkdirSync(dirname(join(root, RUNTIME_STATE_LOCAL_FILENAME)), { recursive: true });
+    appendFileSync(
+      join(root, RUNTIME_STATE_LOCAL_FILENAME),
+      JSON.stringify(gateVerbRow("gate-verb:node", { timestamp: "2026-08-08T18:34:40Z", version: 0 })) + "\n",
+      "utf8",
+    );
+
+    runMigration(root);
+
+    const local = readJsonl(root, RUNTIME_STATE_LOCAL_FILENAME).filter((r) => r.id === "gate-verb:node");
+    assert.strictEqual(local.length, 2, "pre-existing + migrated row both present");
+    const versions = local.map((r) => r.version).sort((a, b) => a - b);
+    assert.deepStrictEqual(versions, [0, 1], "no same-id/same-version duplicate; migrated row bumps past existing");
+    const migrated = local.find((r) => r.version === 1);
+    assert.ok(verifyRow(migrated), "migrated row's fingerprint verifies after the version bump");
   });
 
   test("backup equals the pre-migration committed file", () => {
@@ -143,7 +168,7 @@ describe("migration partitions gate-verb budget-state rows (kind-gated, red-team
   });
 });
 
-describe("stop-tool durability derivation (red-team #1)", () => {
+describe("stop-tool durability derivation", () => {
   function writePreflightMarker(root, name) {
     const dir = join(root, ".claude", "coordination");
     mkdirSync(dir, { recursive: true });

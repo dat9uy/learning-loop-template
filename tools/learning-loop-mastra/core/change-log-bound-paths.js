@@ -65,7 +65,7 @@ export const CHANGE_LOG_BOUND_PATHS = Object.freeze([
  * The session-local `.loop/runtime-state-local.jsonl` substrate is covered by
  * the general `includes("/")` keep-rule (a relative path), so it does not
  * need a TOP_LEVEL_FILES entry — a `change_target` naming it canonicalizes
- * and binds (red-team #12).
+ * and binds.
  */
 const TOP_LEVEL_FILES = new Set([
   "AGENTS.md",

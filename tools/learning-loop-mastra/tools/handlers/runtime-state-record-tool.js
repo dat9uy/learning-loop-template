@@ -78,14 +78,14 @@ export const runtimeStateRecordTool = {
       };
     }
 
-    // Symmetric namespace↔durability guard (red-team #4, strengthened). The
-    // L1 durability axis makes `gate-verb:*` allowances ephemeral by
-    // definition: a durable `gate-verb:*` row is a category error, and a
-    // non-`gate-verb` surface has no business being ephemeral (only the
-    // gate-verb allowance namespace is session-scoped). Enforcing the
-    // invariant at the record-tool boundary structurally prevents a durable
-    // and an ephemeral row from ever sharing an id across substrates —
-    // resolving the cross-substrate version-collision class for ALL surfaces.
+    // Symmetric namespace↔durability guard. The L1 durability axis makes
+    // `gate-verb:*` allowances ephemeral by definition: a durable
+    // `gate-verb:*` row is a category error, and a non-`gate-verb` surface
+    // has no business being ephemeral (only the gate-verb allowance
+    // namespace is session-scoped). Enforcing the invariant at the
+    // record-tool boundary structurally prevents a durable and an ephemeral
+    // row from ever sharing an id across substrates — resolving the
+    // cross-substrate version-collision class for ALL surfaces.
     const resolvedDurability = durability ?? "durable";
     const isGateVerbSurface = affected_system.startsWith("gate-verb:");
     if (isGateVerbSurface !== (resolvedDurability === "ephemeral")) {

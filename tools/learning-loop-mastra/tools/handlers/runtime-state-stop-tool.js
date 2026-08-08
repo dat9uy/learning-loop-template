@@ -96,10 +96,10 @@ export const runtimeStateStopTool = {
         }],
       };
     }
-    // Durability derived from the surface namespace (red-team #1): a
-    // `gate-verb:*` surface's allowance is ephemeral (session-local, TTL'd),
-    // so its closure MUST route to the gitignored local substrate — matching
-    // the symmetric guard at the record-tool boundary. A non-`gate-verb`
+    // Durability derived from the surface namespace: a `gate-verb:*`
+    // surface's allowance is ephemeral (session-local, TTL'd), so its
+    // closure MUST route to the gitignored local substrate — matching the
+    // symmetric guard at the record-tool boundary. A non-`gate-verb`
     // surface's tracking lifecycle is durable → committed substrate.
     const row = {
       affected_system: surface,

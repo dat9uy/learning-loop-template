@@ -1,24 +1,23 @@
-// Tests for the runtime-state durability split (Plan 260809-0037 Phase 2).
+// Tests for the runtime-state durability split.
 //
 // The L1 durability axis distinguishes durable rows (ledger logs + the
 // budget-tracking lifecycle) from ephemeral TTL'd allowance rows
-// (`gate-verb:*`). This phase makes the mechanism realize the contract:
+// (`gate-verb:*`). The mechanism realizes the contract:
 //
 //   - `runtime_state_record` accepts optional `durability` (default durable);
 //     `appendLedgerEvent` routes ephemeral → `.loop/runtime-state-local.jsonl`,
 //     durable → `runtime-state.jsonl`.
 //   - The write-path version scan is DESTINATION-scoped (reads only the
-//     destination file, not the merged union — red-team #6).
+//     destination file, not the merged union).
 //   - The read path (`readRuntimeStateRows` / `readRuntimeObservations`)
 //     merges both substrates; a fresh clone with no local file loses only
 //     the session-scoped allowances (correct, by contract).
 //   - A symmetric namespace↔durability guard at the record-tool boundary
-//     rejects `gate-verb:*` ⟺ non-ephemeral and non-`gate-verb` ⟺ ephemeral
-//     (red-team #4, strengthened).
+//     rejects `gate-verb:*` ⟺ non-ephemeral and non-`gate-verb` ⟺ ephemeral.
 //   - A malformed line in the local file does NOT poison durable writes;
-//     a malformed line in the committed file DOES (red-team #7).
+//     a malformed line in the committed file DOES.
 //   - The gate-verb block-message incantation emits `durability:"ephemeral"`
-//     so a copied allowance records to the local substrate (red-team #8).
+//     so a copied allowance records to the local substrate.
 
 import { describe, test } from "vitest";
 import assert from "node:assert/strict";
@@ -111,7 +110,7 @@ describe("runtime_state_record durability routing", () => {
   });
 });
 
-describe("symmetric namespace↔durability guard (red-team #4)", () => {
+describe("symmetric namespace↔durability guard", () => {
   test("gate-verb:* with durability durable → rejected durability_namespace_mismatch", async () => {
     const root = makeRoot();
     createPreflightMarker(root);
@@ -146,7 +145,7 @@ describe("symmetric namespace↔durability guard (red-team #4)", () => {
   });
 });
 
-describe("destination-scoped version scan (red-team #6)", () => {
+describe("destination-scoped version scan", () => {
   test("durable and ephemeral ids version independently per substrate", async () => {
     const root = makeRoot();
     await appendLedgerEvent(root, {
@@ -230,7 +229,7 @@ describe("read merge (read-side only)", () => {
   });
 });
 
-describe("per-substrate malformed handling (red-team #7)", () => {
+describe("per-substrate malformed handling", () => {
   test("malformed local line does NOT block durable writes; committed malformed DOES", async () => {
     // Local malformed → vnstock record still succeeds.
     const root = makeRoot();
@@ -262,7 +261,7 @@ describe("per-substrate malformed handling (red-team #7)", () => {
   });
 });
 
-describe("record-tool zod schema (red-team #14)", () => {
+describe("record-tool zod schema", () => {
   test("durability enum accepts durable/ephemeral, rejects unknown; absent validates", () => {
     const schema = runtimeStateRecordTool.schema.durability;
     assert.strictEqual(schema.safeParse("ephemeral").success, true);
@@ -272,7 +271,7 @@ describe("record-tool zod schema (red-team #14)", () => {
   });
 });
 
-describe("gate-verb incantation carries durability (red-team #8)", () => {
+describe("gate-verb incantation carries durability", () => {
   test("gate-verb:bash block-message incantation includes durability:ephemeral", () => {
     const root = makeRoot();
     const result = evaluateBashGate({ command: "bash -c 'echo hi'", root });

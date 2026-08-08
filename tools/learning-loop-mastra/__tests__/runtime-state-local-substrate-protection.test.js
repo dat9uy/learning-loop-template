@@ -1,14 +1,14 @@
 // 3-layer write protection for the session-local ephemeral substrate
-// `.loop/runtime-state-local.jsonl` (Plan 260809-0037 Phase 3).
+// `.loop/runtime-state-local.jsonl`.
 //
 // The local substrate is protected by the same 3 layers as the committed
 // file, with the same preflight marker class (`.loop-preflight-runtime-state-edit`):
 //   1. Bash gate — direct shell redirect/tee is gated on the edit marker.
 //   2. Write tool — a preflight-delegating rule in evaluate-write-gate.js
-//      (NOT a dead-end bound-artifacts.js block; red-team #3).
+//      (NOT a dead-end bound-artifacts.js block).
 //   3. R2 ownership — bootstrap_deny for every runtime.
 // Plus the .gitignore entry (session-local, never committed) and the
-// change-log binding (red-team #12).
+// change-log binding.
 //
 // The authorized loop-tool writers (runtime_state_record / runtime_state_stop
 // with `durability:"ephemeral"`) are NOT gated by these layers — they are
@@ -60,7 +60,7 @@ describe("gitignore: session-local substrate is never committed", () => {
   });
 });
 
-describe("write-tool layer delegates, not dead-ends (red-team #3)", () => {
+describe("write-tool layer delegates, not dead-ends", () => {
   test(".loop/runtime-state-local.jsonl without marker → block, surface=runtime-state-edit", () => {
     // Use a temp root with no preflight markers so the rule deterministically
     // blocks (the live repo may carry a fresh runtime-state-edit marker).
@@ -71,7 +71,7 @@ describe("write-tool layer delegates, not dead-ends (red-team #3)", () => {
   });
 });
 
-describe("change-log binding for the local substrate (red-team #12)", () => {
+describe("change-log binding for the local substrate", () => {
   test("canonicalizeChangeTarget binds .loop/runtime-state-local.jsonl", () => {
     const out = canonicalizeChangeTarget({ change_target: ".loop/runtime-state-local.jsonl" });
     assert.ok(out.has(".loop/runtime-state-local.jsonl"), "change-target must canonicalize + bind the local substrate");

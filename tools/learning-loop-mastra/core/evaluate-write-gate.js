@@ -236,8 +236,8 @@ export function evaluateWriteGate({ filePath, root, authoredContent }) {
     // The gitignored session-local substrate gets the SAME preflight-
     // delegating rule class as the committed file: an operator mints the
     // `runtime-state-edit` marker to maintain either substrate. This keeps
-    // the two rules' short-circuits non-overlapping (red-team #16) while
-    // preserving the "sanctioned maintenance works identically" invariant.
+    // the two rules' short-circuits non-overlapping while preserving the
+    // "sanctioned maintenance works identically" invariant.
     return evaluateRuntimeStatePreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   return blockResult(matched, filePath);

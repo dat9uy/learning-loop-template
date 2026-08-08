@@ -30,11 +30,13 @@
 //   - Idempotent: a re-run with no matching rows in the committed file is a
 //     no-op (no rewrite, no backup).
 //
-// Gate framing honesty (red-team #17): the migration's internal Node writes
-// bypass the bash-gate (which matches shell redirections only). The
-// `runtime-state-edit` marker governs the direct-shell/Write-tool path; this
-// script's safety rests on the registry lock + atomic rename + backup +
-// `meta_state_log_change`, not on gate enforcement.
+// Gate framing honesty: the migration's internal Node writes bypass the
+// bash-gate (which matches shell redirections only). The `runtime-state-edit`
+// marker governs the direct-shell/Write-tool path; this script's safety
+// rests on the registry lock + atomic rename + backup + `meta_state_log_change`,
+// not on gate enforcement.
+//
+// Requires Node >= 22.12 (createRequire of the ESM core modules).
 //
 // Usage:
 //   node scripts/migrate-runtime-state-ephemeral-rows.mjs          # GATE_ROOT's file
@@ -99,11 +101,27 @@ await withRegistryLock(ROOT, () => {
   renameSync(tmp, COMMITTED);
 
   // Append the ephemeral rows to the local substrate with `durability`
-  // back-filled (all other fields verbatim). The fingerprint is recomputed so
-  // the row's hash covers the new `durability` field.
+  // back-filled (all other fields verbatim). The fingerprint is recomputed
+  // for uniformity with freshly-written rows; it does not hash `durability`
+  // (a fixed field subset, like `version`), so the recompute is an identity
+  // for migrated rows. Versions are bumped past any existing same-id rows
+  // already in the local substrate — appending with the original version
+  // would create same-id/same-version duplicates when the record tool wrote
+  // to the local file before the migration ran.
   mkdirSync(dirname(LOCAL), { recursive: true });
+  const existingLocal = existsSync(LOCAL)
+    ? readFileSync(LOCAL, "utf8").split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l))
+    : [];
+  const nextVersionById = new Map();
+  for (const row of existingLocal) {
+    if (typeof row?.id !== "string" || row.id === "") continue;
+    const v = Number.isFinite(parseInt(row.version, 10)) ? parseInt(row.version, 10) : 0;
+    nextVersionById.set(row.id, Math.max(nextVersionById.get(row.id) ?? -1, v) + 1);
+  }
   const localLines = ephemeral.map((row) => {
-    const migrated = { ...row, durability: "ephemeral", fingerprint: null };
+    const next = nextVersionById.get(row.id) ?? 0;
+    nextVersionById.set(row.id, next + 1);
+    const migrated = { ...row, durability: "ephemeral", version: next, fingerprint: null };
     migrated.fingerprint = computeFingerprint(migrated);
     return JSON.stringify(migrated);
   });

@@ -26,9 +26,9 @@ import { withRegistryLock } from "./registry-lock.js";
  * fail-closed instead of silently skipping a line that might have been a
  * lifecycle record.
  *
- * Destination-scoped primitive (red-team #6): the write path's version scan
- * reads ONE substrate via this helper, never the merged union — so per-
- * substrate versioning is real, not contradicted by a union-wide scan.
+ * Destination-scoped primitive: the write path's version scan reads ONE
+ * substrate via this helper, never the merged union — so per-substrate
+ * versioning is real, not contradicted by a union-wide scan.
  *
  * @param {string} root — project root containing the substrate
  * @param {string} filename — the substrate file name (committed or local)
@@ -66,7 +66,7 @@ export function readRuntimeStateRowsForFile(root, filename) {
  *
  * `perFile: { committed, local }` gives callers the per-substrate malformed
  * split so `readBudgetTrackingState` can fail-closed on a corrupt COMMITTED
- * line while tolerating a corrupt disposable local line (red-team #7).
+ * line while tolerating a corrupt disposable local line.
  */
 export function readRuntimeStateRowsDetailed(root) {
   const committed = readRuntimeStateRowsForFile(root, RUNTIME_STATE_FILENAME);
@@ -139,8 +139,7 @@ function collapseLatestById(rows) {
  * the kinds split), then dedup to `max_by(version)` per id, then return the
  * rows.
  *
-* 
- * the kind filter MUST happen BEFORE the dedup. `appendLedgerEvent`
+ * The kind filter MUST happen BEFORE the dedup. `appendLedgerEvent`
  * versions rows kind-agnostically by `id` (see runtime-state.js:269-275 —
  * no kind check), and a canonical-id `ledger-event` is permitted when the
  * surface is active (runtime-state-record-tool.js:122-126;
@@ -148,7 +147,7 @@ function collapseLatestById(rows) {
  * a higher-version ledger-event sharing the canonical id shadow the
  * budget-state row, which the post-collapse kind filter then drops —
  * the budget-state observation vanishes. Kind-before-collapse prevents
- * that cross-kind id-collision (re-red-team F1 fix). Shared by
+ * that cross-kind id-collision. Shared by
  * `readBudgetTrackingState` (lifecycle reader, runtime-state.js:343-354)
  * and `readRuntimeObservations` (constraint-gate reader, file-readers.js)
  * to avoid forking the kind-before-collapse pattern.
@@ -161,11 +160,10 @@ export function collapseLatestBudgetStateById(rows) {
     (r) => r && (r.kind ?? "budget-state") === "budget-state"
   );
   // Split: rows with a string id get the max_by(version) dedup; rows without
-  // an id (legacy / hand-crafted) pass through unchanged. Legacy rows
-  // re-red-team M1: legacy/distinct-id rows are NOT collapsed by
-  // `collapseLatestById` (which drops no-id rows) and stay per-row
-  // (conservative) — preserving per-row emission for legacy
-  // data shapes. The kind filter is the only load-bearing step for the
+  // an id (legacy / hand-crafted) pass through unchanged. Legacy rows are
+  // NOT collapsed by `collapseLatestById` (which drops no-id rows) and stay
+  // per-row (conservative) — preserving per-row emission for legacy data
+  // shapes. The kind filter is the only load-bearing step for the
   // cross-kind collision guard (a canonical-id ledger-event sharing an id
   // with a budget-state is filtered out BEFORE the dedup, so it cannot
   // shadow).
@@ -209,12 +207,12 @@ export function readRuntimeStateRowsLatest(root) {
  * BEFORE calling — this helper only does the idempotency check.
  */
 export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
-  // Durable-only append path (red-team #11): a dispatch ledger row is a
-  // `ledger-event` (immutable audit) and must land in the committed
-  // substrate. It deliberately bypasses the durability routing of
-  // `appendLedgerEvent`; if an ephemeral dispatch row is ever needed,
-  // route it through `appendLedgerEvent` with `durability:"ephemeral"`
-  // rather than forking this path.
+  // Durable-only append path: a dispatch ledger row is a `ledger-event`
+  // (immutable audit) and must land in the committed substrate. It
+  // deliberately bypasses the durability routing of `appendLedgerEvent`; if
+  // an ephemeral dispatch row is ever needed, route it through
+  // `appendLedgerEvent` with `durability:"ephemeral"` rather than forking
+  // this path.
   assertKindConditionalStatus(row);
   return await withRegistryLock(root, async () => {
     const rows = readRuntimeStateRows(root);
@@ -241,8 +239,8 @@ export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
  * Canonical committed sidecar filename — the durable substrate (ledger logs +
  * the budget-tracking lifecycle). Exported so `gate-override.js` and any
  * other durable-append path import the const instead of hardcoding the
- * string (red-team #11). The local substrate is
- * `RUNTIME_STATE_LOCAL_FILENAME` (gitignored, session-scoped).
+ * string. The local substrate is `RUNTIME_STATE_LOCAL_FILENAME`
+ * (gitignored, session-scoped).
  */
 export const RUNTIME_STATE_FILENAME = "runtime-state.jsonl";
 
@@ -378,10 +376,10 @@ export async function appendLedgerEvent(root, row) {
   assertKindConditionalStatus(row);
   const filename = resolveDestinationFilename(row);
   return await withRegistryLock(root, async () => {
-    // Destination-scoped version scan (red-team #6): reads ONLY the
-    // destination substrate so per-substrate versioning is real — a durable
-    // row's version is never perturbed by ephemeral rows in the local file
-    // (and vice versa). The merged read is read-side only.
+    // Destination-scoped version scan: reads ONLY the destination substrate
+    // so per-substrate versioning is real — a durable row's version is never
+    // perturbed by ephemeral rows in the local file (and vice versa). The
+    // merged read is read-side only.
     const { rows: existing } = readRuntimeStateRowsForFile(root, filename);
     const maxExisting = existing.reduce((acc, r) => {
       if (r?.id !== row.id) return acc;
@@ -467,8 +465,8 @@ export function assertKindConditionalStatus(row) {
  *   budget-state rows exist for the surface (a fresh surface). THROWS
  *   on a malformed COMMITTED-sidecar line or a corrupt budget-state row
  *   (fail-closed for writers). A malformed line in the gitignored local
- *   substrate does NOT poison durable lifecycle reads (red-team #7) — the
- *   local file holds disposable session allowances, not lifecycle records.
+ *   substrate does NOT poison durable lifecycle reads — the local file
+ *   holds disposable session allowances, not lifecycle records.
  */
 export function readBudgetTrackingState(root, surface) {
   const { rows, perFile } = readRuntimeStateRowsDetailed(root);
@@ -477,11 +475,11 @@ export function readBudgetTrackingState(root, surface) {
       `runtime_state_budget_tracking_corrupt: ${perFile.committed.malformed} unparseable line(s) in runtime-state.jsonl — refusing to resolve budget-tracking state for surface "${surface}" (a dropped line could be a lifecycle record)`,
     );
   }
-// dedup with kind-before-collapse via the shared
-  // helper. Scoping the budget-state + surface filter to this reader (vs
-  // letting the helper collapse across all surfaces) keeps the validation
-  // loop targeted at THIS surface's rows — a corrupt row on another surface
-  // does not blow up a query for `surface`.
+  // Dedup with kind-before-collapse via the shared helper. Scoping the
+  // budget-state + surface filter to this reader (vs letting the helper
+  // collapse across all surfaces) keeps the validation loop targeted at THIS
+  // surface's rows — a corrupt row on another surface does not blow up a
+  // query for `surface`.
   const surfaceRows = rows.filter((r) => r && r.kind === "budget-state" && r.affected_system === surface);
   if (surfaceRows.length === 0) return null;
   // Validate the kind-conditional status on each row BEFORE dedup so a
