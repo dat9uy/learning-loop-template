@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Migrate committed gate-verb rows to local + close them"
-status: pending
+status: complete
 priority: P1
 effort: "0.5d"
 dependencies: [3]

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Reconcile L3 docs + resolve finding"
-status: pending
+status: complete
 priority: P2
 effort: "0.5d"
 dependencies: [4]

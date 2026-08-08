@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Durability axis mechanism (schema + write-split + read-merge + namespace guard)"
-status: pending
+status: complete
 priority: P1
 effort: "2d"
 dependencies: [1]

@@ -1,7 +1,7 @@
 ---
 title: "Runtime-state durability split"
 description: "Reconcile the runtime-state substrate with the L1/L2 durability contract: durable rows (ledger-event + budget-tracking lifecycle) stay committed; ephemeral TTL'd allowance rows (gate-verb) move to a gitignored session-local substrate. Closes the drift the docs now name."
-status: pending
+status: complete
 priority: P1
 effort: ""
 tags: [runtime-state, gate-system, bound-artifact, l1-l2-contract]
@@ -36,27 +36,27 @@ This is the Option B structural refactor from the problem-solving + predict anal
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [File the durability drift finding](./phase-01-start.md) | Pending |
-| 2 | [Durability axis mechanism (schema + write-split + read-merge)](./phase-02-durability-axis-mechanism-schema-write-split-read-merge.md) | Pending |
-| 3 | [3-layer write protection + gitignore for local substrate](./phase-03-3-layer-write-protection-gitignore-for-local-substrate.md) | Pending |
-| 4 | [Migrate committed gate-verb rows to local + close them](./phase-04-migrate-committed-gate-verb-rows-to-local-close-them.md) | Pending |
-| 5 | [Reconcile L3 docs + gate-verb-allowance hint + resolve finding](./phase-05-reconcile-l3-docs-gate-verb-allowance-hint-resolve-finding.md) | Pending |
+| 1 | [File the durability drift finding](./phase-01-start.md) | Complete |
+| 2 | [Durability axis mechanism (schema + write-split + read-merge)](./phase-02-durability-axis-mechanism-schema-write-split-read-merge.md) | Complete |
+| 3 | [3-layer write protection + gitignore for local substrate](./phase-03-3-layer-write-protection-gitignore-for-local-substrate.md) | Complete |
+| 4 | [Migrate committed gate-verb rows to local + close them](./phase-04-migrate-committed-gate-verb-rows-to-local-close-them.md) | Complete |
+| 5 | [Reconcile L3 docs + gate-verb-allowance hint + resolve finding](./phase-05-reconcile-l3-docs-gate-verb-allowance-hint-resolve-finding.md) | Complete |
 
 Phase dependency: 1 → 2 → 3 → 4 → 5 (linear; the mechanism must exist before it is protected, protected before it is trusted with production migration, and migrated before the docs/hint claim it is reconciled).
 
 ## Success Criteria
 
-- [ ] `runtime_state_record({affected_system:"gate-verb:node", durability:"ephemeral", ...})` writes to `.loop/runtime-state-local.jsonl`, never `runtime-state.jsonl`.
-- [ ] `runtime_state_record` without `durability` (default durable) writes non-`gate-verb` rows to `runtime-state.jsonl` — back-compat for every existing caller.
-- [ ] **Symmetric namespace guard (red-team #4):** `gate-verb:*` ⟺ `ephemeral` enforced at the record-tool boundary — a `vnstock` ephemeral row and a durable `gate-verb:*` row are both rejected.
-- [ ] `appendLedgerEvent`'s version scan is destination-scoped (reads only the destination file — red-team #6), not the union.
-- [ ] `readRuntimeObservations` projects ephemeral allowances from the local substrate AND durable rows from the committed substrate; a fresh clone with no local file projects zero gate-verb observations but preserves durable lifecycle.
-- [ ] A malformed line in the local file does NOT block durable writes (per-substrate malformed — red-team #7).
-- [ ] Direct shell / Write-tool / R2-path writes to `.loop/runtime-state-local.jsonl` are blocked by all 3 layers (Write-tool rule in `evaluate-write-gate.js` — red-team #3); `git check-ignore` confirms it is ignored.
-- [ ] `runtime-state.jsonl` contains zero `gate-verb:*` rows; `.loop/runtime-state-local.jsonl` contains the 2 rows with an appended `stopped` closure routed there by the namespace-deriving stop tool (red-team #1).
-- [ ] The gate-verb block-message incantation emits `durability:"ephemeral"` (landed in Phase 2 with the guard — red-team #8).
-- [ ] The drift finding is `resolved` in the registry; `docs/architecture.md`'s "Durability drift" note is replaced by the reconciled mechanism; the docs state `runtime_state_read` returns both substrates (red-team #13).
-- [ ] `pnpm test` green; no regression in the existing `runtime-state-*`, bash-gate, write-gate, and gate-override suites.
+- [x] `runtime_state_record({affected_system:"gate-verb:node", durability:"ephemeral", ...})` writes to `.loop/runtime-state-local.jsonl`, never `runtime-state.jsonl`.
+- [x] `runtime_state_record` without `durability` (default durable) writes non-`gate-verb` rows to `runtime-state.jsonl` — back-compat for every existing caller.
+- [x] **Symmetric namespace guard (red-team #4):** `gate-verb:*` ⟺ `ephemeral` enforced at the record-tool boundary — a `vnstock` ephemeral row and a durable `gate-verb:*` row are both rejected.
+- [x] `appendLedgerEvent`'s version scan is destination-scoped (reads only the destination file — red-team #6), not the union.
+- [x] `readRuntimeObservations` projects ephemeral allowances from the local substrate AND durable rows from the committed substrate; a fresh clone with no local file projects zero gate-verb observations but preserves durable lifecycle.
+- [x] A malformed line in the local file does NOT block durable writes (per-substrate malformed — red-team #7).
+- [x] Direct shell / Write-tool / R2-path writes to `.loop/runtime-state-local.jsonl` are blocked by all 3 layers (Write-tool rule in `evaluate-write-gate.js` — red-team #3); `git check-ignore` confirms it is ignored.
+- [x] `runtime-state.jsonl` contains zero `gate-verb:*` rows; `.loop/runtime-state-local.jsonl` contains the 2 rows with an appended `stopped` closure routed there by the namespace-deriving stop tool (red-team #1).
+- [x] The gate-verb block-message incantation emits `durability:"ephemeral"` (landed in Phase 2 with the guard — red-team #8).
+- [x] The drift finding is `resolved` in the registry; `docs/architecture.md`'s "Durability drift" note is replaced by the reconciled mechanism; the docs state `runtime_state_read` returns both substrates (red-team #13).
+- [x] `pnpm test` green; no regression in the existing `runtime-state-*`, bash-gate, write-gate, and gate-override suites.
 
 ## Red Team Review
 

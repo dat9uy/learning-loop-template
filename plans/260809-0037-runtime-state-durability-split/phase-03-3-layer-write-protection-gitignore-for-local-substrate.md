@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "3-layer write protection + gitignore for local substrate"
-status: pending
+status: complete
 priority: P1
 effort: "1d"
 dependencies: [2]
