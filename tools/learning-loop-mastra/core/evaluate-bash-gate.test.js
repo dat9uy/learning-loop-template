@@ -102,6 +102,31 @@ test("redirect to runtime-state.jsonl → block", () => {
   assert.strictEqual(result.hard_block, true);
 });
 
+test("redirect to session-local substrate (.loop/runtime-state-local.jsonl) → block, edit-marker reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "echo data > .loop/runtime-state-local.jsonl", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.ok(
+    result.reason.includes("gate_mark_preflight") && result.reason.includes("runtime-state-edit"),
+    `reason must name gate_mark_preflight(surface:'runtime-state-edit'); got: ${result.reason}`,
+  );
+});
+
+test("tee to session-local substrate → block", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "echo data | tee .loop/runtime-state-local.jsonl", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+});
+
+test("redirect to session-local substrate WITH active edit marker → ok", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo data > .loop/runtime-state-local.jsonl", root });
+  assert.strictEqual(result.decision, "ok", `expected ok with active marker; got: ${JSON.stringify(result)}`);
+});
+
 // ── runtime-state preflight exemption (edit marker) ──
 
 test("redirect to runtime-state.jsonl without marker → block, reason names gate_mark_preflight(surface:'runtime-state-edit'), NOT records reason", () => {
@@ -223,6 +248,15 @@ test("compound: runtime-state write + records write WITHOUT marker → blocked (
   const result = evaluateBashGate({ command: "echo ok > runtime-state.jsonl && echo evil > records/meta/pwn.json", root });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.hard_block, true);
+});
+
+test("compound: local-substrate write + records write WITH active marker → still hard-blocked (independence holds)", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo ok > .loop/runtime-state-local.jsonl && echo evil > records/meta/pwn.json", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.ok(result.reason.includes("records"), `expected records-class reason; got: ${result.reason}`);
 });
 
 // ── promoted rules ──
@@ -426,9 +460,9 @@ test("null command → ok", () => {
 
 // ── PATH_WRITE_PATTERNS array ──
 
-test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 6 state files)", () => {
+test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 8 state files)", () => {
   assert.ok(Array.isArray(PATH_WRITE_PATTERNS));
-  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 6);
+  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 8);
   // Every entry should be a RegExp
   for (const p of PATH_WRITE_PATTERNS) {
     assert.ok(p instanceof RegExp);

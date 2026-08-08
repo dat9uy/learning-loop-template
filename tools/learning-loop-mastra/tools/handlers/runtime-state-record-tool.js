@@ -63,8 +63,10 @@ export const runtimeStateRecordTool = {
         message: "metadata must not contain nested arrays (array-valued array elements); flatten or use scalar/string values",
       })
       .describe("Optional flat metadata object"),
+    durability: z.enum(["durable", "ephemeral"]).optional()
+      .describe("Substrate axis (L1 durability contract). Default durable. The symmetric namespace guard requires gate-verb:* surfaces to be ephemeral and non-gate-verb surfaces to be durable."),
   },
-  handler: async ({ affected_system, kind, id, value, delta, source_ref, timestamp, metadata }) => {
+  handler: async ({ affected_system, kind, id, value, delta, source_ref, timestamp, metadata, durability }) => {
     const root = resolveRoot();
 
     if (!hasSurfacePreflightMarker(root, PREFLIGHT_MARKER)) {
@@ -72,6 +74,33 @@ export const runtimeStateRecordTool = {
         content: [{
           type: "text",
           text: JSON.stringify({ error: "preflight_required", message: "runtime_state_record requires an active preflight marker. Use gate_mark_preflight({surface:'runtime-state'}) first." }),
+        }],
+      };
+    }
+
+    // Symmetric namespace↔durability guard (red-team #4, strengthened). The
+    // L1 durability axis makes `gate-verb:*` allowances ephemeral by
+    // definition: a durable `gate-verb:*` row is a category error, and a
+    // non-`gate-verb` surface has no business being ephemeral (only the
+    // gate-verb allowance namespace is session-scoped). Enforcing the
+    // invariant at the record-tool boundary structurally prevents a durable
+    // and an ephemeral row from ever sharing an id across substrates —
+    // resolving the cross-substrate version-collision class for ALL surfaces.
+    const resolvedDurability = durability ?? "durable";
+    const isGateVerbSurface = affected_system.startsWith("gate-verb:");
+    if (isGateVerbSurface !== (resolvedDurability === "ephemeral")) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ok: false,
+            reason: "durability_namespace_mismatch",
+            affected_system,
+            durability: resolvedDurability,
+            message: isGateVerbSurface
+              ? "gate-verb:* allowances are ephemeral (session-scoped, TTL'd) — must record with durability:'ephemeral'"
+              : "only gate-verb:* allowance rows are ephemeral; a non-gate-verb surface records with durability:'durable' (default)",
+          }),
         }],
       };
     }
@@ -156,6 +185,7 @@ export const runtimeStateRecordTool = {
       status: "active",
       fingerprint: null,
       metadata: metadata ?? {},
+      durability: resolvedDurability,
     };
 
     const written = await appendLedgerEvent(root, row);

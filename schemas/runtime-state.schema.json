@@ -45,6 +45,10 @@
     },
     "metadata": {
       "type": "object"
+    },
+    "durability": {
+      "enum": ["durable", "ephemeral"],
+      "description": "Substrate axis (L1 durability contract). Default durable. gate-verb:* allowance rows are ephemeral (session-local, TTL'd, gitignored); ledger logs and the budget-tracking lifecycle are durable (committed). The record-tool zod schema is the live enforcement layer (the affected_system enum here is documentation-only — gate-verb:* is derived dynamically)."
     }
   }
 }

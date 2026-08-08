@@ -1,6 +1,7 @@
 import { statSync, appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readModifyWriteOnAllSurfaces, SURFACES } from "./surfaces.js";
+import { RUNTIME_STATE_FILENAME } from "./runtime-state.js";
 
 const OVERRIDE_FILE = ".gate-override";
 const CACHE_TTL_MS = 1000;
@@ -86,7 +87,12 @@ export function readGateOverride(root) {
  */
 function appendOverrideAudit(root, { rule_id, ttl_seconds, operator_note }) {
   try {
-    const sidecarPath = join(root, "runtime-state.jsonl");
+    // Durable-only append path (red-team #11): the override audit is a
+    // `ledger-event` (immutable audit) and must live in the committed
+    // substrate. Ephemeral routing is never used here; if an ephemeral
+    // dispatch-row use case ever appears, route through `appendLedgerEvent`
+    // explicitly rather than forking this path.
+    const sidecarPath = join(root, RUNTIME_STATE_FILENAME);
     const row = {
       affected_system: "gate-logic",
       kind: "ledger-event",

@@ -64,6 +64,19 @@ describe("checkR2Ownership", () => {
     }
   });
 
+  test("local substrate denied (R6): .loop/runtime-state-local.jsonl → bootstrap_deny (session-local, operator-controlled)", () => {
+    for (const runtime of ["claude-code", "droid", "mastra-code"]) {
+      const d = checkR2Ownership({
+        runtime,
+        path: ".loop/runtime-state-local.jsonl",
+        allowlist: CLAUDE_ALLOWLIST,
+        root: "/tmp/fake-root",
+      });
+      assert.equal(d.allowed, false, `${runtime} must be denied .loop/runtime-state-local.jsonl`);
+      assert.equal(d.reason, "bootstrap_deny");
+    }
+  });
+
   test("gate_override_denied (R6): .gate-override → bootstrap_deny", () => {
     const d = checkR2Ownership({
       runtime: "claude-code",

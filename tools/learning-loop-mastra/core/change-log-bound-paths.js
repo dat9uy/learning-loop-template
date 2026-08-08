@@ -61,6 +61,11 @@ export const CHANGE_LOG_BOUND_PATHS = Object.freeze([
  * Each is a known repo-root file owned by the loop. Bare slugs without `/`
  * OR top-level JS/TS files (e.g. `meta-state.js`) are NOT in this set —
  * they are ambiguous (which subdir?) and dropped per red-team M5.
+ *
+ * The session-local `.loop/runtime-state-local.jsonl` substrate is covered by
+ * the general `includes("/")` keep-rule (a relative path), so it does not
+ * need a TOP_LEVEL_FILES entry — a `change_target` naming it canonicalizes
+ * and binds (red-team #12).
  */
 const TOP_LEVEL_FILES = new Set([
   "AGENTS.md",

@@ -12,21 +12,30 @@
 // (meta_state_dispatch_finding) bypasses preflight by design and is ungated.
 // Keep the helper gating-free so callers can apply the appropriate gate upstream.
 
-import { readFileSync, existsSync, appendFileSync } from "node:fs";
+import { readFileSync, existsSync, appendFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { withRegistryLock } from "./registry-lock.js";
 
 /**
- * Read all rows from runtime-state.jsonl with a malformed-line count.
- * Empty/missing file -> { rows: [], malformed: 0 }. Unparseable lines are
- * dropped from `rows` but counted in `malformed` so callers that own an
- * invariant (e.g. `readBudgetTrackingState`) can fail-closed instead of
- * silently skipping a line that might have been a lifecycle record.
+ * Read all rows from a single runtime-state substrate file with a
+ * malformed-line count. Empty/missing file -> { rows: [], malformed: 0 }.
+ * Unparseable lines are dropped from `rows` but counted in `malformed` so
+ * callers that own an invariant (e.g. `readBudgetTrackingState`) can
+ * fail-closed instead of silently skipping a line that might have been a
+ * lifecycle record.
+ *
+ * Destination-scoped primitive (red-team #6): the write path's version scan
+ * reads ONE substrate via this helper, never the merged union — so per-
+ * substrate versioning is real, not contradicted by a union-wide scan.
+ *
+ * @param {string} root — project root containing the substrate
+ * @param {string} filename — the substrate file name (committed or local)
+ * @returns {{ rows: object[], malformed: number }}
  */
-export function readRuntimeStateRowsDetailed(root) {
-  const path = join(root, RUNTIME_STATE_FILENAME);
+export function readRuntimeStateRowsForFile(root, filename) {
+  const path = join(root, filename);
   if (!existsSync(path)) return { rows: [], malformed: 0 };
   const raw = readFileSync(path, "utf8");
   const rows = [];
@@ -48,14 +57,36 @@ export function readRuntimeStateRowsDetailed(root) {
 }
 
 /**
- * Read all rows from runtime-state.jsonl. Empty/missing file -> []. Malformed
- * lines are skipped (counted by `readRuntimeStateRowsDetailed` for callers
- * that need to know). Shared by
+ * Read all rows from the merged runtime-state view (committed substrate +
+ * gitignored session-local substrate) with per-substrate malformed counts.
+ * The committed file is read first, then the local file is concatenated
+ * (missing local -> []), so a fresh clone with no local substrate sees only
+ * the durable rows — correct by the L1 durability contract (a fresh clone
+ * loses only session-scoped TTL'd allowances).
+ *
+ * `perFile: { committed, local }` gives callers the per-substrate malformed
+ * split so `readBudgetTrackingState` can fail-closed on a corrupt COMMITTED
+ * line while tolerating a corrupt disposable local line (red-team #7).
+ */
+export function readRuntimeStateRowsDetailed(root) {
+  const committed = readRuntimeStateRowsForFile(root, RUNTIME_STATE_FILENAME);
+  const local = readRuntimeStateRowsForFile(root, RUNTIME_STATE_LOCAL_FILENAME);
+  return {
+    rows: [...committed.rows, ...local.rows],
+    malformed: committed.malformed + local.malformed,
+    perFile: { committed, local },
+  };
+}
+
+/**
+ * Read all rows from the merged runtime-state view (committed + local).
+ * Empty/missing both -> []. Malformed lines are skipped (counted by
+ * `readRuntimeStateRowsDetailed` for callers that need to know). Shared by
  * `runtime_state_record` (read-your-own-writes checks), the dispatch tool
  * (idempotency scan), and the SessionStart hook (INC-10 orphan detection).
  * DRY: previously each caller reimplemented the JSONL read.
  *
- * Returns the RAW sidecar (every row) — historical and read-by-everyone
+ * Returns the RAW view (every row) — historical and read-by-everyone
  * invariant. For `max_by(version)`-collapsed reads, use
  * `readRuntimeStateRowsLatest`.
  */
@@ -178,6 +209,12 @@ export function readRuntimeStateRowsLatest(root) {
  * BEFORE calling — this helper only does the idempotency check.
  */
 export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
+  // Durable-only append path (red-team #11): a dispatch ledger row is a
+  // `ledger-event` (immutable audit) and must land in the committed
+  // substrate. It deliberately bypasses the durability routing of
+  // `appendLedgerEvent`; if an ephemeral dispatch row is ever needed,
+  // route it through `appendLedgerEvent` with `durability:"ephemeral"`
+  // rather than forking this path.
   assertKindConditionalStatus(row);
   return await withRegistryLock(root, async () => {
     const rows = readRuntimeStateRows(root);
@@ -201,13 +238,22 @@ export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
 }
 
 /**
- * Canonical sidecar filename. Kept here (not imported from the tool file)
- * to avoid circular-import risk between record-tool and dispatch-tool —
- * both depend on this module, neither should depend on the other.
- * Module-private: no external importer; the public surface is
- * `readRuntimeStateRows` / `appendLedgerEvent`.
+ * Canonical committed sidecar filename — the durable substrate (ledger logs +
+ * the budget-tracking lifecycle). Exported so `gate-override.js` and any
+ * other durable-append path import the const instead of hardcoding the
+ * string (red-team #11). The local substrate is
+ * `RUNTIME_STATE_LOCAL_FILENAME` (gitignored, session-scoped).
  */
-const RUNTIME_STATE_FILENAME = "runtime-state.jsonl";
+export const RUNTIME_STATE_FILENAME = "runtime-state.jsonl";
+
+/**
+ * Session-local ephemeral substrate — TTL'd allowance rows (`gate-verb:*`)
+ * that belong to the session that minted them (L1 durability axis). Lives
+ * under `.loop/` and is gitignored, so a fresh clone loses only these
+ * session-scoped allowances. The write path resolves the destination from
+ * `row.durability ?? "durable"`.
+ */
+export const RUNTIME_STATE_LOCAL_FILENAME = ".loop/runtime-state-local.jsonl";
 
 /**
  * Runtime-state `affected_system` enum — the single source of truth for
@@ -324,14 +370,19 @@ export function verifyRow(row) {
  * scale (registry reports ~27 findings). An in-memory max-version cache
  * is YAGNI (and dead code on the CLI one-shot path).
  *
- * @param {string} root — project root containing runtime-state.jsonl
+ * @param {string} root — project root containing the substrate
  * @param {object} row — fully-built row (with status, fingerprint=null, etc.)
  * @returns {Promise<object>} — the row with `version` + `fingerprint` set
  */
 export async function appendLedgerEvent(root, row) {
   assertKindConditionalStatus(row);
+  const filename = resolveDestinationFilename(row);
   return await withRegistryLock(root, async () => {
-    const existing = readRuntimeStateRows(root);
+    // Destination-scoped version scan (red-team #6): reads ONLY the
+    // destination substrate so per-substrate versioning is real — a durable
+    // row's version is never perturbed by ephemeral rows in the local file
+    // (and vice versa). The merged read is read-side only.
+    const { rows: existing } = readRuntimeStateRowsForFile(root, filename);
     const maxExisting = existing.reduce((acc, r) => {
       if (r?.id !== row.id) return acc;
       const v = Number.isFinite(parseInt(r?.version, 10)) ? parseInt(r.version, 10) : 0;
@@ -339,10 +390,29 @@ export async function appendLedgerEvent(root, row) {
     }, -1);
     const withVersion = { ...row, version: maxExisting + 1 };
     const withFingerprint = { ...withVersion, fingerprint: computeFingerprint(withVersion) };
-    const sidecarPath = join(root, RUNTIME_STATE_FILENAME);
+    const sidecarPath = join(root, filename);
+    // The local substrate's parent dir (`.loop/`) may not exist in a fresh
+    // clone — create it on first ephemeral append. The committed substrate
+    // lives at the root so this is a no-op for durable rows.
+    mkdirSync(dirname(sidecarPath), { recursive: true });
     appendFileSync(sidecarPath, JSON.stringify(withFingerprint) + "\n", "utf8");
     return withFingerprint;
   });
+}
+
+/**
+ * Resolve the destination substrate filename from a row's `durability`
+ * axis. Absent `durability` defaults to durable (back-compat for every
+ * existing caller that omits it and writes a non-`gate-verb` row). The
+ * symmetric namespace guard at the record-tool boundary guarantees a
+ * `gate-verb:*` row always carries `durability: "ephemeral"` and a
+ * non-`gate-verb` row always durable, so this resolution never contradicts
+ * the contract.
+ */
+export function resolveDestinationFilename(row) {
+  return (row?.durability ?? "durable") === "ephemeral"
+    ? RUNTIME_STATE_LOCAL_FILENAME
+    : RUNTIME_STATE_FILENAME;
 }
 
 /**
@@ -391,18 +461,20 @@ export function assertKindConditionalStatus(row) {
  * (`runtime_state_record`, `meta_state_dispatch_finding`) must NOT swallow
  * the throw — writers fail-closed at the mutation boundary.
  *
- * @param {string} root — project root containing runtime-state.jsonl
+ * @param {string} root — project root containing the substrate
  * @param {string} surface — runtime-state `affected_system` value
  * @returns {string | null} — latest lifecycle status, or null if no
  *   budget-state rows exist for the surface (a fresh surface). THROWS
- *   on a malformed sidecar line or a corrupt budget-state row (fail-closed
- *   for writers).
+ *   on a malformed COMMITTED-sidecar line or a corrupt budget-state row
+ *   (fail-closed for writers). A malformed line in the gitignored local
+ *   substrate does NOT poison durable lifecycle reads (red-team #7) — the
+ *   local file holds disposable session allowances, not lifecycle records.
  */
 export function readBudgetTrackingState(root, surface) {
-  const { rows, malformed } = readRuntimeStateRowsDetailed(root);
-  if (malformed > 0) {
+  const { rows, perFile } = readRuntimeStateRowsDetailed(root);
+  if (perFile.committed.malformed > 0) {
     throw new Error(
-      `runtime_state_budget_tracking_corrupt: ${malformed} unparseable line(s) in runtime-state.jsonl — refusing to resolve budget-tracking state for surface "${surface}" (a dropped line could be a lifecycle record)`,
+      `runtime_state_budget_tracking_corrupt: ${perFile.committed.malformed} unparseable line(s) in runtime-state.jsonl — refusing to resolve budget-tracking state for surface "${surface}" (a dropped line could be a lifecycle record)`,
     );
   }
 // dedup with kind-before-collapse via the shared

@@ -101,6 +101,11 @@ export const runtimeStateResumeTool = {
         }],
       };
     }
+    // Durability derived from the surface namespace (matches the stop tool):
+    // a `gate-verb:*` surface's lifecycle rows are ephemeral (session-local),
+    // so a resume closure must route to the gitignored local substrate — never
+    // the committed file. A non-`gate-verb` surface's tracking lifecycle is
+    // durable → committed substrate.
     const row = {
       affected_system: surface,
       kind: "budget-state",
@@ -112,6 +117,7 @@ export const runtimeStateResumeTool = {
       status: "active",
       fingerprint: null,
       metadata: { lifecycle_action: "resume" },
+      durability: surface.startsWith("gate-verb:") ? "ephemeral" : "durable",
     };
     const written = await appendLedgerEvent(root, row);
     return {

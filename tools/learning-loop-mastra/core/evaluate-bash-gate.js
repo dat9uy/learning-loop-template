@@ -41,14 +41,19 @@ function preflightMarkerPatterns() {
 }
 
 // Runtime-state path-write patterns (shell redirect + tee to
-// runtime-state.jsonl). Split out of the shared records block so the bash
-// gate can exempt these matches when an active
-// `.loop-preflight-runtime-state-edit` marker is present (mirrors the
-// write-gate preflight delegation in evaluate-write-gate.js).
+// runtime-state.jsonl and the session-local substrate). Split out of the
+// shared records block so the bash gate can exempt these matches when an
+// active `.loop-preflight-runtime-state-edit` marker is present (mirrors the
+// write-gate preflight delegation in evaluate-write-gate.js). The local
+// substrate is protected by the SAME marker class as the committed file:
+// both are the "runtime-state row maintenance" surface, and the marker is
+// operator-intentional (30-min TTL).
 // fallow-ignore-next-line unused-export
 export const RUNTIME_STATE_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?runtime-state\.jsonl["']?/,
+  />{1,2}\s*["']?\.?\/?\.loop\/runtime-state-local\.jsonl["']?/,
+  /\btee\b.*["']?\.?\/?\.loop\/runtime-state-local\.jsonl["']?/,
 ];
 
 // Path-write detection patterns (bash-specific).
@@ -103,8 +108,8 @@ function buildGateVerbRemediation(gateVerbMatch, { expired }) {
   return (
     `Constraint "${gateVerbMatch}" detected. ${lead}\n` +
     `1) gate_mark_preflight({surface:"runtime-state"})\n` +
-    `2) runtime_state_record({affected_system:"${gateVerbMatch}", kind:"budget-state", id:"${gateVerbMatch}", source_ref:"local:meta-state:gate-verb-allowance", timestamp:"${new Date().toISOString()}"})\n` +
-    `id MUST equal affected_system. Allowance expires 30 min after timestamp.`
+    `2) runtime_state_record({affected_system:"${gateVerbMatch}", kind:"budget-state", id:"${gateVerbMatch}", durability:"ephemeral", source_ref:"local:meta-state:gate-verb-allowance", timestamp:"${new Date().toISOString()}"})\n` +
+    `id MUST equal affected_system. durability:"ephemeral" routes the allowance to the session-local substrate (gate-verb:* allowances are ephemeral, never committed). Allowance expires 30 min after timestamp.`
   );
 }
 
@@ -215,7 +220,7 @@ export function evaluateBashGate({ command, root }) {
       pathResult = {
         decision: "block",
         reason:
-          "Direct shell writes to runtime-state.jsonl are gated. Use gate_mark_preflight(surface:'runtime-state-edit') to unlock row maintenance for 30 minutes, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only).",
+          "Direct shell writes to runtime-state.jsonl / .loop/runtime-state-local.jsonl are gated. Use gate_mark_preflight(surface:'runtime-state-edit') to unlock row maintenance for 30 minutes, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only).",
         hard_block: true,
       };
     }
