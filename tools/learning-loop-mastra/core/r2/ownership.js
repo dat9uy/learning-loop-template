@@ -28,8 +28,9 @@ import { globMatch } from "../gate-logic.js";
 /**
  * Static hard-deny list evaluated BEFORE the allowlist. Applies to all
  * runtimes. The hint names the `update_r2_allowlist` MCP tool as the
- * legitimate edit path for `.loop/r2-allowlist.json`; `runtime-state.jsonl`
- * and `.gate-override` are operator-controlled.
+ * legitimate edit path for `.loop/r2-allowlist.json`; `runtime-state.jsonl`,
+ * the session-local `.loop/runtime-state-local.jsonl` substrate, and
+ * `.gate-override` are operator-controlled.
  */
 // Test-only fixture consumed by ownership.test.js (Fallow's ignorePatterns excludes __tests__ consumers).
 // fallow-ignore-next-line unused-export
@@ -38,6 +39,8 @@ export const BOOTSTRAP_DENY_PATTERNS = Object.freeze([
   "**/.loop/r2-allowlist.json",
   "runtime-state.jsonl",
   "**/runtime-state.jsonl",
+  ".loop/runtime-state-local.jsonl",
+  "**/.loop/runtime-state-local.jsonl",
   ".loop/runtime-tracking.json",
   "**/.loop/runtime-tracking.json",
   ".gate-override",
@@ -45,7 +48,7 @@ export const BOOTSTRAP_DENY_PATTERNS = Object.freeze([
 ]);
 
 const BOOTSTRAP_HINT =
-  "Use the update_r2_allowlist MCP tool to edit .loop/r2-allowlist.json and runtime_state_pause/resume for .loop/runtime-tracking.json; runtime-state.jsonl and .gate-override are operator-controlled.";
+  "Use the update_r2_allowlist MCP tool to edit .loop/r2-allowlist.json and runtime_state_pause/resume for .loop/runtime-tracking.json; runtime-state.jsonl, .loop/runtime-state-local.jsonl (the session-local ephemeral substrate), and .gate-override are operator-controlled.";
 
 /**
  * Decide whether `runtime` may write to `path`.

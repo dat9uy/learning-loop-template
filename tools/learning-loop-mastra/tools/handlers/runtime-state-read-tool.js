@@ -15,7 +15,8 @@ function toCompactRow(row) {
 
 export const runtimeStateReadTool = {
   name: "runtime_state_read",
-  description: "Read runtime-state rows with filters and fingerprint flags.",
+  description:
+    "Read runtime-state rows with filters and fingerprint flags. Returns the merged view of BOTH substrates: the committed durable substrate (ledger logs + budget-tracking lifecycle) AND the session-local ephemeral substrate (.loop/runtime-state-local.jsonl — gitignored gate-verb:* allowances that vanish on fresh clone). No durability filter is offered; the merge is the point.",
   schema: {
     affected_system: z.enum(AFFECTED_SYSTEM_ENUM_RUNTIME).optional()
       .describe("Affected system filter"),

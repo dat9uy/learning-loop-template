@@ -352,7 +352,9 @@ describe("runtime_state_pause / resume / stop handlers", () => {
     // for gate-verb observations: accepted by the source_ref validation and
     // intentionally non-resolving (runtime-state source_ref is not grounded
     // against meta-state existence). A future grounding check must whitelist
-    // the sentinel or this test fails loudly.
+    // the sentinel or this test fails loudly. A gate-verb row must also
+    // carry `durability:"ephemeral"` (symmetric namespace guard) — the
+    // allowance is session-local, never committed.
     const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
     const tempDir = mkdtempSync(join(tmpdir(), "rt-record-sentinel-"));
     const originalEnv = process.env.GATE_ROOT;
@@ -364,6 +366,7 @@ describe("runtime_state_pause / resume / stop handlers", () => {
         affected_system: "gate-verb:bash",
         kind: "budget-state",
         id: "gate-verb:bash",
+        durability: "ephemeral",
         source_ref: "local:meta-state:gate-verb-allowance",
         timestamp: new Date().toISOString(),
       });

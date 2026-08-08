@@ -116,6 +116,12 @@ const SKILL_CANONICAL_GLOB = "tools/learning-loop-mastra/skills/**";
 const SKILL_MANIFEST_GLOB = "skills-lock.json";
 const SCHEMAS_GLOB = "schemas/**";
 const RUNTIME_STATE_GLOB = "runtime-state.jsonl";
+// Session-local ephemeral substrate — protected by the same preflight-
+// delegating rule class as the committed file (operator mints the
+// `runtime-state-edit` marker to maintain either substrate). NOT a simple-glob
+// block in bound-artifacts.js (that would be a dead-end with no preflight
+// escape and would diverge in precedence from the committed-file rule).
+const RUNTIME_STATE_LOCAL_GLOB = ".loop/runtime-state-local.jsonl";
 
 const WRITE_GATE_RULES = [
   {
@@ -128,6 +134,12 @@ const WRITE_GATE_RULES = [
     name: "runtime-state",
     matchedRule: RUNTIME_STATE_GLOB,
     match: (relPath) => globMatch(RUNTIME_STATE_GLOB, relPath),
+    reason: null,
+  },
+  {
+    name: "runtime-state-local",
+    matchedRule: RUNTIME_STATE_LOCAL_GLOB,
+    match: (relPath) => globMatch(RUNTIME_STATE_LOCAL_GLOB, relPath),
     reason: null,
   },
   ...BOUND_ARTIFACTS,
@@ -218,6 +230,14 @@ export function evaluateWriteGate({ filePath, root, authoredContent }) {
     // that `runtime_state_record` requires for routine appends — otherwise
     // normal loop operation (frequent appends) would keep the direct-write
     // gate warm most of the time.
+    return evaluateRuntimeStatePreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
+  }
+  if (matched.name === "runtime-state-local") {
+    // The gitignored session-local substrate gets the SAME preflight-
+    // delegating rule class as the committed file: an operator mints the
+    // `runtime-state-edit` marker to maintain either substrate. This keeps
+    // the two rules' short-circuits non-overlapping while preserving the
+    // "sanctioned maintenance works identically" invariant.
     return evaluateRuntimeStatePreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   return blockResult(matched, filePath);

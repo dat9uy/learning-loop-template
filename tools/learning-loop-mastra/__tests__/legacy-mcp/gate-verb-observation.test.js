@@ -91,6 +91,7 @@ describe("gate-verb observation window", () => {
         id: "gate-verb:bash",
         value: 0,
         delta: 0,
+        durability: "ephemeral",
         source_ref: "local:meta-state:rule-test",
         timestamp: new Date().toISOString(),
       });
@@ -117,6 +118,7 @@ describe("gate-verb observation window", () => {
         id: "gate-verb:bash",
         value: 0,
         delta: 0,
+        durability: "ephemeral",
         source_ref: "local:meta-state:rule-test",
         timestamp: new Date().toISOString(),
       });
@@ -146,6 +148,7 @@ describe("gate-verb observation window", () => {
         id: "gate-verb:bash",
         value: 0,
         delta: 0,
+        durability: "ephemeral",
         source_ref: "local:meta-state:rule-test",
         timestamp: old,
       });

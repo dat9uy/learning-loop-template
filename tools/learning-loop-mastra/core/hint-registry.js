@@ -211,9 +211,9 @@ export const HINT_REGISTRY = Object.freeze([
     kind: "discoverability",
     tier: "on-demand",
     text:
-      "Gate-verb allowance (bounded 30 min): the bash gate blocks executor verbs (`bash`, `eval`, `node -e`, …) unless an active `gate-verb:<verb>` observation exists. To record one deliberately: (1) gate_mark_preflight({surface:\"runtime-state\"}); (2) runtime_state_record({affected_system:\"gate-verb:<verb>\", kind:\"budget-state\", id:\"gate-verb:<verb>\", source_ref:\"local:meta-state:gate-verb-allowance\", timestamp:\"<ISO>\"}) — id MUST equal affected_system or the write is rejected (canonical_id_required). The source_ref is the sanctioned sentinel: intentionally non-resolving, no finding-id grep needed. The allowance expires 30 min after timestamp — a bounded, auditable window — and the promoted-rule denylist still applies during the allowance window.",
+      "Gate-verb allowance (bounded 30 min): the bash gate blocks executor verbs (`bash`, `eval`, `node -e`, …) unless an active `gate-verb:<verb>` observation exists. To record one deliberately: (1) gate_mark_preflight({surface:\"runtime-state\"}); (2) runtime_state_record({affected_system:\"gate-verb:<verb>\", kind:\"budget-state\", id:\"gate-verb:<verb>\", durability:\"ephemeral\", source_ref:\"local:meta-state:gate-verb-allowance\", timestamp:\"<ISO>\"}) — id MUST equal affected_system or the write is rejected (canonical_id_required), and durability must be \"ephemeral\" (gate-verb:* allowances are session-local, never committed). The source_ref is the sanctioned sentinel: intentionally non-resolving, no finding-id grep needed. The allowance expires 30 min after timestamp — a bounded, auditable window — and the promoted-rule denylist still applies during the allowance window.",
     suggestion:
-      "Gate-verb allowance: gate_mark_preflight({surface:\"runtime-state\"}) then runtime_state_record with id === affected_system \"gate-verb:<verb>\"; expires 30 min after timestamp; the promoted-rule denylist still applies.",
+      "Gate-verb allowance: gate_mark_preflight({surface:\"runtime-state\"}) then runtime_state_record({..., durability:\"ephemeral\"}) with id === affected_system \"gate-verb:<verb>\"; expires 30 min after timestamp; the promoted-rule denylist still applies.",
     derived_from_rule: null,
   },
 

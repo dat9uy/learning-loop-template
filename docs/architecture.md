@@ -331,6 +331,13 @@ The marker file stores the first 200 characters of the operator's prompt in plai
 
 The runtime-state sidecar (`runtime-state.jsonl`) is the loop's short-term
 memory: budgets, counters, dispatch ledger events, and delivery attestations.
+
+**Durability split.** The L1 durability axis (`docs/loop-engine.md` § Budget tracking vs ledger log) and the L2 contract (`docs/runtime-contract.md` § Runtime-state row kinds and the budget-tracking lifecycle) distinguish durable rows — ledger logs and the budget-tracking lifecycle — from ephemeral TTL'd allowances (e.g. `gate-verb:*`), which belong to the session that minted them. The mechanism realizes that split across **two substrates**:
+- **`runtime-state.jsonl`** (committed) holds the durable rows: ledger logs and the budget-tracking lifecycle. Every participating runtime reads these identically.
+- **`.loop/runtime-state-local.jsonl`** (gitignored, session-local) holds ephemeral TTL'd allowance rows (`gate-verb:*`). A fresh clone loses only these session-scoped allowances — correct by contract.
+
+The write path routes by a `durability` axis (`runtime_state_record` accepts `durability: "durable" | "ephemeral"`, default durable; the stop tool derives it from the `gate-verb:*` namespace). A **symmetric namespace guard** at the record-tool boundary enforces `gate-verb:*` ⟺ `ephemeral` — a durable `gate-verb:*` row or an ephemeral non-`gate-verb` row is rejected (`durability_namespace_mismatch`), structurally preventing a durable and an ephemeral row from ever sharing an id. The write-path version scan is **destination-scoped** (reads only the destination substrate, so per-substrate versioning is real). The read path merges both substrates: `readRuntimeObservations` / `runtime_state_read` project durable rows AND session-local ephemeral allowances from one view. A malformed line in the disposable local substrate does NOT poison durable writes; a malformed line in the committed substrate fails closed. Both substrates carry the same 3-layer write protection (bash gate + write-tool preflight delegation to `surface:'runtime-state-edit'` + R2 bootstrap deny) and the local file is gitignored.
+
 Two maintenance contracts keep the sidecar tractable at operator scale.
 
 ### Versioned dedup (`max_by(version)` per id)

@@ -87,6 +87,36 @@ test("runtime-state.jsonl with only the APPEND marker active → still blocked (
   assert.strictEqual(result.decision, "block", `append marker must not unlock direct writes; got: ${JSON.stringify(result)}`);
 });
 
+// ── Session-local substrate (.loop/runtime-state-local.jsonl) — same rule class ──
+
+test(".loop/runtime-state-local.jsonl without marker → block, surface=runtime-state-edit, preflight-delegating (not a dead-end)", () => {
+  const result = evaluateWriteGate({ filePath: join(root, ".loop", "runtime-state-local.jsonl"), root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(
+    result.surface,
+    "runtime-state-edit",
+    `local substrate must delegate to runtime-state-edit; got: ${JSON.stringify(result)}`,
+  );
+  assert.ok(
+    result.reason.includes("gate_mark_preflight") && result.reason.includes("runtime-state-edit"),
+    `reason must name gate_mark_preflight(surface:'runtime-state-edit'); got: ${result.reason}`,
+  );
+  // Red-team #3: the rule DELEGATES (preflight escape), it is not a dead-end
+  // simple-glob block — the marker must unlock it.
+});
+
+test(".loop/runtime-state-local.jsonl with active edit marker → ok (delegates, not dead-end)", () => {
+  writePreflightMarker("runtime-state-edit");
+  const result = evaluateWriteGate({ filePath: join(root, ".loop", "runtime-state-local.jsonl"), root });
+  assert.strictEqual(result.decision, "ok", `local substrate must unlock with edit marker; got: ${JSON.stringify(result)}`);
+});
+
+test(".loop/runtime-state-local.jsonl with only the APPEND marker → still blocked (markers decoupled)", () => {
+  writePreflightMarker("runtime-state");
+  const result = evaluateWriteGate({ filePath: join(root, ".loop", "runtime-state-local.jsonl"), root });
+  assert.strictEqual(result.decision, "block", `append marker must not unlock the local substrate; got: ${JSON.stringify(result)}`);
+});
+
 // ── BOUND_ARTIFACTS no longer carries runtime-state (it's a preflight rule now) ──
 
 test("BOUND_ARTIFACTS does NOT contain 'runtime-state' (migration to preflight rule)", () => {
