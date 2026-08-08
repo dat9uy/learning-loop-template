@@ -60,6 +60,71 @@ describe("loop_get_instruction", () => {
     const keySchema = loopGetInstructionTool.schema.key;
     assert.ok(keySchema, "schema.key should be defined");
   });
+
+  test("returns the on-demand gate-verb-allowance hint by slug (full registry lookup)", async () => {
+    const result = await loopGetInstructionTool.handler({ key: "gate-verb-allowance" });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.strictEqual(parsed.count, 1);
+    assert.strictEqual(parsed.results[0].key, "gate-verb-allowance");
+    assert.strictEqual(parsed.results[0].error, undefined, "must resolve, not Unknown hint key");
+    assert.strictEqual(parsed.results[0].index, 16, "appended at discoverability index 16");
+    const hint = parsed.results[0].hint;
+    assert.ok(hint.includes('gate_mark_preflight({surface:"runtime-state"})'));
+    assert.ok(hint.includes("runtime_state_record"));
+    assert.ok(hint.includes("<verb>"));
+    assert.ok(hint.includes("id MUST equal affected_system"));
+    assert.ok(hint.includes("local:meta-state:gate-verb-allowance"));
+    assert.ok(hint.includes("30 min"));
+    assert.ok(
+      hint.includes("the promoted-rule denylist still applies during the allowance window"),
+      "the denylist constraint must survive (the block message omits it)",
+    );
+    assert.ok(parsed.results[0].suggestion.length > 20);
+  });
+
+  test("returns gate-verb-allowance by numeric index 16 (process offset shifts to 17)", async () => {
+    // Numeric keys are session-ephemeral: appending the 17th discoverability
+    // row shifts the process partition's numeric offset 16 → 17.
+    const result = await loopGetInstructionTool.handler({ key: 16 });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.strictEqual(parsed.results[0].error, undefined);
+    assert.ok(parsed.results[0].hint.includes("gate-verb"));
+    const bySlug = await loopGetInstructionTool.handler({ key: "gate-verb-allowance" });
+    assert.strictEqual(
+      parsed.results[0].hint,
+      JSON.parse(bySlug.content[0].text).results[0].hint,
+      "numeric 16 === slug lookup",
+    );
+  });
+
+  test("on-demand reclassification does not break lookup: the 12 moved slugs resolve by name and unchanged numeric index", async () => {
+    // The 12 reference hints moved to tier:"on-demand" — an injection-policy
+    // change only. loop_get_instruction resolves against the full unfiltered
+    // registry, so slug AND numeric lookups must be untouched.
+    const moved = [
+      ["internalization-rule", 0],
+      ["mechanism-check", 1],
+      ["source-refs", 2],
+      ["derive-refresh", 3],
+      ["designs-no-code", 4],
+      ["status-lifecycle", 5],
+      ["reopens", 6],
+      ["rule-lifecycle", 7],
+      ["reopens-script", 10],
+      ["narrow-query", 12],
+      ["session-id-query", 14],
+      ["runtime-agnostic-features", 15],
+    ];
+    for (const [slug, index] of moved) {
+      const bySlug = JSON.parse((await loopGetInstructionTool.handler({ key: slug })).content[0].text).results[0];
+      assert.strictEqual(bySlug.error, undefined, `${slug} must resolve by slug`);
+      assert.strictEqual(bySlug.index, index, `${slug} numeric index must stay ${index}`);
+      assert.ok(bySlug.hint.length > 0, `${slug} must carry full hint text`);
+      const byIndex = JSON.parse((await loopGetInstructionTool.handler({ key: index })).content[0].text).results[0];
+      assert.strictEqual(byIndex.error, undefined, `numeric ${index} must resolve`);
+      assert.strictEqual(byIndex.hint, bySlug.hint, `numeric ${index} === slug ${slug}`);
+    }
+  });
 });
 
 describe("loop_get_instruction (rule-skip stability)", () => {
@@ -138,9 +203,10 @@ describe("loop_get_instruction (rule-skip stability)", () => {
   test("numeric keys correspond to the view: each position returns its own entry's hint or unavailable", async () => {
     // Compute the expected view from the SAME resolution source the handler
     // uses, then assert per-position correspondence: numeric key k must
-    // return the identical hint as the slug at view position (k - 16), the
-    // stripped rule's position must say `unavailable`, and no two positions
-    // may return the same hint text (the misalignment signature).
+    // return the identical hint as the slug at view position
+    // (k - discoverabilityLen), the stripped rule's position must say
+    // `unavailable`, and no two positions may return the same hint text (the
+    // misalignment signature).
     const rulesById = new Map(loadPromotedRules(tempRoot).map((r) => [r.id, r]));
     const view = buildProcessView({ rulesById });
     assert.ok(

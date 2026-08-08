@@ -108,8 +108,10 @@ describe("factory hook single-source (single-source invariant)", () => {
       const { buildDiscoverabilityHints, buildProcessHints } = await import(
         pathToFileURL(corePath).href
       );
-      const canonicalDisc = buildDiscoverabilityHints();
-      const canonicalProc = buildProcessHints();
+      // The hook is a warm-injection site: the canonical comparison set is
+      // the startup-tier view (on-demand rows ride the hint_index instead).
+      const canonicalDisc = buildDiscoverabilityHints({ tier: "startup" });
+      const canonicalProc = buildProcessHints({ tier: "startup" });
 
       // Each canonical hint must appear (in order) in the rendered block.
       let cursor = 0;

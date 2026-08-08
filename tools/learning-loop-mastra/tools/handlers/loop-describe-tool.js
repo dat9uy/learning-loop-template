@@ -26,14 +26,25 @@ function firstSentence(description) {
  * from the same root as the rest of the response — never from a second
  * `loadPromotedRules(process.cwd())` inside the builder (code-review I4 of
  * the hint-registry collapse).
+ *
+ * `tier` is the injection-policy filter: the warm tier passes
+ * `{ tier: "startup" }` so on-demand rows stay out of the auto-injected full
+ * text (they remain discoverable via `hint_index`); the cold tier passes no
+ * tier — it is the unfiltered full-history view.
  */
-function buildHintBlocks(promotedRules) {
-  return {
-    discoverability_hints: introspect.buildDiscoverabilityHints(),
-    process_hints: introspect.buildProcessHints({
-      rulesById: new Map(promotedRules.map((r) => [r.id, r])),
-    }),
+function buildHintBlocks(promotedRules, { tier } = {}) {
+  const rulesById = new Map(promotedRules.map((r) => [r.id, r]));
+  const blocks = {
+    discoverability_hints: introspect.buildDiscoverabilityHints({ tier }),
+    process_hints: introspect.buildProcessHints({ rulesById, tier }),
   };
+  if (tier !== undefined) {
+    // The structured discovery surface (slug + suggestion for every hint,
+    // both tiers) rides only the filtered warm view; cold consumers already
+    // have the full text.
+    blocks.hint_index = introspect.buildHintIndex({ rulesById });
+  }
+  return blocks;
 }
 
 export const loopDescribeTool = {
@@ -133,7 +144,7 @@ export const loopDescribeTool = {
         }
         // M5: surface readAllEntriesForLineage cost so operators can monitor
         // warm-tier latency growth as the registry grows.
-        Object.assign(result, buildHintBlocks(promotedRules));
+        Object.assign(result, buildHintBlocks(promotedRules, { tier: "startup" }));
 
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
       } else if (tier === "cold") {

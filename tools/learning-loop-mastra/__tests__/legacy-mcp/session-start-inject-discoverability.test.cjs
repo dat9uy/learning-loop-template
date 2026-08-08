@@ -208,12 +208,26 @@ test("SessionStart hook emits discoverability hints via stdout additionalContext
   assert.ok(typeof ac === "string" && ac.length > 0, "additionalContext must be a non-empty string");
   // 10k-char cap: the injected payload must fit inline (not be persisted/truncated).
   assert.ok([...ac].length <= 10000, `additionalContext must stay under 10k chars; got ${[...ac].length}`);
-  // Phase 3 pointer projection: header names the pull path; hint slugs + suggestions replace the inline paragraphs.
+  // Pointer projection: header names the pull path; hint slugs + suggestions
+  // replace the inline paragraphs. Only startup-tier pointers are auto-
+  // injected; on-demand rows ride the sidecar hint_index instead.
   assert.ok(ac.includes("loop_describe({tier:'warm'})"), "must advertise the pull path for full discoverability hints");
-  assert.ok(ac.includes("internalization-rule"), "must include the internalization-rule pointer slug");
-  assert.ok(ac.includes("runtime-agnostic-features"), "must include the runtime-agnostic-features pointer slug");
-  // All 16 hints project; numbering 1..16 is preserved so callers retain position-based diagnostics.
-  assert.ok(/^1\. /m.test(ac) && /^16\. /m.test(ac), "must number hint pointers 1 through 16");
+  const introspect = await import(require("node:url").pathToFileURL(
+    path.resolve(__dirname, "..", "..", "core", "loop-introspect.js"),
+  ).href);
+  const pointers = introspect.buildDiscoverabilityPointers({ tier: "startup" });
+  assert.strictEqual(pointers.length, 4, "startup-tier discoverability pointer set = the 4 keepers");
+  for (const p of pointers) {
+    assert.ok(ac.includes(p), `additionalContext must include startup pointer: ${p.slice(0, 60)}`);
+  }
+  // On-demand slugs stay out of the inline payload (listed in hint_index).
+  assert.ok(!ac.includes("internalization-rule"), "on-demand slug must not be auto-injected inline");
+  assert.ok(!ac.includes("runtime-agnostic-features"), "on-demand slug must not be auto-injected inline");
+  // Numbering is 1..N over the startup pointer set.
+  assert.ok(/^1\. /m.test(ac) && new RegExp(`^${pointers.length}\\. `, "m").test(ac),
+    `must number hint pointers 1 through ${pointers.length}`);
+  assert.ok(!new RegExp(`^${pointers.length + 1}\\. `, "m").test(ac),
+    "no pointer beyond the startup set");
 });
 
 // Degraded inline leg: when the core-hints loader fails, the hook must still

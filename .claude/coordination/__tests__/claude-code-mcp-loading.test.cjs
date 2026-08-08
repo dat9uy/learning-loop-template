@@ -46,8 +46,11 @@ describe("Claude Code MCP client-side loading acceptance", () => {
       // 1. loop_describe warm tier returns discoverability hints
       const warm = await callTool("mastra_loop_describe", { tier: "warm" });
       assert.ok(Array.isArray(warm.discoverability_hints), "warm tier should include discoverability_hints");
-      const citationHint = warm.discoverability_hints.find((h) => h.includes("evidence_code_ref"));
-      assert.ok(citationHint, "citation hint should mention evidence_code_ref");
+      // The evidence_code_ref citation hint (internalization-rule) is on-demand:
+      // not auto-injected at warm, but resolvable via loop_get_instruction.
+      const instruction = await callTool("mastra_loop_get_instruction", { key: "internalization-rule" });
+      const citationHint = instruction.results?.[0]?.hint ?? "";
+      assert.ok(citationHint.includes("evidence_code_ref"), "citation hint should mention evidence_code_ref");
 
       // 2. meta_state_report with evidence_code_ref + mechanism_check: true succeeds
       const reportResult = await callTool("mastra_meta_state_report", {

@@ -84,7 +84,7 @@ For the gate system internals (inbound/outbound gate flows, MCP tool flow, stale
 
 1. Report a `meta_state_report` finding with `evidence_code_ref` set to the code location.
 2. In the record's `source_refs`, use `local:meta-state:<id>` where `<id>` is the finding's id.
-3. Optional but recommended: set `mechanism_check: true` on the finding so `meta_state_derive_status` and `meta_state_check_grounding` can re-check it after refactors; refresh its path's hash in `file-index.jsonl` via `meta_state_refresh_file_index`.
+3. Optional but recommended: enable mechanism re-checking on the finding and re-ground its cited path after refactors — the mechanics (auto-default, opt-out) and per-tool recipes are canonical in the `mechanism-check` and `derive-refresh` hints (`loop_get_instruction({ key: 'mechanism-check' })`).
 
 Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, not the default. They are deprecated and rejected by `record_create_decision` for new entries. The SessionStart hook surfaces this rule in its discoverability hints: `session-start-inject-discoverability.cjs` and `session-start-inject-process-hints.cjs` inject the full hint sets as system-reminders via `hookSpecificOutput.additionalContext` (each under the 10k-char cap; the sidecar `.claude/session-context.json` remains the audit artifact).
 

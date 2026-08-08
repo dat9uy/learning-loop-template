@@ -94,10 +94,14 @@ describe("cold-session discoverability", () => {
   test("discoverability hints are well-formed", async () => {
     const corePath = join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js");
     const { buildDiscoverabilityHints } = await import(pathToFileURL(corePath).href);
-    const hints = buildDiscoverabilityHints();
+    // The byte budget guards the session-start injection payload, which is
+    // the startup-tier view; on-demand rows are not auto-injected (they ride
+    // the hint_index), so they must not count against the budget.
+    const hints = buildDiscoverabilityHints({ tier: "startup" });
 
     assert.ok(Array.isArray(hints), "hints must be an array");
-    assert.ok(hints.length >= 10, `expected at least 10 hints, got ${hints.length}`);
+    assert.strictEqual(hints.length, 4,
+      `startup-tier view = the 4 keepers (on-demand rows excluded), got ${hints.length}`);
 
     // Structure: every hint is a non-empty string.
     for (const [i, h] of hints.entries()) {
@@ -105,8 +109,10 @@ describe("cold-session discoverability", () => {
       assert.ok(h.length > 20, `hint[${i}] is suspiciously short (${h.length} chars)`);
     }
 
-    // Content anchors — key concepts must appear somewhere in the hints.
-    const joined = hints.join("\n");
+    // Content anchors — key concepts must appear somewhere in the full hint
+    // corpus (unfiltered: startup + on-demand rows; on-demand text is still
+    // part of the corpus, fetched via loop_get_instruction).
+    const joined = buildDiscoverabilityHints().join("\n");
     const anchors = [
       "evidence_code_ref",
       "mechanism_check",
@@ -119,8 +125,8 @@ describe("cold-session discoverability", () => {
       assert.ok(joined.includes(anchor), `hints must mention "${anchor}"`);
     }
 
-    // Byte budget: total hints must be under 6KB. Bumped from 5KB after
-    // Plan 260731-1325 added meta_state_unarchive (+~120 bytes).
+    // Byte budget: total startup-tier hints must be under 6KB. Bumped from 5KB
+    // after Plan 260731-1325 added meta_state_unarchive (+~120 bytes).
     const totalBytes = hints.reduce((sum, h) => sum + Buffer.byteLength(h, "utf8"), 0);
     assert.ok(totalBytes < 6000, `hints must be <6KB; got ${totalBytes} bytes`);
 

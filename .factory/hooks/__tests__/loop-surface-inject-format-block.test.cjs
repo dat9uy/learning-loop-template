@@ -51,12 +51,30 @@ describe("loop-surface-inject formatBlock", () => {
     assert.ok(result.includes("PR-body registry deltas"));
   });
 
+  test("renders hint_index section when provided (warm)", () => {
+    const result = hook.formatBlock(
+      { tool_count: 36, record_type_count: 8, rule_count: 1, active_finding_count: 12 },
+      {
+        discoverability_hints: ["hint-a"],
+        process_hints: [],
+        hint_index: [
+          { slug: "hint-a", suggestion: "do the a thing" },
+          { slug: "gate-verb-allowance", suggestion: "record the allowance before the verb" },
+        ],
+      },
+      "warm",
+    );
+    assert.ok(result.includes("--- hint_index ---"));
+    assert.ok(result.includes("gate-verb-allowance — record the allowance before the verb"));
+  });
+
   test("suppresses hint sections when tier=summary", () => {
     const result = hook.formatBlock(
       { tool_count: 36, record_type_count: 8, rule_count: 1, active_finding_count: 12 },
       {
         discoverability_hints: ["SHOULD-NOT-APPEAR-disc-hint"],
         process_hints: ["SHOULD-NOT-APPEAR-proc-hint"],
+        hint_index: [{ slug: "SHOULD-NOT-APPEAR-index", suggestion: "nope" }],
       },
       "summary",
     );
@@ -64,6 +82,7 @@ describe("loop-surface-inject formatBlock", () => {
     assert.ok(result.includes("tools: 36"));
     assert.ok(!result.includes("--- discoverability_hints ---"), "summary tier must omit hints section");
     assert.ok(!result.includes("--- process_hints ---"), "summary tier must omit process hints section");
+    assert.ok(!result.includes("--- hint_index ---"), "summary tier must omit hint_index section");
     assert.ok(!result.includes("SHOULD-NOT-APPEAR"));
   });
 });
