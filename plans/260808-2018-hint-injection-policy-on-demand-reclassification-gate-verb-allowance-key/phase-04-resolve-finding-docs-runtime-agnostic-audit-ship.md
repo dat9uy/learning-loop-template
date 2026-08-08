@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Resolve finding, docs, runtime-agnostic audit, ship"
-status: in-progress
+status: done
 priority: P1
 effort: "1-2h"
 dependencies: [1, 2, 3]

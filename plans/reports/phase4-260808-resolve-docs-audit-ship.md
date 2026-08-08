@@ -1,7 +1,7 @@
 # Phase 4 report — resolve finding, docs, runtime-agnostic audit, ship
 
 Date: 2026-08-08
-Status: in-progress (docs/audit/verification done; merge + post-merge finding-resolution pending)
+Status: complete (PR #122 squash-merged to main; finding resolved post-merge)
 
 ## What was done in-branch
 
@@ -27,10 +27,12 @@ Status: in-progress (docs/audit/verification done; merge + post-merge finding-re
 - `pnpm test` (full) exit 0; `pnpm exec vitest --changed` 52 files / 400 tests green; `hint-dedup-invariant.test.cjs` 4/4.
 - File-index re-ground: `meta_state_refresh_file_index` on all 8 edited paths; 8 findings regrounded. The `cold-tier-regression` grounding test failed transiently after the re-export edit re-drifted `loop-introspect.js`'s hash; re-grounded and re-green.
 
-## Pending (post-merge)
+## Post-merge resolve (done)
 
-- `meta_state_resolve({id:"meta-260808T1614Z-loop-get-instruction-gate-verb-allowance-returns-unknown-hin", ...})` — HARD post-merge step (precondition: branch on main, per the 260808-1222 lesson). The resolution cites this plan: the `gate-verb-allowance` key + the injection-policy tier mechanism + the dedup.
-- `runtime-state.jsonl` is excluded from the feature commit (only transient `gate-verb:node` allowance rows from this session's audit/verification runs).
+- `meta_state_derive_status` confirmed `open`/`active-uncertain`, `code_ref_exists: true`, `drift: false` (fix merged to main).
+- `meta_state_resolve({id:"meta-260808T1614Z-loop-get-instruction-gate-verb-allowance-returns-unknown-hin", resolution:"Addressed by plan 260808-2018: ...", resolved_by:"operator"})` → `status:"resolved"`, version 1 (versioned-append audit trail). Confirmed via `meta_state_list({id, include_archived:true})`.
+- The resolve's `meta-state.jsonl` write committed on main (`chore(loop): resolve gate-verb-allowance unknown-key finding`).
+- `runtime-state.jsonl` session-noise rows (transient `gate-verb:node` allowances) were stashed and dropped, not committed.
 
 ## Notes / deviations
 
