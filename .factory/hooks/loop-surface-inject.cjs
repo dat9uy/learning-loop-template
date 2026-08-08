@@ -128,10 +128,14 @@ async function main(inputArg, envArg, _spawnImpl) {
   // Hints + registry counts: dynamic import of core (ESM) from CJS hook.
   let discoverability = [];
   let processHints = [];
+  let hintIndex = [];
   try {
     const core = await loadCore(projectRoot);
     const { introspect, metaState, gateLogic, isOpen } = core;
-    discoverability = introspect.buildDiscoverabilityHints();
+    // Session start is a warm-injection site: startup-tier full text only;
+    // on-demand rows ride the hint_index (slug + suggestion) so they stay
+    // discoverable on this runtime (no session-context.json sidecar here).
+    discoverability = introspect.buildDiscoverabilityHints({ tier: "startup" });
     const entries = metaState.readRegistry(projectRoot);
     const rules = gateLogic.loadPromotedRules(projectRoot);
     ruleCount = rules.length;
@@ -140,7 +144,8 @@ async function main(inputArg, envArg, _spawnImpl) {
     // process.cwd() — under a divergent spawn cwd the 8 rule-derived hints
     // would silently vanish while rule_count still reports them.
     const rulesById = new Map(rules.map((r) => [r.id, r]));
-    processHints = introspect.buildProcessHints({ rulesById });
+    processHints = introspect.buildProcessHints({ rulesById, tier: "startup" });
+    hintIndex = introspect.buildHintIndex({ rulesById });
     activeFindingCount = entries.filter(
       (e) => e.entry_kind === "finding" && isOpen(e),
     ).length;
@@ -158,7 +163,7 @@ async function main(inputArg, envArg, _spawnImpl) {
       rule_count: ruleCount,
       active_finding_count: activeFindingCount,
     },
-    { discoverability_hints: discoverability, process_hints: processHints },
+    { discoverability_hints: discoverability, process_hints: processHints, hint_index: hintIndex },
     tier,
   );
 }
@@ -236,7 +241,7 @@ async function reportHintDowngrade(input, env, projectRoot, registryRoot, reason
 
 // fallow-ignore-next-line complexity
 function formatBlock(counts, hints, tier = "warm") {
-  const safeHints = hints ?? { discoverability_hints: [], process_hints: [] };
+  const safeHints = hints ?? { discoverability_hints: [], process_hints: [], hint_index: [] };
   const lines = [
     "=== loop surface (auto-injected at session start) ===",
     `tools: ${counts.tool_count ?? "?"}`,
@@ -258,6 +263,17 @@ function formatBlock(counts, hints, tier = "warm") {
       lines.push("--- process_hints ---");
       for (const hint of safeHints.process_hints) {
         lines.push(hint);
+      }
+    }
+    // Discovery surface for on-demand rows: slug + one-line suggestion for
+    // every hint (both tiers); full text via loop_get_instruction({key}).
+    const hintIndex = safeHints.hint_index ?? [];
+    if (hintIndex.length > 0) {
+      lines.push("");
+      lines.push("--- hint_index ---");
+      lines.push("On-demand hints: fetch full text via loop_get_instruction({key}).");
+      for (const entry of hintIndex) {
+        lines.push(`${entry.slug} — ${entry.suggestion}`);
       }
     }
   }

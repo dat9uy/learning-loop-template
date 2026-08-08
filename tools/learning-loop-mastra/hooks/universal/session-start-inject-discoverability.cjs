@@ -192,12 +192,21 @@ function loadCoreHints() {
     if (process.env.SESSION_START_FORCE_HINTS_FAIL === "1") {
       throw new Error("forced core-hints loader failure (SESSION_START_FORCE_HINTS_FAIL=1)");
     }
-    const { buildDiscoverabilityPointers, buildProcessPointers } = require("../../core/loop-introspect.js");
+    const { buildDiscoverabilityPointers, buildProcessPointers, buildHintIndex } = require("../../core/loop-introspect.js");
+    const { loadPromotedRules } = require("../../core/gate-logic.js");
+    // Session start is a warm-injection site: only startup-tier pointers are
+    // auto-injected; on-demand rows stay discoverable via hint_index and are
+    // fetched in full via loop_get_instruction. Full text is never written
+    // to the sidecar. rulesById merges rule-derived process slugs into the
+    // index so it is the complete discovery surface.
+    const rulesById = new Map(loadPromotedRules(process.cwd()).map((r) => [r.id, r]));
     return {
-      discoverability_hints: buildDiscoverabilityPointers(),
+      discoverability_hints: buildDiscoverabilityPointers({ tier: "startup" }),
       discoverability_hints_source: "core",
-      process_hints: buildProcessPointers(),
+      process_hints: buildProcessPointers({ tier: "startup", rulesById }),
       process_hints_source: "core",
+      hint_index: buildHintIndex({ rulesById }),
+      hint_index_source: "core",
     };
   } catch (err) {
     console.error(`[session-start] buildHints failed: ${err.message}`);
@@ -208,6 +217,9 @@ function loadCoreHints() {
       process_hints: [],
       process_hints_source: "fallback",
       process_hints_error: err.message,
+      hint_index: [],
+      hint_index_source: "fallback",
+      hint_index_error: err.message,
     };
   }
 }
@@ -401,6 +413,9 @@ function buildContextPayload(core, registry, stale_dispatch_hints, change_log_ga
     process_hints: core.process_hints,
     process_hints_source: core.process_hints_source,
     process_hints_error: core.process_hints_error ?? null,
+    hint_index: core.hint_index,
+    hint_index_source: core.hint_index_source,
+    hint_index_error: core.hint_index_error ?? null,
     registry_source: registry.registry_source,
     registry_error: registry.registry_error ?? null,
     stale_dispatch_hints,
@@ -484,6 +499,9 @@ if (require.main === module) {
       process_hints: [],
       process_hints_source: "fatal",
       process_hints_error: err.message,
+      hint_index: [],
+      hint_index_source: "fatal",
+      hint_index_error: err.message,
       registry_source: "fatal",
       registry_error: err.message,
       stale_dispatch_hints: EMPTY_STALE_DISPATCH,

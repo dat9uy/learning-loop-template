@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Injection-policy mechanism + gate-verb-allowance key"
-status: pending
+status: done
 priority: P1
 effort: "3-4h"
 dependencies: []

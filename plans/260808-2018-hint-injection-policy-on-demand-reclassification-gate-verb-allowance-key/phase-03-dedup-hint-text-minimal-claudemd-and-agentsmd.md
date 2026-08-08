@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Dedup hint text + minimal CLAUDE.md and AGENTS.md"
-status: pending
+status: done
 priority: P1
 effort: "3-4h"
 dependencies: [1, 2]

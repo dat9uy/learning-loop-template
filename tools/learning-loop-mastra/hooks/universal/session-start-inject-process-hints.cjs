@@ -30,7 +30,7 @@ try {
   if (process.env.SESSION_START_FORCE_PROCESS_HINTS_FAIL === "1") {
     throw new Error("forced process-hints loader failure (SESSION_START_FORCE_PROCESS_HINTS_FAIL=1)");
   }
-  const pointers = buildProcessPointers();
+  const pointers = buildProcessPointers({ tier: "startup" });
   text = `${PULL_PATH}\n${pointers.map((h, i) => `${i + 1}. ${h}`).join("\n")}`;
 } catch (err) {
   console.error(`[session-start][process-hints] build failed: ${err.message}`);

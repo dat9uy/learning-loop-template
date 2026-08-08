@@ -255,11 +255,44 @@ describe("rule-derived process hints", () => {
       rulesById: new Map(),
     });
     const payload = JSON.parse(partitions[0]);
-    // 16 discoverability (all standalone) + 2 process (pnpm-test-discipline +
-    // file-edit-drift-and-fingerprints) = 18.
-    assert.strictEqual(payload.discoverability_hints.length, 16);
+    // 17 discoverability (all standalone) + 2 process (pnpm-test-discipline +
+    // file-edit-drift-and-fingerprints) = 19.
+    assert.strictEqual(payload.discoverability_hints.length, 17);
     assert.strictEqual(payload.process_hints.length, 2, "no rule-derived rows when rulesById is empty");
     assert.deepStrictEqual(warnings, [], "no warnings in degraded mode");
+  });
+
+  test("warm process_hints with empty rulesById is empty (both standalone rows on-demand)", () => {
+    // The standalone rows carry tier:"on-demand", so the startup-tier filter
+    // excludes them; with no rules to derive from, nothing remains. On-demand
+    // rows stay fetchable via loop_get_instruction and listed in hint_index.
+    const { buildProcessHints } = require(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/loop-introspect.js"));
+    assert.deepStrictEqual(buildProcessHints({ rulesById: new Map(), tier: "startup" }), [],
+      "startup-tier process view degrades to empty when both standalone rows are on-demand");
+    // Unfiltered, the same empty-rules view still yields the 2 standalone rows.
+    assert.strictEqual(buildProcessHints({ rulesById: new Map() }).length, 2,
+      "unfiltered process view keeps both standalone rows");
+  });
+
+  test("rule-derived process hints still inject at the startup tier while their rule is active", () => {
+    // Rule-derived rows carry no tier — they behave as startup and are
+    // unaffected by the standalone rows moving on-demand. This pins the
+    // interaction: an active agent-checklist rule's hint_text must appear in
+    // the startup-tier process view.
+    const rules = metaState.readRegistry(PROJECT_ROOT).filter(
+      (e) => e.entry_kind === "rule" && e.pattern_type === "agent-checklist" && e.status === "active",
+    );
+    assert.ok(rules.length > 0, "registry must have at least one active agent-checklist rule");
+    const rulesById = new Map(rules.map((r) => [r.id, r]));
+    const { buildProcessHints } = require(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/loop-introspect.js"));
+    const startupHints = buildProcessHints({ rulesById, tier: "startup" });
+    for (const rule of rules) {
+      assert.ok(startupHints.includes(rule.hint_text),
+        `startup-tier process_hints must include rule-derived hint for ${rule.id}`);
+    }
+    // And the on-demand standalone rows stay out of the startup tier.
+    assert.ok(!startupHints.some((h) => h.includes("pnpm test:iter")),
+      "startup-tier process_hints must exclude the on-demand pnpm-test-discipline row");
   });
 
   test("registry order preserved (2 standalone rows + 9 rule-derived rows in buildProcessView)", () => {

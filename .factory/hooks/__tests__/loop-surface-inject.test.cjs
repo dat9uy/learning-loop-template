@@ -65,6 +65,12 @@ describe("loop-surface-inject SessionStart hook", () => {
       // Hints are rendered from the canonical core builders.
       assert.ok(result.includes("--- discoverability_hints ---"));
       assert.ok(result.includes("--- process_hints ---"));
+      // The forked hook must emit the hint_index so on-demand hints stay
+      // discoverable on this runtime (it has no session-context.json sidecar).
+      assert.ok(result.includes("--- hint_index ---"), "factory block must carry hint_index");
+      assert.ok(result.includes("gate-verb-allowance"), "hint_index must list the on-demand row");
+      assert.ok(!result.includes("canonical_id_required"),
+        "on-demand full text must NOT be auto-injected at session start");
       assert.ok(result.includes("Do not invoke ck:use-mcp"));
     } finally {
       teardownTempDir(tempDir);

@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Reclassify existing hints on-demand"
-status: pending
+status: done
 priority: P1
 effort: "2h"
 dependencies: [1]

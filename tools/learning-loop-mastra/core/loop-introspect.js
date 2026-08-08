@@ -15,7 +15,7 @@ import { resolveToolImportUrl } from "./manifest-loader.js";
 // DISCOVERABILITY_HINTS / PROCESS_HINTS consts that lived here are deleted;
 // the builders below are thin projections over the registry — same return
 // shape, same order, no call-site changes for loop_describe consumers.
-import { listHints, buildProcessView, resolveHintText } from "./hint-registry.js";
+import { listHints, buildProcessView, resolveHintText, projectToPointers, buildHintIndex } from "./hint-registry.js";
 // Relationship-model centralization: `buildInverseIndexes` is a thin
 // re-export of the graph module's canonical implementation. The 6 named
 // maps are preserved for backward compatibility; the only intentional
@@ -120,32 +120,28 @@ function listAllMetaCategories() {
  * warm tier and the SessionStart hook. Back-compat projection over the
  * canonical registry (the hint-registry collapse).
  *
+ * `tier` is the injection-policy filter: warm-injection callers pass
+ * `{ tier: "startup" }` so on-demand rows are excluded from auto-injection
+ * (their discoverability rides on `buildHintIndex`); omitted → UNFILTERED
+ * (cold tier / inspection callers see the full registry).
+ *
  * Returns a frozen array, preserving the established return contract.
  * Pure function — no I/O.
  */
-export function buildDiscoverabilityHints() {
-  return Object.freeze(listHints({ kind: "discoverability" }).map((e) => e.text));
+export function buildDiscoverabilityHints({ tier } = {}) {
+  return Object.freeze(listHints({ kind: "discoverability", tier }).map((e) => e.text));
 }
 
-/**
- * Project a list of hint entries to pointer form. Each surviving entry is
- * represented as `${slug} — ${suggestion}` so the SessionStart hook can
- * advertise the pull path without pushing the full paragraph.
- *
- * The slug + suggestion pair already lives on every registry entry (the
- * test-enforced `length > 20` on `suggestion` keeps the projection useful).
- * Pure function over its input; no I/O, no randomness.
- */
-function projectToPointers(entries) {
-  return entries.map((entry, index) => {
-    const slug = entry?.slug ?? `hint-${index}`;
-    const suggestion = entry?.suggestion ?? entry?.text ?? "";
-    return `${slug} — ${suggestion}`;
-  });
-}
+// projectToPointers + buildHintIndex live in core/hint-registry.js and are
+// imported above for internal use (the string and structured discovery
+// projections share one projection so they cannot drift). Only buildHintIndex
+// is re-exported — it is the public discovery-surface builder the session-start
+// hooks consume; projectToPointers is an internal helper with no external call
+// site.
+export { buildHintIndex };
 
-export function buildDiscoverabilityPointers() {
-  return Object.freeze(projectToPointers(listHints({ kind: "discoverability" })));
+export function buildDiscoverabilityPointers({ tier } = {}) {
+  return Object.freeze(projectToPointers(listHints({ kind: "discoverability", tier })));
 }
 
 /**
@@ -169,8 +165,11 @@ export function buildDiscoverabilityPointers() {
  * @param {Map<string, {hint_text: string}>} [opts.rulesById] — precomputed
  *   rule map; when omitted, the function reads the registry from the project
  *   root resolved from `process.cwd()`.
+ * @param {"startup" | "on-demand"} [opts.tier] — injection-policy filter
+ *   applied to standalone rows (rule-derived rows carry no tier and behave as
+ *   startup). Warm-injection callers pass "startup"; omitted → unfiltered.
  */
-export function buildProcessHints({ rulesById } = {}) {
+export function buildProcessHints({ rulesById, tier } = {}) {
   let ruleMap = rulesById;
   if (!ruleMap) {
     // Lazy-read the registry from the project root.
@@ -181,6 +180,7 @@ export function buildProcessHints({ rulesById } = {}) {
   }
   const out = [];
   for (const entry of buildProcessView({ rulesById: ruleMap })) {
+    if (tier !== undefined && (entry.tier ?? "startup") !== tier) continue;
     // Shared resolution path (resolveHintText): standalone → inline text;
     // rule-derived → rule.hint_text, skipped (dropped from the array) when
     // the rule is missing/inactive/scope-filtered. Skipping is correct for
@@ -196,9 +196,10 @@ export function buildProcessHints({ rulesById } = {}) {
 /**
  * Pointer projection for the process hint set. Mirrors `buildProcessHints`
  * skip semantics (rule-derived entries with missing/inactive/scope-filtered
- * rules are dropped) and emits `${slug} — ${suggestion}` lines.
+ * rules are dropped) and emits `${slug} — ${suggestion}` lines. `tier`
+ * filters standalone rows for warm-injection callers; omitted → unfiltered.
  */
-export function buildProcessPointers({ rulesById } = {} = {}) {
+export function buildProcessPointers({ rulesById, tier } = {} = {}) {
   let ruleMap = rulesById;
   if (!ruleMap) {
     const projectRoot = process.cwd();
@@ -207,6 +208,7 @@ export function buildProcessPointers({ rulesById } = {} = {}) {
     for (const r of rules) ruleMap.set(r.id, r);
   }
   const surviving = buildProcessView({ rulesById: ruleMap })
+    .filter((entry) => tier === undefined || (entry.tier ?? "startup") === tier)
     .filter((entry) => Boolean(resolveHintText(entry, ruleMap)));
   return Object.freeze(projectToPointers(surviving));
 }

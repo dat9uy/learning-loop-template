@@ -52,7 +52,9 @@ describe("hint-render.mjs CLI", () => {
     // Each hint's slug surfaces in the stderr provenance list. Spot-check.
     assert.ok(result.stderr.includes("internalization-rule"), "provenance must include a discoverability slug");
     assert.ok(result.stderr.includes("pnpm-test-discipline"), "provenance must include a process slug");
-    // Provenance counts: 16 discoverability + 10 process = 26 source rows.
+    // Provenance counts: the renderer is unfiltered (both injection tiers), so
+    // the live registry yields 17 discoverability + 13 process-view rows = 30;
+    // floor at 26 to tolerate rule promotions/deactivations.
     const lines = result.stderr.split("\n").filter((l) => l.match(/\([a-z-]+\)\s+←/));
     assert.ok(lines.length >= 26, `provenance should list >= 26 hints; got ${lines.length}`);
   });

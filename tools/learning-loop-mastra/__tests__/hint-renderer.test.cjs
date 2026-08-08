@@ -102,8 +102,8 @@ describe("hint renderer", () => {
       channel: "claude-session-start",
       charBudget: STD_CHAR_BUDGET,
     });
-    // 16 disc + 2 standalone process = 18 rendered.
-    assert.strictEqual(provenance.length, 18, "degraded render covers standalone hints only");
+    // 17 disc + 2 standalone process = 19 rendered.
+    assert.strictEqual(provenance.length, 19, "degraded render covers standalone hints only");
     assert.deepStrictEqual(warnings, [], "no warnings in degraded mode (the view simply omits unrenderable rows)");
     assert.ok(partitions[1].includes("pnpm test"), "standalone process rows still render");
   });
@@ -150,7 +150,7 @@ describe("hint renderer", () => {
     ]) {
       assert.ok(key in parsed, `sidecar payload must include ${key}`);
     }
-    assert.ok(Array.isArray(parsed.discoverability_hints) && parsed.discoverability_hints.length === 16);
+    assert.ok(Array.isArray(parsed.discoverability_hints) && parsed.discoverability_hints.length === 17);
     assert.ok(Array.isArray(parsed.process_hints) && parsed.process_hints.length === 12,
       `process_hints must include 12 entries (resolved via rulesById); got ${parsed.process_hints.length}`);
     assert.strictEqual(parsed.discoverability_hints_source, "core");

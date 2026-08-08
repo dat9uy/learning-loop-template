@@ -1,7 +1,7 @@
 ---
 title: "hint injection-policy + on-demand reclassification + gate-verb-allowance key"
 description: "Collapse the hint triplication tax: add an injection-policy tier to HINT_REGISTRY (startup vs on-demand), reclassify 12 discoverability + 2 process hints on-demand, add the missing gate-verb-allowance key (finding meta-260808T1614Z), and dedup hint text against CLAUDE.md/AGENTS.md so no guidance is repeated and both stay minimal."
-status: pending
+status: complete
 priority: P1
 effort: "1-2d"
 tags: [discoverability, hints, gate-verb, dx, tdd]
@@ -48,10 +48,10 @@ On-demand hints must stay **discoverable** — an agent that does not know a hin
 
 | # | Phase | Status | Depends on |
 |---|-------|--------|------------|
-| 1 | [Phase 1: Injection-policy mechanism + gate-verb-allowance key](./phase-01-start.md) | Pending | — |
-| 2 | [Phase 2: Reclassify existing hints on-demand](./phase-02-reclassify-existing-hints-on-demand.md) | Pending | 1 |
-| 3 | [Phase 3: Dedup hint text + minimal CLAUDE.md and AGENTS.md](./phase-03-dedup-hint-text-minimal-claudemd-and-agentsmd.md) | Pending | 1, 2 |
-| 4 | [Phase 4: Resolve finding, docs, runtime-agnostic audit, ship](./phase-04-resolve-finding-docs-runtime-agnostic-audit-ship.md) | Pending | 1, 2, 3 |
+| 1 | [Phase 1: Injection-policy mechanism + gate-verb-allowance key](./phase-01-start.md) | Done | — |
+| 2 | [Phase 2: Reclassify existing hints on-demand](./phase-02-reclassify-existing-hints-on-demand.md) | Done | 1 |
+| 3 | [Phase 3: Dedup hint text + minimal CLAUDE.md and AGENTS.md](./phase-03-dedup-hint-text-minimal-claudemd-and-agentsmd.md) | Done | 1, 2 |
+| 4 | [Phase 4: Resolve finding, docs, runtime-agnostic audit, ship](./phase-04-resolve-finding-docs-runtime-agnostic-audit-ship.md) | In progress (merge + post-merge resolve) | 1, 2, 3 |
 
 Phase 1 ships the mechanism inert (default `startup` → no behavior change) plus the first on-demand entry (the key). Phase 2 flips the 12+2 switches. Phase 3 is text/docs dedup (independent of tier logic). Phase 4 closes the loop. Phases must land in order on one branch.
 
