@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Self-remediating gate-verb block message (A)"
-status: pending
+status: complete
 priority: P1
 effort: "3-4h"
 dependencies: []
@@ -57,10 +57,10 @@ id MUST equal affected_system. Allowance expires 30 min after timestamp.
 
 ## Success Criteria
 
-- [ ] Tests in step 1 pass.
-- [ ] Verb substitution verified for `bash` and `node`.
-- [ ] Non-gate-verb constraints (docker/sudo) unaffected.
-- [ ] `pnpm test:one` green; `check_runtime_agnostic` passes.
+- [x] Tests in step 1 pass.
+- [x] Verb substitution verified for `bash` and `node`.
+- [x] Non-gate-verb constraints (docker/sudo) unaffected.
+- [x] `pnpm test:one` green; `check_runtime_agnostic` passes.
 
 ## Risk Assessment
 

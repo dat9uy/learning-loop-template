@@ -1,7 +1,7 @@
 ---
 title: "gate-verb allowance self-remediating block + JSON guardrail + sentinel source_ref"
 description: "Collapse the 15-call gate-verb observation discovery tax to 2 calls: self-remediating block message (A), CLI bare-key JSON guardrail (C), sentinel source_ref (D). B (loop_get_instruction key) is deferred via a new finding in Phase 4."
-status: pending
+status: in_progress
 priority: P1
 effort: "1-2d"
 tags: [gate-logic, gate-verb, dx, tdd]
@@ -33,21 +33,21 @@ User instruction: "do A+C+D, the B need to be at the final step of the plan (res
 
 | # | Phase | Status | Depends on |
 |---|-------|--------|------------|
-| 1 | [Phase 1: Self-remediating gate-verb block message (A)](./phase-01-start.md) | Pending | — |
-| 2 | [Phase 2: CLI bare-key JSON guardrail (C)](./phase-02-cli-bare-key-json-guardrail.md) | Pending | — |
-| 3 | [Phase 3: Sentinel source_ref for gate-verb observations (D)](./phase-03-sentinel-source-ref-for-gate-verb-observations.md) | Pending | 1 |
-| 4 | [Phase 4: Resolve discovery-tax finding + file B finding](./phase-04-resolve-discovery-tax-finding-file-b-finding.md) | Pending | 1, 2, 3 |
+| 1 | [Phase 1: Self-remediating gate-verb block message (A)](./phase-01-start.md) | Complete | — |
+| 2 | [Phase 2: CLI bare-key JSON guardrail (C)](./phase-02-cli-bare-key-json-guardrail.md) | Complete | — |
+| 3 | [Phase 3: Sentinel source_ref for gate-verb observations (D)](./phase-03-sentinel-source-ref-for-gate-verb-observations.md) | Complete | 1 |
+| 4 | [Phase 4: Resolve discovery-tax finding + file B finding](./phase-04-resolve-discovery-tax-finding-file-b-finding.md) | Pending (post-merge) | 1, 2, 3 |
 
 Phase 3 depends on Phase 1 (the block-message incantation uses the sentinel). Phases 1 and 2 are independent and may be done in parallel.
 
 ## Success Criteria
 
-- [ ] A blocked `gate-verb:<verb>` command returns a reason containing both `gate_mark_preflight({surface:"runtime-state"})` and a `runtime_state_record(...)` call with the substituted `<verb>`, a valid ISO timestamp, and `source_ref:"local:meta-state:gate-verb-allowance"`, plus the `id==affected_system` rule.
-- [ ] `loop.mjs <tool> '{surface:"x"}'` (bare keys) exits 2 with a message naming quoted keys as the fix; `{"surface":"x"}` parses unchanged.
-- [ ] `runtime_state_record` accepts `source_ref:"local:meta-state:gate-verb-allowance"`; the sentinel is named in field-glossary, hint-registry, and CLAUDE.md.
+- [x] A blocked `gate-verb:<verb>` command returns a reason containing both `gate_mark_preflight({surface:"runtime-state"})` and a `runtime_state_record(...)` call with the substituted `<verb>`, a valid ISO timestamp, and `source_ref:"local:meta-state:gate-verb-allowance"`, plus the `id==affected_system` rule.
+- [x] `loop.mjs <tool> '{surface:"x"}'` (bare keys) exits 2 with a message naming quoted keys as the fix; `{"surface":"x"}` parses unchanged.
+- [x] `runtime_state_record` accepts `source_ref:"local:meta-state:gate-verb-allowance"`; the sentinel is named in field-glossary, hint-registry, and CLAUDE.md.
 - [ ] Finding `meta-260808T1217Z-...` is resolved; a new finding for the missing `loop_get_instruction` key B is open.
-- [ ] `pnpm test:one` green; no regression in existing gate-verb / CLI / runtime-state suites.
-- [ ] `check_runtime_agnostic` passes for the changed feature (shim-not-fork, cross-surface).
+- [x] `pnpm test:one` green; no regression in existing gate-verb / CLI / runtime-state suites.
+- [x] `check_runtime_agnostic` passes for the changed feature (shim-not-fork, cross-surface).
 
 ## Risk Assessment
 

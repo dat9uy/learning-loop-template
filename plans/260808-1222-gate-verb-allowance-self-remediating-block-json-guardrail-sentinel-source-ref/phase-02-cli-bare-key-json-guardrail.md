@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "CLI bare-key JSON guardrail (C)"
-status: pending
+status: complete
 priority: P2
 effort: "2h"
 dependencies: []
@@ -47,10 +47,10 @@ Confirm `--args-file` content reaches `parseJsonArg`: `loadArgsFile` (`bin/loop.
 
 ## Success Criteria
 
-- [ ] Bare-key JSON exits 2 with a quoted-keys hint; valid JSON unaffected.
-- [ ] Non-bare-key garbage does not trigger the hint.
-- [ ] Inline and `--args-file` paths both covered.
-- [ ] `pnpm test:one` green; existing CLI suites unaffected; `check_runtime_agnostic` passes.
+- [x] Bare-key JSON exits 2 with a quoted-keys hint; valid JSON unaffected.
+- [x] Non-bare-key garbage does not trigger the hint.
+- [x] Inline and `--args-file` paths both covered.
+- [x] `pnpm test:one` green; existing CLI suites unaffected; `check_runtime_agnostic` passes.
 
 ## Risk Assessment
 

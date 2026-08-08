@@ -52,7 +52,7 @@ const FIELD_GLOSSARY = Object.freeze({
     example: "local:meta-state:meta-260719T2120Z-example",
   },
   source_ref: {
-    meaning: "Source reference for a runtime-state record's governing finding.",
+    meaning: "Source reference for a runtime-state record's governing finding. For gate-verb budget-state observations the sanctioned sentinel is local:meta-state:gate-verb-allowance — intentionally non-resolving (no backing entry; runtime-state source_ref is not grounded against meta-state existence, so a future grounding check must whitelist it).",
     format: "local:meta-state:<finding-id>",
     example: "local:meta-state:meta-260719T2120Z-sessionstart-steering-injection-is-push-dependent-and-silent",
   },

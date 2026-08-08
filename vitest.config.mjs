@@ -62,6 +62,7 @@ const E2E_FILES = [
   // carry the loop.mjs path). Mention-only files that reference the path in
   // comments/strings use `CLI_BIN_PATH`/`CLI_COMMAND` and are NOT caught.
   "tools/learning-loop-mastra/__tests__/cli-args-file-dispatch.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-bare-key-json-hint.test.js",
   "tools/learning-loop-mastra/__tests__/cli-schema-flag.test.js",
   "tools/learning-loop-mastra/__tests__/cli-workflow-dispatch.test.js",
   "tools/learning-loop-mastra/__tests__/cli-write-exit-codes.test.js",

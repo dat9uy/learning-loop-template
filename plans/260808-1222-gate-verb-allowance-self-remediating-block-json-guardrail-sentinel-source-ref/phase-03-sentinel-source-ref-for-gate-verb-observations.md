@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Sentinel source_ref for gate-verb observations (D)"
-status: pending
+status: complete
 priority: P1
 effort: "2h"
 dependencies: [1]
@@ -48,10 +48,10 @@ Three doc surfaces + one test:
 
 ## Success Criteria
 
-- [ ] Sentinel acceptance test passes and is committed.
-- [ ] Sentinel named in field-glossary, hint-registry, and CLAUDE.md.
-- [ ] No schema file changed (regex unchanged).
-- [ ] `pnpm test:one` green; `check_runtime_agnostic` passes.
+- [x] Sentinel acceptance test passes and is committed.
+- [x] Sentinel named in field-glossary, hint-registry, and CLAUDE.md.
+- [x] No schema file changed (regex unchanged).
+- [x] `pnpm test:one` green; `check_runtime_agnostic` passes.
 
 ## Risk Assessment
 

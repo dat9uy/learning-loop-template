@@ -91,6 +91,23 @@ function commandWritesToRuntimeState(command) {
   return RUNTIME_STATE_WRITE_PATTERNS.some((p) => p.test(command));
 }
 
+// Self-remediating block reason for observation-gated gate-verb constraints.
+// Emits the exact 2-call incantation that records the allowance so the agent
+// copies two lines instead of discovering them. Verb is substituted from the
+// matched constraint; the timestamp is fresh at block time. The sentinel
+// source_ref is intentionally non-resolving (see field-glossary.js).
+function buildGateVerbRemediation(gateVerbMatch, { expired }) {
+  const lead = expired
+    ? `The recorded gate-verb observation has expired (gate-verb allowances are age-bounded). Record a fresh observation to unblock for 30 min:`
+    : `No active observation found. Record one to unblock for 30 min:`;
+  return (
+    `Constraint "${gateVerbMatch}" detected. ${lead}\n` +
+    `1) gate_mark_preflight({surface:"runtime-state"})\n` +
+    `2) runtime_state_record({affected_system:"${gateVerbMatch}", kind:"budget-state", id:"${gateVerbMatch}", source_ref:"local:meta-state:gate-verb-allowance", timestamp:"${new Date().toISOString()}"})\n` +
+    `id MUST equal affected_system. Allowance expires 30 min after timestamp.`
+  );
+}
+
 // fallow-ignore-next-line complexity
 export function evaluateBashGate({ command, root }) {
   if (!command || typeof command !== "string") {
@@ -148,12 +165,12 @@ export function evaluateBashGate({ command, root }) {
       ageExpired = true;
     }
     const gateVerbResult = makeGateDecision(gateVerbMatch, observationStatus);
-    // Distinguish "observation expired" from "never recorded" in the
-    // operator-facing reason — the remediation (record a fresh one) is the
-    // same, but the accurate cause avoids confusion when an operator
-    // recorded the observation earlier in the session.
-    if (ageExpired && gateVerbResult.observation_required) {
-      gateVerbResult.reason = `Constraint "${gateVerbMatch}" detected. The recorded gate-verb observation has expired (gate-verb allowances are age-bounded). Record a fresh observation before proceeding.`;
+    // Self-remediating reason: the observation_required gate-verb block
+    // (never recorded, or age-expired) carries the exact 2-call incantation
+    // that records the allowance, with the verb substituted and a fresh
+    // timestamp. The expired variant names the accurate cause.
+    if (gateVerbResult.observation_required) {
+      gateVerbResult.reason = buildGateVerbRemediation(gateVerbMatch, { expired: ageExpired });
     }
     // Staleness check, mirroring the constraint path — a stale observation
     // must not yield a plain `ok` for gate-verbs any more than for
