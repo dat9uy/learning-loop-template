@@ -222,17 +222,25 @@ export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
     if (existing) {
       return { appended: false, existing };
     }
-    const maxV = rows.reduce((acc, r) => {
-      if (r?.id !== row.id) return acc;
-      const v = Number.isFinite(parseInt(r?.version, 10)) ? parseInt(r.version, 10) : 0;
-      return v > acc ? v : acc;
-    }, -1);
-    const withVersion = { ...row, version: maxV + 1 };
+    const withVersion = { ...row, version: maxVersionForId(rows, row.id) + 1 };
     const withFingerprint = { ...withVersion, fingerprint: computeFingerprint(withVersion) };
     const sidecarPath = join(root, RUNTIME_STATE_FILENAME);
     appendFileSync(sidecarPath, JSON.stringify(withFingerprint) + "\n", "utf8");
     return { appended: true, row: withFingerprint };
   });
+}
+
+/**
+ * Highest `version` among `rows` sharing `id` (-1 when none). Missing or
+ * unparseable versions default to 0 (legacy rows predate the field).
+ * Module-private; shared by every append path's per-id version scan.
+ */
+function maxVersionForId(rows, id) {
+  return rows.reduce((acc, r) => {
+    if (r?.id !== id) return acc;
+    const v = Number.isFinite(parseInt(r?.version, 10)) ? parseInt(r.version, 10) : 0;
+    return v > acc ? v : acc;
+  }, -1);
 }
 
 /**
@@ -381,12 +389,7 @@ export async function appendLedgerEvent(root, row) {
     // perturbed by ephemeral rows in the local file (and vice versa). The
     // merged read is read-side only.
     const { rows: existing } = readRuntimeStateRowsForFile(root, filename);
-    const maxExisting = existing.reduce((acc, r) => {
-      if (r?.id !== row.id) return acc;
-      const v = Number.isFinite(parseInt(r?.version, 10)) ? parseInt(r.version, 10) : 0;
-      return v > acc ? v : acc;
-    }, -1);
-    const withVersion = { ...row, version: maxExisting + 1 };
+    const withVersion = { ...row, version: maxVersionForId(existing, row.id) + 1 };
     const withFingerprint = { ...withVersion, fingerprint: computeFingerprint(withVersion) };
     const sidecarPath = join(root, filename);
     // The local substrate's parent dir (`.loop/`) may not exist in a fresh
@@ -405,9 +408,9 @@ export async function appendLedgerEvent(root, row) {
  * symmetric namespace guard at the record-tool boundary guarantees a
  * `gate-verb:*` row always carries `durability: "ephemeral"` and a
  * non-`gate-verb` row always durable, so this resolution never contradicts
- * the contract.
+ * the contract. Module-private — the only caller is `appendLedgerEvent`.
  */
-export function resolveDestinationFilename(row) {
+function resolveDestinationFilename(row) {
   return (row?.durability ?? "durable") === "ephemeral"
     ? RUNTIME_STATE_LOCAL_FILENAME
     : RUNTIME_STATE_FILENAME;
