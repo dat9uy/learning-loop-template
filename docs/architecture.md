@@ -331,6 +331,9 @@ The marker file stores the first 200 characters of the operator's prompt in plai
 
 The runtime-state sidecar (`runtime-state.jsonl`) is the loop's short-term
 memory: budgets, counters, dispatch ledger events, and delivery attestations.
+
+**Durability drift (planned reconciliation).** The L1 durability axis (`docs/loop-engine.md` § Budget tracking vs ledger log) and the L2 contract (`docs/runtime-contract.md` § Runtime-state row kinds and the budget-tracking lifecycle) distinguish durable rows — ledger logs and the budget-tracking lifecycle — from ephemeral TTL'd allowances (e.g. `gate-verb:*`), which belong to the session that minted them. The current wiring predates that distinction and commits every row to the single file above, so an expired allowance can be committed as if it were durable history. Reconciling the ephemeral rows out of the committed substrate into a session-local surface is a planned mechanism change; until then, treat any TTL'd allowance row found here as local-only and do not propagate it as durable audit.
+
 Two maintenance contracts keep the sidecar tractable at operator scale.
 
 ### Versioned dedup (`max_by(version)` per id)
