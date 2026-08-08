@@ -169,15 +169,20 @@ export function buildDiscoverabilityPointers({ tier } = {}) {
  *   applied to standalone rows (rule-derived rows carry no tier and behave as
  *   startup). Warm-injection callers pass "startup"; omitted → unfiltered.
  */
+// Resolve a rulesById map: return the caller's precomputed map when supplied,
+// otherwise lazy-read the promoted-rule registry from the project root
+// (resolved from process.cwd()). Shared by buildProcessHints and
+// buildProcessPointers so the lazy-read projection cannot drift between them.
+function resolveRuleMap(rulesById) {
+  if (rulesById) return rulesById;
+  const projectRoot = process.cwd();
+  const ruleMap = new Map();
+  for (const r of loadPromotedRules(projectRoot)) ruleMap.set(r.id, r);
+  return ruleMap;
+}
+
 export function buildProcessHints({ rulesById, tier } = {}) {
-  let ruleMap = rulesById;
-  if (!ruleMap) {
-    // Lazy-read the registry from the project root.
-    const projectRoot = process.cwd();
-    const rules = loadPromotedRules(projectRoot);
-    ruleMap = new Map();
-    for (const r of rules) ruleMap.set(r.id, r);
-  }
+  const ruleMap = resolveRuleMap(rulesById);
   const out = [];
   for (const entry of buildProcessView({ rulesById: ruleMap })) {
     if (tier !== undefined && (entry.tier ?? "startup") !== tier) continue;
@@ -200,13 +205,7 @@ export function buildProcessHints({ rulesById, tier } = {}) {
  * filters standalone rows for warm-injection callers; omitted → unfiltered.
  */
 export function buildProcessPointers({ rulesById, tier } = {} = {}) {
-  let ruleMap = rulesById;
-  if (!ruleMap) {
-    const projectRoot = process.cwd();
-    const rules = loadPromotedRules(projectRoot);
-    ruleMap = new Map();
-    for (const r of rules) ruleMap.set(r.id, r);
-  }
+  const ruleMap = resolveRuleMap(rulesById);
   const surviving = buildProcessView({ rulesById: ruleMap })
     .filter((entry) => tier === undefined || (entry.tier ?? "startup") === tier)
     .filter((entry) => Boolean(resolveHintText(entry, ruleMap)));

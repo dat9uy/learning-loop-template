@@ -402,22 +402,29 @@ function formatSessionSummary(core, stale_dispatch_hints, change_log_gap_hints, 
 /**
  * Build the session-context.json payload from the loader results. Pure over
  * its inputs (no I/O, no `new Date`). The `?? null` coalescing for per-loader
- * error fields lives here rather than in `main` so `main`'s cyclomatic
- * complexity stays low. Exported for in-process testing.
+ * error fields lives in `orNull` (below) rather than inlined here or in
+ * `main`, so both functions' cyclomatic complexity stays low. Exported for
+ * in-process testing.
  */
+// Normalize a possibly-undefined per-loader error field to null. Centralizing
+// the `??` here keeps the decision points out of buildContextPayload (and
+// main), which would otherwise cross the cyclomatic threshold as per-loader
+// error fields are added.
+const orNull = (v) => v ?? null;
+
 function buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, injectedAt) {
   return {
     discoverability_hints: core.discoverability_hints,
     discoverability_hints_source: core.discoverability_hints_source,
-    discoverability_hints_error: core.discoverability_hints_error ?? null,
+    discoverability_hints_error: orNull(core.discoverability_hints_error),
     process_hints: core.process_hints,
     process_hints_source: core.process_hints_source,
-    process_hints_error: core.process_hints_error ?? null,
+    process_hints_error: orNull(core.process_hints_error),
     hint_index: core.hint_index,
     hint_index_source: core.hint_index_source,
-    hint_index_error: core.hint_index_error ?? null,
+    hint_index_error: orNull(core.hint_index_error),
     registry_source: registry.registry_source,
-    registry_error: registry.registry_error ?? null,
+    registry_error: orNull(registry.registry_error),
     stale_dispatch_hints,
     change_log_gap_hints,
     injected_at: injectedAt,
