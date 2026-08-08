@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Resolve discovery-tax finding + file B finding"
-status: pending
+status: complete
 priority: P1
 effort: "1h"
 dependencies: [1, 2, 3]
@@ -51,10 +51,10 @@ Two loop-tool calls, in order:
 
 ## Success Criteria
 
-- [ ] Discovery-tax finding `meta-260808T1217Z-...` is `resolved`.
-- [ ] New B finding is `open`, `loop-anti-pattern`/`warning`, cites `hint-registry.js` as `evidence_code_ref`.
-- [ ] No direct `meta-state.jsonl` writes (all via loop tools).
-- [ ] Temp args file cleaned up.
+- [x] Discovery-tax finding `meta-260808T1217Z-...` is `resolved`.
+- [x] New B finding is `open`, `loop-anti-pattern`/`warning`, cites `hint-registry.js` as `evidence_code_ref`.
+- [x] No direct `meta-state.jsonl` writes (all via loop tools).
+- [x] Temp args file cleaned up.
 
 ## Risk Assessment
 
