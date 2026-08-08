@@ -5,10 +5,9 @@ import {
   makeGateDecision,
   loadPromotedRules,
   applyPromotedRules,
-  splitSegments,
-  stripMessageFlags,
   isSafeRegexPattern,
 } from "../../core/gate-logic.js";
+import { classifyPolicyTokens } from "../../core/shell-parse.js";
 import { mkdtempSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -373,7 +372,7 @@ describe("gate promoted rules new behavior", () => {
   });
 });
 
-describe("gate promoted rules G8 stripMessageFlags", () => {
+describe("gate promoted rules G8 message-flag values are data", () => {
   const activeRule = {
     id: "rule-no-new-artifact-types",
     entry_kind: "rule",
@@ -433,60 +432,60 @@ describe("gate promoted rules G8 stripMessageFlags", () => {
     assert.strictEqual(result.rule_id, "rule-no-new-artifact-types");
   });
 
-  test("splitSegments exports correct segments", () => {
-    const segments = splitSegments("a; b & c | d");
-    assert.deepStrictEqual(segments, ["a", "b", "c", "d"]);
+  test("quote-aware segmentation splits on every unquoted separator", () => {
+    const view = classifyPolicyTokens("a; b & c | d");
+    assert.deepStrictEqual(view.segments.map((s) => s.verb), ["a", "b", "c", "d"]);
   });
 
-  test("splitSegments does NOT split on ';' inside single quotes", () => {
-    const segments = splitSegments("git commit -m 'a;b;c'");
-    assert.deepStrictEqual(segments, ["git commit -m 'a;b;c'"]);
+  test("quote-aware segmentation does NOT split on ';' inside single quotes", () => {
+    const view = classifyPolicyTokens("git commit -m 'a;b;c'");
+    assert.strictEqual(view.segments.length, 1);
   });
 
-  test("splitSegments does NOT split on ';' inside double quotes", () => {
-    const segments = splitSegments('git commit -m "a;b;c"');
-    assert.deepStrictEqual(segments, ['git commit -m "a;b;c"']);
+  test("quote-aware segmentation does NOT split on ';' inside double quotes", () => {
+    const view = classifyPolicyTokens('git commit -m "a;b;c"');
+    assert.strictEqual(view.segments.length, 1);
   });
 
-  test("splitSegments handles nested quote contexts correctly", () => {
+  test("quote-aware segmentation handles nested quote contexts correctly", () => {
     // A double-quoted string containing a single-quoted substring should
     // not be terminated by the inner single quote.
-    const segments = splitSegments(`echo "it's fine; really"`);
-    assert.deepStrictEqual(segments, [`echo "it's fine; really"`]);
+    const view = classifyPolicyTokens(`echo "it's fine; really"`);
+    assert.strictEqual(view.segments.length, 1);
+    assert.strictEqual(view.segments[0].verb, "echo");
   });
 
-  test("splitSegments handles backslash escapes outside quotes", () => {
+  test("quote-aware segmentation handles backslash escapes outside quotes", () => {
     // The escaped ';' should not be a separator.
-    const segments = splitSegments("echo a\\;b");
-    assert.deepStrictEqual(segments, ["echo a\\;b"]);
+    const view = classifyPolicyTokens("echo a\\;b");
+    assert.strictEqual(view.segments.length, 1);
   });
 
-  test("splitSegments handles backslash escapes inside double quotes", () => {
+  test("quote-aware segmentation handles backslash escapes inside double quotes", () => {
     // Inside double quotes, a backslash escapes the next char; the escaped
     // double-quote is a literal char, not a quote-close.
-    const segments = splitSegments('echo "a\\"b;c"');
-    assert.deepStrictEqual(segments, ['echo "a\\"b;c"']);
+    const view = classifyPolicyTokens('echo "a\\"b;c"');
+    assert.strictEqual(view.segments.length, 1);
   });
 
-  test("splitSegments still splits on unquoted separators", () => {
-    const segments = splitSegments('cmd1; cmd2 "x;y"; cmd3');
-    assert.deepStrictEqual(segments, ['cmd1', 'cmd2 "x;y"', "cmd3"]);
+  test("quote-aware segmentation still splits on unquoted separators", () => {
+    const view = classifyPolicyTokens('cmd1; cmd2 "x;y"; cmd3');
+    assert.deepStrictEqual(view.segments.map((s) => s.verb), ["cmd1", "cmd2", "cmd3"]);
   });
 
-  test("splitSegments (regression: splitSegments-quote-unaware bug) — quoted message body with ';' and trigger words stays one segment", () => {
+  test("quote-aware segmentation (regression: quote-unaware split bug) — quoted message body with ';' and trigger words stays one segment", () => {
     // Empirical proof 2026-06-06: a git commit message body containing
     // 'create a new schema' (a legit rule trigger) was fragmenting on
     // the ';' in 'false positives; CLI subcommand' and matching the rule.
     const msg = `git commit -m "fix(gate): G8 fix" -m "Some body; create a new schema; still escalate"`;
-    const segments = splitSegments(msg);
-    assert.strictEqual(segments.length, 1, `Expected 1 segment, got ${segments.length}: ${JSON.stringify(segments)}`);
-    assert.strictEqual(segments[0], msg);
+    const view = classifyPolicyTokens(msg);
+    assert.strictEqual(view.segments.length, 1, `Expected 1 segment, got ${view.segments.length}`);
   });
 
   test("applyPromotedRules returns ok for git commit with trigger words in quoted -m body (the P1 latent bug)", () => {
     // The active rule, with the refined pattern, would still match
     // 'create a new schema' inside a -m body — BUT the quote-aware
-    // splitSegments keeps the body intact, and stripMessageFlags then
+    // segmentation keeps the body intact, and the message-flag strip then
     // strips the -m value, so the regex sees only 'git commit'.
     const result = applyPromotedRules(
       `git commit -m "fix(gate): G8 fix" -m "body; create a new schema; escalate"`,
@@ -496,17 +495,10 @@ describe("gate promoted rules G8 stripMessageFlags", () => {
     assert.strictEqual(result.decision, "ok");
   });
 
-  test("stripMessageFlags strips -m and --title values", () => {
-    const stripped = stripMessageFlags('git commit -m "create new convention"');
-    assert.ok(!stripped.includes("create"));
-    assert.ok(stripped.includes("git"));
-    assert.ok(stripped.includes("commit"));
-  });
-
   test("applyPromotedRules: node -e body with trigger phrase → ok (no escalate)", () => {
     // The trigger phrase "create a new schema" is inside the `node -e` body.
-    // After Phase 2 ships stripNodeEvalBody, the body is blanked before regex match.
-    // Today (RED), the regex sees the trigger and escalates.
+    // The node-eval body is blanked before the regex match, so a trigger that
+    // only exists inside the body does not escalate.
     const rules = [
       {
         id: "rule-no-new-artifact-types",

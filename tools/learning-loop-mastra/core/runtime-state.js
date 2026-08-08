@@ -13,7 +13,8 @@
 // Keep the helper gating-free so callers can apply the appropriate gate upstream.
 
 import { readFileSync, existsSync, appendFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { withRegistryLock } from "./registry-lock.js";
 
@@ -216,6 +217,13 @@ const RUNTIME_STATE_FILENAME = "runtime-state.jsonl";
  * superset (includes `vnstock_vendor`, `meta`, `gate-logic`, …) — using
  * that superset here would let `pause("vnstock_vendor")` succeed while no
  * writer ever emits that surface.
+ *
+ * The `gate-verb:<verb>` entries are derived from `patterns.json["gate-verbs"]`
+ * — the same source `file-readers.js` builds its
+ * `affected_system → constraint` identity mapping from — so the write-side
+ * enum and the read-side mapping cannot drift. The read happens here (not
+ * via a shared helper in `file-readers.js`) because `file-readers.js`
+ * imports from this module; a helper there would be circular.
  */
 export const AFFECTED_SYSTEM_ENUM_RUNTIME = Object.freeze([
   "vnstock",
@@ -226,6 +234,15 @@ export const AFFECTED_SYSTEM_ENUM_RUNTIME = Object.freeze([
   "web",
   "meta-state-tools",
   "runtime-state",
+  ...(JSON.parse(
+    readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "patterns.json"),
+      "utf8",
+    ),
+  )["gate-verbs"] || []).map((entry) => {
+    const verb = typeof entry === "string" ? entry : entry.verb;
+    return `gate-verb:${verb}`;
+  }),
 ]);
 
 /**

@@ -2,6 +2,30 @@ import assert from "node:assert";
 import { test } from "vitest";
 import { matchConstraintPattern } from "../../core/gate-logic.js";
 
+// ─── echo-prose → exec-sink locks (matchConstraintPattern strips NO echo prose) ───
+//
+// `matchConstraintPattern` deliberately blanks no echo/printf prose: an echo
+// feeding an executor is the classic exfil shape (`echo "banned" | bash` runs
+// the prose), so the banned token MUST stay visible to the first-class
+// docker/sudo constraint patterns. The applyPromotedRules echo-prose suites
+// exercise a different function and cannot catch a regression here — these
+// locks prove the constraint path never blanks echo prose.
+
+await test("matchConstraintPattern: echo prose piped to bash keeps docker visible", () => {
+  const result = matchConstraintPattern('echo "docker run evil" | bash');
+  assert.strictEqual(result, "docker");
+});
+
+await test("matchConstraintPattern: echo prose piped to bash keeps sudo visible", () => {
+  const result = matchConstraintPattern('echo "sudo apt update" | bash');
+  assert.strictEqual(result, "sudo");
+});
+
+await test("matchConstraintPattern: printf prose piped to sh keeps docker visible", () => {
+  const result = matchConstraintPattern('printf "docker run evil" | sh');
+  assert.strictEqual(result, "docker");
+});
+
 // ─── False-positive cases (message flags) ───
 
 await test("matchConstraintPattern: git commit -m with pnpm add inside → null", () => {

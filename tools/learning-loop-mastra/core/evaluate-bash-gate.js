@@ -16,6 +16,7 @@ import {
 } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 import { checkObservationStaleness } from "./inbound-state.js";
+import { isObservationStaleByAge } from "./observation-staleness.js";
 import { hasSurfacePreflightMarker } from "./runtime-tracking.js";
 import { SURFACES } from "./surfaces.js";
 
@@ -130,8 +131,30 @@ export function evaluateBashGate({ command, root }) {
   const gateVerbMatch = matchGateVerb(command);
   if (gateVerbMatch) {
     const observations = readRuntimeObservations(resolvedRoot);
-    const observationStatus = checkObservationExists(gateVerbMatch, observations);
+    let observationStatus = checkObservationExists(gateVerbMatch, observations);
+    // Gate-verb observations are age-bounded: unlike the marker-mode
+    // staleness below (which only flips when a fresh operator marker
+    // post-dates the observation), a `gate-verb:<verb>` observation expires
+    // on age alone after OBSERVATION_STALENESS_WINDOW_MS (30 min). This is
+    // what makes the recorded allowance a bounded window rather than an
+    // indefinite one. Scoped to gate-verb constraints; the vnstock
+    // constraint path keeps marker-mode semantics.
+    let ageExpired = false;
+    if (
+      observationStatus.found &&
+      isObservationStaleByAge(observationStatus.observation, Date.now())
+    ) {
+      observationStatus = { found: false };
+      ageExpired = true;
+    }
     const gateVerbResult = makeGateDecision(gateVerbMatch, observationStatus);
+    // Distinguish "observation expired" from "never recorded" in the
+    // operator-facing reason — the remediation (record a fresh one) is the
+    // same, but the accurate cause avoids confusion when an operator
+    // recorded the observation earlier in the session.
+    if (ageExpired && gateVerbResult.observation_required) {
+      gateVerbResult.reason = `Constraint "${gateVerbMatch}" detected. The recorded gate-verb observation has expired (gate-verb allowances are age-bounded). Record a fresh observation before proceeding.`;
+    }
     // Staleness check, mirroring the constraint path — a stale observation
     // must not yield a plain `ok` for gate-verbs any more than for
     // docker/sudo constraints.

@@ -134,6 +134,45 @@ function newSegment() {
   };
 }
 
+/**
+ * Resolve the index of the first executable (verb) token in a segment's
+ * token-value list, or -1 when there is none. Flag-aware verb resolution:
+ * leading env-assignments (`FOO=bar`), command-prefixes
+ * (sudo/time/nice/nohup/command), prefix flags, and the detached values of
+ * value-taking prefix flags (`nice -n 5`, `sudo -u root`) are all skipped, so
+ * `nice -n 5 bash` and `time -p bash` resolve to the real verb rather than
+ * to the prefix's flag value.
+ *
+ * Shared by `finalizeSegment` (policy-view construction) and the gate-logic
+ * strip chain (`segmentVerb`), so the full-command pass resolves verbs with
+ * the same flag-awareness as the per-segment pass. Single source of truth —
+ * do not fork this logic.
+ */
+export function resolveVerbIndex(values) {
+  let lastPrefix = null;
+  let skipValueOfFlag = false;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (skipValueOfFlag) {
+      skipValueOfFlag = false;
+      continue;
+    }
+    if (COMMAND_PREFIXES.has(v)) {
+      lastPrefix = v;
+      continue;
+    }
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(v)) continue; // env-assignment
+    if (v.startsWith("-") && v.length > 1) {
+      if (lastPrefix && PREFIX_VALUE_FLAGS[lastPrefix]?.has(v)) {
+        skipValueOfFlag = true;
+      }
+      continue; // prefix flag (e.g. `-p` in `time -p bash`)
+    }
+    return i;
+  }
+  return -1;
+}
+
 function finalizeSegment(seg) {
   // Determine verb: first non-prefix, non-env-assignment string token.
   // Env-assignments may be lowercase (`path=x bash`) — bash accepts both.
@@ -142,31 +181,8 @@ function finalizeSegment(seg) {
   // `time -p bash` still resolve verb=bash.
   // Verb matching uses `basename(verb)` so PATH-qualified verbs normalize.
   const tokens = seg._tokens;
-  let verbIdx = -1;
-  let verb = null;
-  let lastPrefix = null;
-  let skipValueOfFlag = false;
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (skipValueOfFlag) {
-      skipValueOfFlag = false;
-      continue;
-    }
-    if (COMMAND_PREFIXES.has(t.value)) {
-      lastPrefix = t.value;
-      continue;
-    }
-    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t.value)) continue; // env-assignment
-    if (t.value.startsWith("-") && t.value.length > 1) {
-      if (lastPrefix && PREFIX_VALUE_FLAGS[lastPrefix]?.has(t.value)) {
-        skipValueOfFlag = true;
-      }
-      continue; // prefix flag (e.g. `-p` in `time -p bash`)
-    }
-    verbIdx = i;
-    verb = basename(t.value);
-    break;
-  }
+  const verbIdx = resolveVerbIndex(tokens.map((t) => t.value));
+  const verb = verbIdx === -1 ? null : basename(tokens[verbIdx].value);
 
   const out = {
     verb,
