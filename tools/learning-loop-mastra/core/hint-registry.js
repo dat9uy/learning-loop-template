@@ -55,7 +55,7 @@ export const HINT_REGISTRY = Object.freeze([
     text:
       "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
     suggestion:
-      "Use `local:meta-state:<id>` for citations; reserve `local:plans/...` markdown refs for the escape hatch.",
+      "Use `local:meta-state:<id>` for citations; reserve `local:plans/...` markdown refs for the escape hatch. Gate-verb budget-state observations use the non-resolving sentinel `local:meta-state:gate-verb-allowance`.",
     derived_from_rule: null,
   },
   {

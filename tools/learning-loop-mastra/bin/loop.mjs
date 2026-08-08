@@ -80,10 +80,25 @@ async function runList() {
   process.stdout.write(lines.join("\n") + "\n");
 }
 
+// Detects the bare-key shape (`{surface:"x"}` — an unquoted key after `{` or
+// `,`). Runs only on the JSON.parse SyntaxError path, so valid JSON never
+// reaches it; a match means the caller very likely wrote JS-object literal
+// syntax and the fix is quoting the keys.
+function looksLikeBareKeyJson(raw) {
+  return /[{,]\s*[A-Za-z_][A-Za-z0-9_]*\s*:/.test(raw);
+}
+
 function parseJsonArg(jsonArgs) {
   try {
     return JSON.parse(jsonArgs);
   } catch (err) {
+    if (err instanceof SyntaxError && looksLikeBareKeyJson(jsonArgs)) {
+      // Quote the bare keys to show the caller the exact fixed shape.
+      const fixed = jsonArgs.replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)/g, '$1"$2"$3');
+      throw new UsageError(
+        `invalid JSON: ${err.message}\nhint: JSON requires quoted keys — use ${fixed} not ${jsonArgs}`,
+      );
+    }
     throw new UsageError(`invalid JSON: ${err.message}`);
   }
 }

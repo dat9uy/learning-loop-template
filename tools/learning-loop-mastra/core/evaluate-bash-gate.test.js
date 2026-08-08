@@ -480,3 +480,68 @@ test("constraint ok + path-write block → path wins", () => {
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.hard_block, true);
 });
+
+// ── gate-verb block remediation (self-remediating block message) ──
+
+test("gate-verb:bash block reason carries the 2-call remediation incantation", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "bash -c 'echo hi'", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.constraint_type, "gate-verb:bash");
+  assert.ok(result.reason.includes('gate_mark_preflight({surface:"runtime-state"})'));
+  assert.ok(result.reason.includes('runtime_state_record({affected_system:"gate-verb:bash"'));
+  assert.ok(result.reason.includes('kind:"budget-state"'));
+  assert.ok(result.reason.includes('id:"gate-verb:bash"'));
+  assert.ok(result.reason.includes('source_ref:"local:meta-state:gate-verb-allowance"'));
+  assert.ok(result.reason.includes("id MUST equal affected_system"));
+});
+
+test("gate-verb block reason embeds a fresh ISO timestamp", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "bash -c 'echo hi'", root });
+  assert.strictEqual(result.decision, "block");
+  const match = result.reason.match(/timestamp:"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z)"/);
+  assert.ok(match, "reason must embed a timestamp field with an ISO value");
+  // Fresh: within the last minute of the assertion running.
+  assert.ok(Date.now() - Date.parse(match[1]) < 60 * 1000);
+});
+
+test("gate-verb remediation substitutes the matched verb (node)", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: 'node -e "1"', root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.constraint_type, "gate-verb:node");
+  assert.ok(result.reason.includes('runtime_state_record({affected_system:"gate-verb:node"'));
+  assert.ok(result.reason.includes('id:"gate-verb:node"'));
+  assert.ok(!result.reason.includes('affected_system:"gate-verb:bash"'));
+});
+
+test("non-gate-verb constraint block (docker) is NOT enriched with the incantation", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "docker run alpine", root });
+  assert.strictEqual(result.decision, "block");
+  assert.ok(!result.reason.includes("runtime_state_record"));
+  assert.ok(!result.reason.includes("gate_mark_preflight"));
+});
+
+test("expired gate-verb observation → reason carries the same incantation with fresh framing", () => {
+  const root = makeRoot();
+  writeRuntimeState(root, [
+    {
+      id: "obs-bash",
+      kind: "budget-state",
+      status: "active",
+      affected_system: "gate-verb:bash",
+      // Older than the 30-min age window → expired for gate-verb allowances.
+      timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    },
+  ]);
+  const result = evaluateBashGate({ command: "bash -c 'echo hi'", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.observation_required, true);
+  assert.ok(/expired/i.test(result.reason));
+  assert.ok(/fresh/i.test(result.reason));
+  assert.ok(result.reason.includes('gate_mark_preflight({surface:"runtime-state"})'));
+  assert.ok(result.reason.includes('runtime_state_record({affected_system:"gate-verb:bash"'));
+  assert.ok(result.reason.includes('source_ref:"local:meta-state:gate-verb-allowance"'));
+});

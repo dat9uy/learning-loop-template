@@ -347,6 +347,34 @@ describe("runtime_state_pause / resume / stop handlers", () => {
     }
   });
 
+  test("gate-verb budget-state row with the sentinel source_ref records successfully", async () => {
+    // Pins local:meta-state:gate-verb-allowance as the sanctioned sentinel
+    // for gate-verb observations: accepted by the source_ref validation and
+    // intentionally non-resolving (runtime-state source_ref is not grounded
+    // against meta-state existence). A future grounding check must whitelist
+    // the sentinel or this test fails loudly.
+    const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-record-sentinel-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createBothPreflights(tempDir);
+
+      const res = await runtimeStateRecordTool.handler({
+        affected_system: "gate-verb:bash",
+        kind: "budget-state",
+        id: "gate-verb:bash",
+        source_ref: "local:meta-state:gate-verb-allowance",
+        timestamp: new Date().toISOString(),
+      });
+      const parsed = JSON.parse(res.content[0].text);
+      assert.strictEqual(parsed.ok, true, `sentinel source_ref must record; got: ${JSON.stringify(parsed)}`);
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   test("runtime_state_record rejects a budget-state row under a non-canonical id", async () => {
     const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
     const tempDir = mkdtempSync(join(tmpdir(), "rt-record-freshid-"));
