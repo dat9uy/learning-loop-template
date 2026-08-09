@@ -317,7 +317,7 @@ Marker files are written atomically (write to temp + rename) in `inbound-state-g
 
 #### Recurring false-positive detection
 
-`gate_check_recurrence` and the `recurrence-check-on-start` SessionStart hook read `.gate-decision.log` across all surfaces, group by `rule_id` + normalized command prefix, and auto-file a `finding` when a pattern recurs at least 3 times within 10 minutes. The SessionStart hook runs the check on every session start; threshold and window are configurable. This surfaces overly-broad promoted rules or constraint patterns that match benign commands without manual operator notice.
+`gate_check_recurrence` and the `recurrence-check-on-start` SessionStart hook read `.gate-decision.log` across all surfaces, group by `rule_id` + normalized command prefix, and auto-file a `finding` when a pattern recurs N≥3 times within one session. The SessionStart hook runs the check on every session start; threshold and window are configurable. The tracker normalizes the prefix through a coarser key than the gate's blanker chain (`blankDataPayloadsForKey` in `recurrence-tracker.js`): heredoc bodies and `node -e` payloads are data to the key, so all payload variants of one root-cause class collapse to one finding. This surfaces overly-broad promoted rules or constraint patterns that match benign commands without manual operator notice.
 
 #### Per-worktree marker isolation
 

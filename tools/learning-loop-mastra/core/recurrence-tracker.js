@@ -26,6 +26,156 @@ export function normalizePrefix(command) {
 }
 
 /**
+ * Tracker-only data-blanking for recurrence-key derivation. COARSER than the
+ * gate's blanker chain (`stripHeredocBodies`): the recurrence key is a
+ * grouping artifact with NO bypass consequence, so it blanks classes the gate
+ * deliberately keeps visible:
+ *
+ *   (a) ALL heredoc bodies — quoted `<<'EOF'` AND unquoted `<<EOF` (the
+ *       residual class the gate leaves visible). The body can vary per
+ *       occurrence (different data lines) while the root-cause class is one.
+ *   (b) `node -e` / `--input-type=module` bodies from the opening quote to
+ *       end — escaped-quote-tolerant (the documented `stripNodeEvalBody`
+ *       limitation: it stops at the first `\"`). The key must collapse
+ *       `node -e "a"` / `node -e "b"` / escaped variants into one class.
+ *   (c) The redirect target and delimiter word for blankable-verb heredocs,
+ *       so `cat > /tmp/VARYING <<'EOF'` shapes collapse (the live logged
+ *       shapes carry varying redirect paths + delimiter names).
+ *
+ * Over-collapse guard: the key is salted with a residue of POST-heredoc real
+ * command text, so data-only body variants collapse but a distinct trailing
+ * real command (`; vitest run | tail` after the heredoc) does NOT collapse
+ * into the false-positive class. Concretely, a short hash of the tokens
+ * following the heredoc terminator is appended to the blanked string.
+ *
+ * This function returns a string for HASHING ONLY — it never reaches the gate
+ * decision path. `normalizePrefix` (the shared capture-time redactor used by
+ * toolchain-failure-capture.js and the debug emitters) is UNCHANGED; the
+ * coarser blanking lives only here, applied at scan time.
+ */
+// Blank the redirect target token following the LAST `>` in `prefix` (e.g.
+// `/tmp/VARYING` in `cat > /tmp/VARYING <<'EOF'`), preserving surrounding
+// whitespace so the 50-char truncation window stays stable. Varying redirect
+// paths are a data variant of one root-cause class, not distinct classes.
+function blankRedirectTarget(prefix) {
+  let idx = -1;
+  for (let p = 0; p < prefix.length; p++) if (prefix[p] === ">") idx = p;
+  if (idx === -1) return prefix;
+  let t = idx + 1;
+  while (t < prefix.length && (prefix[t] === ">" || prefix[t] === " " || prefix[t] === "\t")) t++;
+  let tEnd = t;
+  while (tEnd < prefix.length && !/[\s;]/.test(prefix[tEnd])) tEnd++;
+  if (t === tEnd) return prefix; // no target token
+  return prefix.slice(0, t) + " ".repeat(tEnd - t) + prefix.slice(tEnd);
+}
+
+// fallow-ignore-next-line unused-export -- public API consumed by gate-recurrence tests
+export function blankDataPayloadsForKey(command) {
+  if (typeof command !== "string" || !command) return command;
+  let out = "";
+  let i = 0;
+  while (i < command.length) {
+    // Heredoc operator detection — outside quotes. The tracker's input is the
+    // one-line-flattened command_prefix (newlines already replaced with
+    // spaces), so the terminator boundary is the next `;` after the delimiter
+    // word (the delimiter appears as a standalone token before it).
+    if (command[i] === "<" && command[i + 1] === "<") {
+      let opEnd = i + 2;
+      if (command[opEnd] === "-") opEnd++;
+      // Herestring `<<<` — not a heredoc, leave visible (its body executes).
+      // Emit the ENTIRE `<<<` operator and advance past it — emitting only one
+      // `<` would leave the remaining `<<` re-parsed as a heredoc and blank
+      // whatever follows to end (a real command on the next line).
+      if (command[opEnd] === "<") {
+        out += command.slice(i, opEnd + 1);
+        i = opEnd + 1;
+        continue;
+      }
+      // Parse the delimiter word (quoting chars are part of it in the
+      // gate-log path; the toolchain-failure path pre-stripped them).
+      let j = opEnd;
+      while (j < command.length && (command[j] === " " || command[j] === "\t")) j++;
+      let k = j;
+      while (k < command.length && !/[\s;]/.test(command[k])) k++;
+      if (k === j) {
+        out += command[i];
+        i++;
+        continue; // no delimiter word — not a recognizable heredoc
+      }
+      // Blank through the next `;` (the one-line-flattened terminator
+      // boundary) or to end when unterminated — the 80-char window may cut
+      // the body before its terminator. The body + closing delimiter are DATA
+      // either way.
+      const termIdx = command.indexOf(";", k);
+      const end = termIdx === -1 ? command.length : termIdx;
+      // (c) Redirect target + opening delimiter word blanked: `cat >
+      // /tmp/VARYING <<'EOF'` and `cat > /tmp/OTHER <<"BOUNDARY"` collapse
+      // to the same class. The closing delimiter word lives in the body span
+      // `[k, end)` and is blanked with it. The prefix chars before the `<<`
+      // are already in `out` — rewrite them with the redirect target blanked.
+      out = blankRedirectTarget(out);
+      out += command.slice(i, opEnd); // keep the `<<` / `<<-` operator
+      out += " ".repeat(Math.max(0, k - j)); // blank the opening delimiter
+      out += " ".repeat(Math.max(0, end - k)); // blank the body + closing delim
+      // Over-collapse guard: salt with a hash of the post-terminator residue
+      // (the real command that follows the heredoc), so a distinct trailing
+      // `; vitest run | tail` does NOT collapse into the bare-heredoc class.
+      const residue = command.slice(end).slice(0, 60);
+      if (residue) {
+        out += " " + createHash("sha256").update(residue).digest("hex").slice(0, 8);
+      }
+      out += command.slice(end);
+      i = command.length;
+      continue;
+    }
+    // `node -e` / `--input-type=module` body — blank the eval body to END,
+    // escaped-quote-tolerant (the gate's stripNodeEvalBody stops at the first
+    // `\"`; blanking to end sidesteps the escape ambiguity — the true closing
+    // quote is unreliable to locate). The key must collapse ALL body variants
+    // — quoted (`"x"`, `'y'`, `\"escaped\"`) AND unquoted (`node -e  echo
+    // foo`) — into one class, because the eval body is data either way. A
+    // single opening quote char is preserved so normalizePrefix's quote-strip
+    // normalizes the quoted forms to the same key as the unquoted form.
+    if (command[i] === "n") {
+      const bodyMatch = command.slice(i).match(/^((?:node|nodejs)\s+(?:-e|--eval|-p|--print|--input-type=module)\s+)/);
+      if (bodyMatch) {
+        const bStart = i + bodyMatch[1].length;
+        let keepQuote = 0;
+        if (command[bStart] === '"' || command[bStart] === "'") keepQuote = 1;
+        out += command.slice(i, bStart + keepQuote);
+        out += " ".repeat(Math.max(0, command.length - (bStart + keepQuote)));
+        i = command.length;
+        continue;
+      }
+    }
+    out += command[i];
+    i++;
+  }
+  return out;
+}
+
+/**
+ * Tracker-only key normalization. Applies `blankDataPayloadsForKey` first
+ * (coarser than the gate), then reuses `normalizePrefix` for the existing
+ * quote-strip / whitespace-collapse / 50-char truncation pipeline. Memoized
+ * per entry so the two scan passes (per-session + cross-session) don't pay
+ * the blanking cost twice.
+ *
+ * @param {string} command
+ * @returns {string}
+ */
+const normalizePrefixForKeyCache = new Map();
+export function normalizePrefixForKey(command) {
+  if (typeof command !== "string") return "";
+  if (normalizePrefixForKeyCache.has(command)) {
+    return normalizePrefixForKeyCache.get(command);
+  }
+  const out = normalizePrefix(blankDataPayloadsForKey(command));
+  normalizePrefixForKeyCache.set(command, out);
+  return out;
+}
+
+/**
  * Hash a (rule_id, prefix) pair into the 16-hex-char recurrence-key tail.
  *
  * `rule_id` is mixed into the hash input so identical prefixes under
@@ -102,7 +252,10 @@ export function findRecurrentGroups(root, options = {}) {
     const sid = entry.session_id ?? "no-session";
     // Clean cutover: never fire on no-session entries (historical backlog).
     if (sid === "no-session") continue;
-    const normalized = normalizePrefix(entry.command_prefix);
+    // Key normalization is the COARSER tracker-side pass (blankDataPayloadsForKey
+    // first, then the shared normalizePrefix pipeline), so all payload variants
+    // of one root-cause class under one rule hash to a single recurrence_key.
+    const normalized = normalizePrefixForKey(entry.command_prefix);
     const key = `${entry.rule_id}::${normalized}::${sid}`;
     if (!groups.has(key)) {
       groups.set(key, { rule_id: entry.rule_id, command_prefix_normalized: normalized, session_id: sid, entries: [] });
@@ -202,7 +355,7 @@ function groupCrossSessionEntries(allEntries, windowStart) {
     if (!Number.isFinite(tsMs) || tsMs < windowStart) continue;
     const sid = entry.session_id ?? "no-session";
     if (sid === "no-session") continue;
-    const normalized = normalizePrefix(entry.command_prefix);
+    const normalized = normalizePrefixForKey(entry.command_prefix);
     const key = `${entry.rule_id}::${normalized}`;
     let cg = crossGroups.get(key);
     if (!cg) {
@@ -289,6 +442,16 @@ function recurrenceKeyFor(group) {
  * `resolved_at` read. Also builds the rule-record lookup used to derive each
  * finding's evidence_code_ref (the referent grounding co-locates with
  * accepted-limitation findings on that file).
+ *
+ * Re-file burst note: a key-derivation change (coarser normalizePrefixForKey)
+ * can re-file a historically-suppressed class under a NEW recurrence_key.
+ * Existing-format findings carry no recoverable prefix in their description
+ * (the description redacts raw commands to protect secrets), so a
+ * description-keyed suppression fallback cannot match them — it would be dead
+ * code. The actual burst mitigation is `existingKeys` (key equality) plus the
+ * post-ship re-file triage, which resolves residual duplicates with a
+ * same-rule link. Do not embed the normalized prefix in the finding
+ * description: it leaks redacted command data into the registry.
  */
 function resolveDedupIndex(allEntries) {
   const existing = allEntries.filter(
