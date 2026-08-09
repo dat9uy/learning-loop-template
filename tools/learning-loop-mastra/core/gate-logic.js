@@ -529,8 +529,7 @@ function countNewlines(s) {
   return n;
 }
 
-// fallow-ignore-next-line complexity -- single-pass scanner; per-heredoc span
-// handling is kept inline so the opaque-span bookkeeping stays local.
+// fallow-ignore-next-line complexity -- single-pass scanner; per-heredoc span handling kept inline
 export function stripHeredocBodies(command, allowlist = BLANKABLE_HEREDOC_VERBS_PROMOTED) {
   if (typeof command !== "string" || !command) return command;
   if (process.env.GATE_HEREDOC_BLANKER === "0") return command; // kill-switch
@@ -555,6 +554,7 @@ export function stripHeredocBodies(command, allowlist = BLANKABLE_HEREDOC_VERBS_
       // body (a real command on the next line gets hidden from the gate).
       if (command[opEnd] === "<") {
         out += command.slice(i, opEnd + 1);
+        // fallow-ignore-next-line code-duplication -- mirror of the tracker-side blanker; kept parallel so gate and tracker stay independently readable
         state = QUOTE_NORMAL;
         i = opEnd + 1;
         continue;

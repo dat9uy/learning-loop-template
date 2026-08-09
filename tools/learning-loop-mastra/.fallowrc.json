@@ -47,6 +47,19 @@
 
   "ignoreExports": [
     {
+      "file": "core/gate-logic.js",
+      "exports": [
+        "stripHeredocBodies"
+      ]
+    },
+    {
+      "file": "core/recurrence-tracker.js",
+      "exports": [
+        "normalizePrefixForKey",
+        "blankDataPayloadsForKey"
+      ]
+    },
+    {
       "file": "core/runtime-state.js",
       "exports": [
         "readRuntimeStateRowsForFile",

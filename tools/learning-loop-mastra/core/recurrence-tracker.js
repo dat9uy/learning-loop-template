@@ -69,7 +69,7 @@ function blankRedirectTarget(prefix) {
   return prefix.slice(0, t) + " ".repeat(tEnd - t) + prefix.slice(tEnd);
 }
 
-// fallow-ignore-next-line unused-export -- public API consumed by gate-recurrence tests
+// fallow-ignore-next-line complexity -- single-pass blanker; keeps the gate and tracker blanker chains locally readable
 export function blankDataPayloadsForKey(command) {
   if (typeof command !== "string" || !command) return command;
   let out = "";
@@ -88,6 +88,7 @@ export function blankDataPayloadsForKey(command) {
       // whatever follows to end (a real command on the next line).
       if (command[opEnd] === "<") {
         out += command.slice(i, opEnd + 1);
+        // fallow-ignore-next-line code-duplication -- mirror of the gate-side blanker; kept parallel so gate and tracker stay independently readable
         i = opEnd + 1;
         continue;
       }
