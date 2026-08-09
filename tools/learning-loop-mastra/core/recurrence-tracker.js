@@ -159,7 +159,11 @@ export function blankDataPayloadsForKey(command) {
  * (coarser than the gate), then reuses `normalizePrefix` for the existing
  * quote-strip / whitespace-collapse / 50-char truncation pipeline. Memoized
  * per entry so the two scan passes (per-session + cross-session) don't pay
- * the blanking cost twice.
+ * the blanking cost twice. The cache is an unbounded module-global Map by
+ * design: the tracker only runs in short-lived processes (the gate_check
+ * recurrence CLI call and the recurrence-check-on-start SessionStart hook),
+ * so it is bounded by decision-log size per scan and freed on process exit.
+ * If the tracker ever moves into a long-lived server process, add an LRU cap.
  *
  * @param {string} command
  * @returns {string}

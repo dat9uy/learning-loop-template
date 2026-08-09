@@ -342,4 +342,34 @@ describe("stripHeredocBodies: unit behavior", () => {
     const cmd = "ls <<'EOF'\naaa\nEOF\n";
     assert.strictEqual(stripHeredocBodies(cmd), cmd);
   });
+
+  // CRLF line endings: the terminator line is `EOF\r`, not `EOF`. Without
+  // trailing-\r stripping the scanner blanks to end of command, hiding a real
+  // command that follows the heredoc from the constraint gate (a trust-boundary
+  // bypass — the CRLF analogue of the herestring over-blank locked in rows 18b–d).
+  test("CRLF: terminator matched, body blanked, terminator preserved", () => {
+    const cmd = "cat <<'EOF'\r\naaa\r\nbbb\r\nEOF\r\n";
+    const out = stripHeredocBodies(cmd);
+    // The operator line + terminator line keep their CRLF (emitted verbatim);
+    // the body is blanked to pure newlines (countNewlines counts the `\n` in
+    // each `\r\n` and emits `\n`, dropping the `\r` — the body is gone either way).
+    assert.strictEqual(out, "cat <<'EOF'\r\n\n\nEOF\r\n");
+  });
+
+  test("CRLF: post-terminator real command stays visible (constraint bypass lock)", () => {
+    const cmd = "cat <<'EOF'\r\ndocker run inside body\r\nEOF\r\ndocker run after terminator";
+    // The body is blanked (quoted delimiter) but the trailing `docker run`
+    // AFTER the terminator must survive — matchConstraintPattern must see it.
+    assert.ok(
+      stripHeredocBodies(cmd).includes("docker run after terminator"),
+      "trailing command after a CRLF heredoc must NOT be blanked",
+    );
+    assert.strictEqual(matchConstraintPattern(cmd), "docker");
+  });
+
+  test("CRLF: unquoted heredoc left fully visible (no blanking, no bypass)", () => {
+    const cmd = "cat <<EOF\r\ndocker run\r\nEOF\r\necho after";
+    assert.strictEqual(stripHeredocBodies(cmd), cmd);
+    assert.strictEqual(matchConstraintPattern(cmd), "docker");
+  });
 });

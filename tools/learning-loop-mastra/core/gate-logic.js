@@ -514,9 +514,9 @@ function stripEchoProse(command) {
 // (hooks run from the working tree on all runtimes simultaneously).
 //
 // The receiving verb is resolved from the segment prefix before `<<` via
-// `resolveVerbIndex` (env-assignments and command-prefixes skipped,
-// basename-normalized), so `sudo bash <<'EOF'` and `nice python3 <<'EOF'`
-// attribute to the executor and stay visible.
+// `segmentVerb` (which skips env-assignments/command-prefixes through
+// `resolveVerbIndex` and basename-normalizes), so `sudo bash <<'EOF'` and
+// `nice python3 <<'EOF'` attribute to the executor and stay visible.
 const BLANKABLE_HEREDOC_VERBS_PROMOTED = new Set(["cat", "tee", "node", "nodejs", ...DATA_COMMANDS]);
 const BLANKABLE_HEREDOC_VERBS_CONSTRAINT = new Set(["cat", "tee", ...DATA_COMMANDS]);
 const BLANKABLE_HEREDOC_VERBS_GATEVERB = new Set(["cat", "tee", "node", "nodejs", ...DATA_COMMANDS]);
@@ -592,7 +592,12 @@ export function stripHeredocBodies(command, allowlist = BLANKABLE_HEREDOC_VERBS_
         while (scan <= command.length) {
           const nl = command.indexOf("\n", scan);
           const lineEndIdx = nl === -1 ? command.length : nl;
-          let content = command.slice(scan, lineEndIdx);
+          // The line content excludes the newline. Strip a trailing `\r` so a
+          // CRLF-terminated line (`EOF\r`) matches the POSIX terminator (`EOF`)
+          // — without this, `\r\n` line endings leave the terminator unmatched
+          // and the scanner blanks to end of command, hiding a real command
+          // that follows the heredoc from the constraint gate (CRLF bypass).
+          let content = command.slice(scan, lineEndIdx).replace(/\r$/, "");
           if (stripTabs) content = content.replace(/^\t+/, "");
           if (content === termDelim) { termStart = scan; break; }
           if (nl === -1) break;
