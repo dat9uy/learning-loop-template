@@ -1,10 +1,11 @@
 ---
 phase: 1
 title: "stripHeredocBodies blanker"
-status: pending
+status: complete
 priority: P1
 effort: "7h"
 dependencies: []
+completed: 2026-08-09
 ---
 
 # Phase 1: stripHeredocBodies blanker
@@ -98,10 +99,15 @@ Allowlist-not-denylist remains the load-bearing safety decision: an unrecognized
 
 ## Success Criteria
 
-- [ ] All 26 matrix rows pass
-- [ ] Report's 8-shape fixture: 2 real violations escalate; shapes 3–4 heredoc false-fires become `ok`; shape 5 (unquoted) escalates as a visible residual
-- [ ] `gate-logic-quoted-strings.test.js`, `gate-logic-inert-sink.test.js`, `gate-logic-cli-argv-payload.test.js`, `gate-recurrence.test.js` pass (Phase 2 re-baselines the recurrence tests)
-- [ ] JSDoc on `stripHeredocBodies` states: per-wiring-site allowlists + their bypass contracts, herestring exclusion, opaque-span quote reset, unquoted-visibility rationale, executor-verb asymmetry, node accepted-bypass sibling note, kill-switch + fail-closed
+- [x] All 26 matrix rows pass (33 tests in `gate-logic-heredoc.test.js`)
+- [x] Report's 8-shape fixture: 2 real violations escalate; shapes 3–4 heredoc false-fires become `ok`; shape 5 (unquoted) escalates as a visible residual
+- [x] `gate-logic-quoted-strings.test.js`, `gate-logic-inert-sink.test.js`, `gate-logic-cli-argv-payload.test.js`, `gate-recurrence.test.js` pass (Phase 2 re-baselines the recurrence tests)
+- [x] JSDoc on `stripHeredocBodies` states: per-wiring-site allowlists + their bypass contracts, herestring exclusion, opaque-span quote reset, unquoted-visibility rationale, executor-verb asymmetry, node accepted-bypass sibling note, kill-switch + fail-closed
+
+## Execution Log (2026-08-09)
+
+### Reviewer-caught herestring bypass (fixed)
+Code review found a CRITICAL bug: the herestring exclusion emitted only ONE `<` of the `<<<` operator, leaving the remaining `<<` to be re-parsed as a heredoc on the next iteration. When a NEWLINE followed the herestring body, a real command on the next line (e.g. `docker run`) was blanked to end and hidden from the constraint layer. Fixed by emitting the ENTIRE `<<<` operator and advancing past it (`gate-logic.js` `stripHeredocBodies` + `recurrence-tracker.js` `blankDataPayloadsForKey`). Added regression rows 18b–18d (herestring + newline + docker/sudo) and a tracker-side test.
 
 ## Risk Assessment
 

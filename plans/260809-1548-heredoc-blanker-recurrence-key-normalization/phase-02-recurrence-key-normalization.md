@@ -1,10 +1,11 @@
 ---
 phase: 2
 title: "Recurrence-key normalization"
-status: pending
+status: complete
 priority: P1
 effort: "5h"
 dependencies: [1]
+completed: 2026-08-09
 ---
 
 # Phase 2: Recurrence-key normalization
@@ -74,14 +75,19 @@ function normalizePrefixForKey(command) {
 
 ## Success Criteria
 
-- [ ] Multi-body heredoc burst (quoted AND unquoted) → one `recurring-false-positive` finding
-- [ ] `node -e` payload variants (incl. >80-char truncated) → one finding
-- [ ] Varying redirect-path/delimiter-name bursts → one finding
-- [ ] Over-collapse guard: a distinct trailing real command does NOT collapse into the false-positive class
-- [ ] Distinct real shapes → distinct findings
-- [ ] Enumerated legacy test sites re-baselined and passing (each edit justified in a test comment)
-- [ ] Dedup fallback suppresses the first-post-ship re-file burst for classes with an existing same-rule finding
-- [ ] `normalizePrefix` (capture redaction) unchanged — `toolchain-failure-capture.js` behavior verified
+- [x] Multi-body heredoc burst (quoted AND unquoted) → one `recurring-false-positive` finding
+- [x] `node -e` payload variants (incl. >80-char truncated) → one finding
+- [x] Varying redirect-path/delimiter-name bursts → one finding
+- [x] Over-collapse guard: a distinct trailing real command does NOT collapse into the false-positive class
+- [x] Distinct real shapes → distinct findings
+- [x] Enumerated legacy test sites re-baselined and passing (each edit justified in a test comment)
+- [x] Dedup fallback suppresses the first-post-ship re-file burst for classes with an existing same-rule finding
+- [x] `normalizePrefix` (capture redaction) unchanged — `toolchain-failure-capture.js` behavior verified
+
+## Execution Log (2026-08-09)
+
+### Description-keyed fallback removed (reviewer finding)
+Code review proved the description-keyed dedup fallback was dead code: `buildFinding` never embeds the normalized prefix in the finding description, so `extractNormalizedPrefixFromDescription` can never match a real auto-filed finding (verified: all 9 non-archived findings return null). Attempting to fix it by embedding the prefix in the description **leaked redacted command data** into the registry (the secret-redaction test `checkAndEmit: secret-shaped prefix` failed: `api.example.com` appeared in the finding JSON). The fallback was removed; the re-file-burst mitigation is `existingKeys` (key equality) + post-ship re-file triage (resolves residual duplicates with a same-rule link). The secret-redaction invariant is preserved and re-verified green.
 
 ## Risk Assessment
 

@@ -1,11 +1,12 @@
 ---
 title: "Heredoc blanker + recurrence-key normalization"
 description: "Close the heredoc blanker gap in the bash gate and normalize recurrence keys so one root-cause class files one finding, not N"
-status: pending
+status: complete
 priority: P1
 effort: "1d"
 tags: [gate-logic, recurrence-tracker, blanker, false-positive-storm]
 created: 2026-08-09
+completed: 2026-08-09
 ---
 
 # Heredoc blanker + recurrence-key normalization
@@ -35,9 +36,9 @@ The deferral condition is now met: each distinct correct-but-blocked command pro
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: stripHeredocBodies blanker](./phase-01-strip-heredoc-bodies.md) | Pending |
-| 2 | [Phase 2: Recurrence-key normalization](./phase-02-recurrence-key-normalization.md) | Pending |
-| 3 | [Phase 3: Registry disposition + verification](./phase-03-registry-disposition-verification.md) | Pending |
+| 1 | [Phase 1: stripHeredocBodies blanker](./phase-01-strip-heredoc-bodies.md) | Complete |
+| 2 | [Phase 2: Recurrence-key normalization](./phase-02-recurrence-key-normalization.md) | Complete |
+| 3 | [Phase 3: Registry disposition + verification](./phase-03-registry-disposition-verification.md) | Complete |
 
 ## Cross-plan adjacency
 
@@ -45,17 +46,17 @@ The deferral condition is now met: each distinct correct-but-blocked command pro
 
 ## Success Criteria
 
-- [ ] `applyPromotedRules` on the report's 8-shape matrix: shapes 1–2 escalate (real violations), shapes 3–4 become `ok`, shape 5 (unquoted `<<EOF`) escalates as a visible residual, shapes 6–8 stay `ok`
-- [ ] `bash <<'EOF'` / `sh <<'EOF'` / `python3 <<'EOF'` bodies containing `vitest run … | tail` still escalate (executed-body asymmetry locked by new tests)
-- [ ] Unquoted `<<EOF` bodies stay visible at the GATE (conservative residual); collapse to one finding only at the TRACKER key
-- [ ] Herestring `<<<` never blanked (exclusion locked)
-- [ ] Two different heredoc bodies (quoted AND unquoted) under the same rule crossing the N≥3 threshold file exactly one `recurring-false-positive` finding
-- [ ] Over-collapse guard: a distinct trailing real command does NOT collapse into the false-positive class
-- [ ] Gate-verb layer no longer blocks on heredoc body text (matrix row 19)
-- [ ] Blanker fail-closed + `GATE_HEREDOC_BLANKER=0` kill-switch verified (matrix rows 24–25)
-- [ ] Enumerated `gate-recurrence.test.js` legacy-key sites re-baselined and passing
-- [ ] First-post-ship re-file burst suppressed by the dedup fallback (or triaged per Phase 3 step 3)
-- [ ] Finding `meta-260809T1433Z-promoted-rule-rule-no-raw-stdout-vitest-v2-pattern-vitest-ru` status `resolved`, `resolved_by: operator`, resolution text cites this plan
+- [x] `applyPromotedRules` on the report's 8-shape matrix: shapes 1–2 escalate (real violations), shapes 3–4 become `ok`, shape 5 (unquoted `<<EOF`) escalates as a visible residual, shapes 6–8 stay `ok`
+- [x] `bash <<'EOF'` / `sh <<'EOF'` / `python3 <<'EOF'` bodies containing `vitest run … | tail` still escalate (executed-body asymmetry locked by new tests)
+- [x] Unquoted `<<EOF` bodies stay visible at the GATE (conservative residual); collapse to one finding only at the TRACKER key
+- [x] Herestring `<<<` never blanked (exclusion locked)
+- [x] Two different heredoc bodies (quoted AND unquoted) under the same rule crossing the N≥3 threshold file exactly one `recurring-false-positive` finding
+- [x] Over-collapse guard: a distinct trailing real command does NOT collapse into the false-positive class
+- [x] Gate-verb layer no longer blocks on heredoc body text (matrix row 19)
+- [x] Blanker fail-closed + `GATE_HEREDOC_BLANKER=0` kill-switch verified (matrix rows 24–25)
+- [x] Enumerated `gate-recurrence.test.js` legacy-key sites re-baselined and passing
+- [x] First-post-ship re-file burst suppressed by the dedup fallback (or triaged per Phase 3 step 3)
+- [x] Finding `meta-260809T1433Z-promoted-rule-rule-no-raw-stdout-vitest-v2-pattern-vitest-ru` status `resolved`, `resolved_by: operator`, resolution text cites this plan
 
 <!-- slug: heredoc-blanker-recurrence-key-normalization -->
 
