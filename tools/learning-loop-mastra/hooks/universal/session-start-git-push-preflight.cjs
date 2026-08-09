@@ -13,7 +13,7 @@
  *   - https-gh         HTTPS + helper configured + `gh auth status` ok.
  *                      The only mode that is fully write-assured.
  *   - https-unverified HTTPS + helper configured but `gh auth status` fails
- *                      or gh is missing. Pointer to setup-git-push.sh.
+ *                      or gh is missing. Pointer to setup-git.sh.
  *   - https-anon       HTTPS without helper (public repos read OK
  *                      anonymously; push 403s). Pointer.
  *   - ssh-ok           SSH remote + probe succeeds.
@@ -48,7 +48,11 @@ const PROBE_TIMEOUT_MS = 3000;
 const REACHABILITY_TIMEOUT_MS = 2000;
 const AUTH_STATUS_TIMEOUT_MS = 2000;
 
-const SCRIPT_POINTER = "run tools/scripts/setup-git-push.sh";
+// Pointer targets the orchestrator, which runs BOTH per-clone git setups
+// (push + merge-driver), so any red line resolves to one command. The
+// targeted setup-git-push.sh remains for push-only fixes (documented in
+// AGENTS.md §4b).
+const SCRIPT_POINTER = "run tools/scripts/setup-git.sh";
 
 // protocol-adapter is an ESM module; load it via dynamic import so this
 // CJS hook can still consume stdin through the canonical adapter (the

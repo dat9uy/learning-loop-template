@@ -226,7 +226,7 @@ describe("session-start-git-push-preflight: integration (spawned hook)", () => {
       });
       assert.equal(proc.status, 0, `hook must exit 0 (fail-open), got ${proc.status}\nstderr: ${proc.stderr}`);
       assert.match(proc.stdout, /git-push preflight: https-gh/, "stdout must label https-gh");
-      assert.doesNotMatch(proc.stdout, /setup-git-push/, "https-gh must not include the pointer");
+      assert.doesNotMatch(proc.stdout, /setup-git\.sh/, "https-gh must not include the pointer");
     } finally {
       rmSync(work, { recursive: true, force: true });
       rmSync(gh.dir, { recursive: true, force: true });
@@ -248,7 +248,7 @@ describe("session-start-git-push-preflight: integration (spawned hook)", () => {
       });
       assert.equal(proc.status, 0);
       assert.match(proc.stdout, /git-push preflight: https-unverified/);
-      assert.match(proc.stdout, /setup-git-push\.sh/, "https-unverified must include the pointer");
+      assert.match(proc.stdout, /setup-git\.sh/, "https-unverified must include the pointer");
     } finally {
       rmSync(work, { recursive: true, force: true });
       rmSync(gh.dir, { recursive: true, force: true });
@@ -265,7 +265,7 @@ describe("session-start-git-push-preflight: integration (spawned hook)", () => {
       });
       assert.equal(proc.status, 0);
       assert.match(proc.stdout, /git-push preflight: https-anon/);
-      assert.match(proc.stdout, /setup-git-push\.sh/);
+      assert.match(proc.stdout, /setup-git\.sh/);
     } finally {
       rmSync(work, { recursive: true, force: true });
       rmSync(gh.dir, { recursive: true, force: true });
@@ -311,7 +311,7 @@ describe("session-start-git-push-preflight: integration (spawned hook)", () => {
       });
       assert.equal(proc.status, 0);
       assert.match(proc.stdout, /git-push preflight: broken/);
-      assert.match(proc.stdout, /setup-git-push\.sh/);
+      assert.match(proc.stdout, /setup-git\.sh/);
     } finally {
       rmSync(work, { recursive: true, force: true });
       rmSync(gh.dir, { recursive: true, force: true });
@@ -335,7 +335,7 @@ describe("session-start-git-push-preflight: integration (spawned hook)", () => {
       });
       assert.equal(proc.status, 0);
       assert.match(proc.stdout, /git-push preflight: unknown\/offline/);
-      assert.doesNotMatch(proc.stdout, /setup-git-push/, "offline must NOT emit the pointer");
+      assert.doesNotMatch(proc.stdout, /setup-git\.sh/, "offline must NOT emit the pointer");
     } finally {
       rmSync(work, { recursive: true, force: true });
       rmSync(gh.dir, { recursive: true, force: true });

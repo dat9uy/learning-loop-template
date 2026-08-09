@@ -137,6 +137,8 @@ git config merge.union.driver "git merge-file --union %A %O %B"
 
 **One-time per-clone setup script:** `bash tools/scripts/setup-git-merge-drivers.sh`. Idempotent; detects a wrong-order existing config and refuses to silently overwrite (pass `--force` to overwrite). After running, `git config --get merge.union.driver` returns the canonical value. The surface is hardened with a shell test under `tools/scripts/__tests__/setup-git-merge-drivers.test.js`. Ephemeral CI runners cannot run the per-clone script, so `.github/workflows/meta-state-refs-check.yml` configures the driver via `git config merge.union.driver` in its checkout step.
 
+**Run both per-clone git setups in one command:** `bash tools/scripts/setup-git.sh` runs this merge-driver setup and the push setup (§4b) back-to-back (merge-driver first, then push), idempotent, `--force` passes through to both. The two session-start preflight hooks (this driver + the push hook in §4b) both point here, so any red line resolves to one command. A `SessionStart` preflight hook (`tools/learning-loop-mastra/hooks/universal/session-start-git-merge-driver-preflight.cjs`) reports the driver state at session start — `canonical` / `unset` / `wrong-order` / `non-canonical` — and points to `setup-git.sh` when the driver is unset or misconfigured, closing the silent-no-op failure mode (without the driver, `merge=union` does nothing and parallel change-log PRs conflict with no warning). Read-only, fail-open, `.claude`-only (same scope as the push preflight).
+
 Without this config, `merge=union` is a silent no-op and parallel change-log PRs hit a normal content conflict (resolvable by the manual `git merge-file --union` recipe).
 
 ---
@@ -145,7 +147,7 @@ Without this config, `merge=union` is a silent no-op and parallel change-log PRs
 
 Autonomous shells (subagents, headless runtimes) cannot inherit the operator's interactive `SSH_AUTH_SOCK`, so a passphrase-protected SSH key blocks every push with `Permission denied (publickey)`. The same shell is the one most likely to bypass the pre-push gate under flake pressure, destroying the audit trail — auth fragility and audit-trail preservation are coupled.
 
-**One-time per-clone setup script:** `bash tools/scripts/setup-git-push.sh`. Idempotent, fail-closed, full rollback on every failure path:
+**One-time per-clone setup script:** `bash tools/scripts/setup-git-push.sh` (or the combined `bash tools/scripts/setup-git.sh` from §4 to run both per-clone git setups at once). Idempotent, fail-closed, full rollback on every failure path:
 
 - SSH remote + probe-ok → no-op (a working SSH config is never rewritten).
 - SSH remote + probe-fail + `gh auth status` ok → converts `origin` from `git@github.com:…` to `https://github.com/…`, sets `credential.https://github.com.helper` to an **absolute** `!$GH_BIN auth git-credential` value, verifies write capability via `gh api repos/<owner>/<repo>` (the body must contain `"push":true` — `git ls-remote` proves read access only, so it never gates the success exit).
@@ -159,13 +161,13 @@ The mutation region is wrapped in `flock` + an `ERR` trap that restores BOTH the
 **SessionStart push-preflight hook** (`tools/learning-loop-mastra/hooks/universal/session-start-git-push-preflight.cjs`) reports the clone's push mode in one line at session start, scheme-first, with honest verification labels:
 
 - `https-gh` — HTTPS + helper + `gh auth status` ok (the only fully-write-assured mode).
-- `https-unverified` — HTTPS + helper but `gh auth status` fails (pointer to setup-git-push.sh).
+- `https-unverified` — HTTPS + helper but `gh auth status` fails (pointer to setup-git.sh, the combined orchestrator).
 - `https-anon` — HTTPS without helper (pointer).
 - `ssh-ok` — SSH + probe succeeds.
 - `broken` — SSH + probe fails AND the host is reachable (pointer).
 - `unknown/offline` — probe fails AND reachability is ambiguous (no pointer — never prescribe a mutating script on an ambiguous signal).
 
-Read-only, fail-open (any internal error → warning line, exit 0). Common case < 1s, worst case ≤ ~5s (3s probe + 2s reachability). Wired for `.claude` only; `.factory` and `.mastracode` deferred to follow-up (the `.factory` adapter is hardcoded to the inject-* hooks, so a non-trivial extension is required before the preflight can dispatch through it).
+Read-only, fail-open (any internal error → warning line, exit 0). Common case < 1s, worst case ≤ ~5s (3s probe + 2s reachability). Wired for `.claude` only alongside the merge-driver preflight hook (§4); `.factory` and `.mastracode` deferred to follow-up (the `.factory` adapter is hardcoded to the inject-* hooks, so a non-trivial extension is required before the preflight can dispatch through it).
 
 **Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to bypass the pre-push gate under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk. A promoted gate rule detecting the bypass itself is the mitigation (proposed via `meta_state_promote_rule` for operator decision).
 
