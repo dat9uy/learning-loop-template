@@ -10,12 +10,12 @@ const GITIGNORE = resolve(REPO_ROOT, ".gitignore");
 const ALLOWLIST = resolve(REPO_ROOT, ".loop", "r2-allowlist.json");
 const PKG_JSON = resolve(REPO_ROOT, "package.json");
 
-// R13 regression guard: the hybrid test-tiering gate layout. This test
-// locks the load-bearing invariants the pre-commit (fast unit) + pre-push
-// (full `pnpm test && pnpm fallow:gate`) split relies on so a regression
-// is caught early. See
-// `plans/260803-1314-hybrid-test-tiering-and-pre-push-gate/` for context.
-describe("hybrid gate layout (R13)", () => {
+// R13 regression guard: the gate layout. pre-commit runs the fast unit
+// project; the full `pnpm test && pnpm fallow:gate` gate runs only on CI
+// (test.yml, a required merge check), not locally on pre-push — a local
+// pre-push full gate outlasted the agent harness push timeout. This test
+// locks that layout so a regression is caught early.
+describe("gate layout (R13)", () => {
   test(".loop/r2-allowlist.json exists and is committed (not gitignored)", () => {
     assert.ok(existsSync(ALLOWLIST), ".loop/r2-allowlist.json must exist at repo root");
     const gitignore = readFileSync(GITIGNORE, "utf8");
@@ -69,16 +69,18 @@ describe("hybrid gate layout (R13)", () => {
     );
   });
 
-  test("package.json pre-push hook runs the full gate (pnpm test + fallow:gate)", () => {
+  test("package.json has no pre-push hook (full gate is CI-authoritative, not local)", () => {
     const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
     const hook = pkg["simple-git-hooks"]?.["pre-push"];
-    // Exact match — same strictness as the pre-commit test. A future
-    // operator swapping the chain to a direct fallow invocation with
-    // extra flags would otherwise slip past a substring check.
+    // The full `pnpm test && pnpm fallow:gate` gate is enforced by CI
+    // test.yml as a required merge check. A local pre-push full gate is
+    // redundant and outlasted the agent harness push timeout (exit 143
+    // mid-hook), so it must stay absent. Exact-match undefined — a future
+    // operator re-adding any pre-push command would otherwise slip past.
     assert.equal(
       hook,
-      "pnpm test && pnpm fallow:gate",
-      "pre-push must run the full gate: pnpm test && pnpm fallow:gate",
+      undefined,
+      "pre-push must not run the full gate locally — CI test.yml is the authoritative full-suite + fallow gate; a local pre-push full gate exceeds the agent harness push timeout",
     );
   });
 
