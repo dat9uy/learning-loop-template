@@ -197,19 +197,77 @@ describe("meta_state_list include_all_versions", () => {
     );
   });
 
-  test("include_all_versions: true with default filters still hides terminal-status lines (orthogonal composition)", async () => {
+  test("include_all_versions: true with default filters excludes a resolved id entirely (no phantom open line)", async () => {
     const result = await metaStateListTool.handler({
       id: "hist-term-y",
       include_all_versions: true,
       compact: false,
     });
     const text = JSON.parse(result.content[0].text);
-    // Orthogonal composition: the terminal-status filters apply per line.
-    // Only the v0 (open) line survives; resolved/superseded/archived lines
-    // require include_archived: true (or an explicit status filter).
-    assert.strictEqual(text.count, 1);
-    assert.strictEqual(text.entries[0].version, 0);
-    assert.strictEqual(text.entries[0].status, "open");
+    // Id-level exclusion: the id's projected (max-by-version) status is
+    // `archived` (terminal), so ALL lines for the id are dropped under the
+    // default view. The v0:open line must NOT survive as a phantom open
+    // status for a resolved/archived id. An agent auditing history passes
+    // include_archived: true (see the next test) to see the full trail.
+    assert.strictEqual(text.count, 0);
+  });
+
+  test("include_all_versions: true with default filters excludes a resolved id at the id level, not per line", async () => {
+    // Two-version resolved id (v0 open → v1 resolved), no archived tombstone,
+    // isolates the terminal-status exclusion from the archived filter.
+    const root2 = mkdtempSync(join(tmpdir(), "phantom-open-"));
+    const origRoot = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = root2;
+    try {
+      writeRegistry(root2, [
+        finding({
+          id: "term-no-archive",
+          status: "open",
+          version: 0,
+          description: "term-no-archive v0 open (min 20 chars)",
+          created_at: T0,
+        }),
+        finding({
+          id: "term-no-archive",
+          status: "resolved",
+          version: 1,
+          description: "term-no-archive v1 resolved (min 20 chars)",
+          created_at: T1,
+        }),
+      ]);
+      const collapsed = await metaStateListTool.handler({
+        id: "term-no-archive",
+        compact: false,
+      });
+      const collapsedText = JSON.parse(collapsed.content[0].text);
+      assert.strictEqual(collapsedText.count, 0, "collapsed view excludes resolved id");
+
+      const allVersions = await metaStateListTool.handler({
+        id: "term-no-archive",
+        include_all_versions: true,
+        compact: false,
+      });
+      const allText = JSON.parse(allVersions.content[0].text);
+      // No phantom: the v0:open line is dropped because the id's projected
+      // status (v1:resolved) is terminal.
+      assert.strictEqual(allText.count, 0);
+
+      const allArchived = await metaStateListTool.handler({
+        id: "term-no-archive",
+        include_all_versions: true,
+        include_archived: true,
+        compact: false,
+      });
+      const archivedText = JSON.parse(allArchived.content[0].text);
+      assert.strictEqual(archivedText.count, 2);
+      assert.deepStrictEqual(
+        archivedText.entries.map((e) => e.status),
+        ["open", "resolved"]
+      );
+    } finally {
+      process.env.GATE_ROOT = origRoot;
+      rmSync(root2, { recursive: true, force: true });
+    }
   });
 
   test("legacy entry with no version field parses cleanly under the all-versions path", async () => {

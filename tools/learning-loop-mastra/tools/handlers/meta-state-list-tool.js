@@ -164,19 +164,66 @@ export const metaStateListTool = {
       result = filterEntries(result, activeFilters);
     }
 
-// terminal statuses are excluded by default. If the
-    // caller explicitly filters by a terminal status (e.g., status="resolved"),
-    // honor that filter — the user is opting in to terminal entries.
+    // Terminal statuses are excluded by default. If the caller explicitly
+    // filters by a terminal status (e.g., status="resolved"), honor that
+    // filter — the user is opting in to terminal entries.
     // include_archived: true is the unified "show me the audit trail" affordance;
     // it surfaces all 4 terminal statuses (resolved, accepted, auto-resolved,
     // archived) without requiring callers to know which statuses are terminal.
-// (`superseded` collapsed into `resolved` + a citation.)
+    // (`superseded` collapsed into `resolved` + a citation.)
+    //
+    // Exclusion is an id-level property, not a per-line one: "is this id
+    // open?" is answered by the id's projected (max-by-version) status. Under
+    // `include_all_versions`, an id with history v0:open → v1:resolved has a
+    // projected status of `resolved` (terminal). Filtering per line would
+    // drop the v1:resolved line but leave the v0:open line, leaking a phantom
+    // open status for a resolved id — an agent auditing history would see a
+    // resolved finding as still open and could double-resolve or mis-derive
+    // drift. So under `include_all_versions` we collapse exclusion at the id
+    // level: if the id's max-version line is terminal (or archived), drop ALL
+    // lines for that id under the default view, matching the collapsed view.
+    // Callers opt into the full audit trail with `include_archived: true`.
+    // The projected (default) path has one line per id, so per-line and
+    // id-level exclusion coincide there; the per-line filter stays as the
+    // cheap fallback for that path.
     const isExplicitStatusFilter = typeof status === "string" && EXCLUDABLE_STATUSES.has(status);
     const includeTerminal = include_archived || isExplicitStatusFilter;
-    if (!includeTerminal) {
+    if (!includeTerminal && include_all_versions) {
+      // Project max-by-version status per id from the loaded all-versions
+      // entries (same tie-break as the projection: later created_at wins on
+      // equal version). Drop every line of an id whose projected status is
+      // terminal. Archived is also id-level here: a tombstoned id's earlier
+      // open lines must not surface under the default view.
+      const projectedStatus = new Map();
+      for (const e of result) {
+        const prev = projectedStatus.get(e.id);
+        if (!prev) {
+          projectedStatus.set(e.id, e);
+          continue;
+        }
+        const prevV = prev.version ?? 0;
+        const nextV = e.version ?? 0;
+        if (nextV > prevV) {
+          projectedStatus.set(e.id, e);
+        } else if (nextV === prevV) {
+          const prevT = prev.created_at ?? "";
+          const nextT = e.created_at ?? "";
+          if (nextT > prevT) projectedStatus.set(e.id, e);
+        }
+      }
+      const excludedIds = new Set();
+      for (const [eid, e] of projectedStatus) {
+        if (EXCLUDABLE_STATUSES.has(e.status) || e.status === "archived") {
+          excludedIds.add(eid);
+        }
+      }
+      result = result.filter((e) => !excludedIds.has(e.id));
+    } else if (!includeTerminal) {
       result = result.filter((e) => !EXCLUDABLE_STATUSES.has(e.status));
-    }
-    if (!include_archived) {
+      if (!include_archived) {
+        result = result.filter((e) => e.status !== "archived");
+      }
+    } else if (!include_archived) {
       result = result.filter((e) => e.status !== "archived");
     }
 
