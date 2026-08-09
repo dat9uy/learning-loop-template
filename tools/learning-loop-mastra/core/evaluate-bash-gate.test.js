@@ -579,3 +579,29 @@ test("expired gate-verb observation → reason carries the same incantation with
   assert.ok(result.reason.includes('runtime_state_record({affected_system:"gate-verb:bash"'));
   assert.ok(result.reason.includes('source_ref:"local:meta-state:gate-verb-allowance"'));
 });
+
+// ── compound loop-CLI gate-verb-allowance incantation (recurring-FP regression) ──
+// The side-effect-import pattern's second alternative used to be an unscoped
+// `.*runtime_state_record\s*\(` that hard-blocked the sanctioned loop-CLI write
+// (`gate_mark_preflight` + `runtime_state_record`) with an unrelated vnstock reason.
+// The alternative is now python-scoped, so the compound command must not return
+// side-effect-import. Without an active gate-verb:bash observation it may still
+// block for the gate-verb:bash allowance reason (bounded, self-remediating) — that
+// is correct; what must not happen is the unrelated vnstock hard block.
+
+test("compound gate-verb-allowance incantation → ok (no side-effect-import hard block)", () => {
+  // The loop-CLI write is the sanctioned path. The compound command must not be
+  // hard-blocked as side-effect-import. It should pass cleanly: `node $CLI …`
+  // has no -e flag (not a gate-verb), and the pattern's second alternative is
+  // python-scoped, so nothing here matches a first-class constraint.
+  const root = makeRoot();
+  const result = evaluateBashGate({
+    command:
+      `export LOOP_SURFACE=.claude && node $CLI gate_mark_preflight({surface:"runtime-state"}) && ` +
+      `node $CLI runtime_state_record({affected_system:"gate-verb:bash",kind:"budget-state",id:"gate-verb:bash",durability:"ephemeral",source_ref:"local:meta-state:gate-verb-allowance"})`,
+    root,
+  });
+  assert.strictEqual(result.decision, "ok", `expected ok, got ${result.decision}: ${result.reason}`);
+  assert.strictEqual(result.constraint_type, undefined);
+  assert.strictEqual(result.hard_block, undefined);
+});
