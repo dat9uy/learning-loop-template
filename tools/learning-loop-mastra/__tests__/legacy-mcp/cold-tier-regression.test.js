@@ -316,8 +316,12 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     assert.ok(Array.isArray(group.findings) && group.findings.length > 0, "superseded_lineage group findings must be non-empty array");
     for (const f of group.findings) {
       assert.ok(typeof f.id === "string", "superseded_lineage finding missing id");
-      assert.ok(f.status === "superseded", `superseded_lineage finding ${f.id} has status ${f.status}, expected superseded`);
-      assert.ok(typeof f.consolidated_into === "string", `superseded_lineage finding ${f.id} missing consolidated_into`);
+      // The lifecycle migration (supersede collapse) folded `superseded` into
+      // `resolved` + a citation row: a superseded finding carries status
+      // `resolved`, and the consolidation edge is the citation row sourced as
+      // `group.change_log.id` above — not an on-record `consolidated_into`
+      // field, which is inert-historical on the finding row post-fold.
+      assert.ok(f.status === "resolved", `superseded_lineage finding ${f.id} has status ${f.status}, expected resolved`);
     }
   }
 

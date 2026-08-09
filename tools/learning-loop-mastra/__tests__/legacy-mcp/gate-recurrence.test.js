@@ -10,6 +10,7 @@ import {
   checkAndEmit,
   hashRecurrenceKey,
   normalizePrefix,
+  normalizePrefixForKey,
 } from "../../core/recurrence-tracker.js";
 import { writeEntryIfAbsent } from "../../core/meta-state.js";
 import { gateCheckRecurrenceTool } from "../../tools/handlers/gate-check-recurrence-tool.js";
@@ -95,7 +96,11 @@ await test("findRecurrentGroups: command_prefix_normalized groups similar comman
   ]);
   const groups = findRecurrentGroups(root);
   assert.strictEqual(groups.length, 1);
-  assert.strictEqual(groups[0].command_prefix_normalized, "node -e echo foo");
+  // Re-baselined: the coarser tracker key (blankDataPayloadsForKey) blanks the
+  // node -e body (quoted AND unquoted) to end, so all three forms collapse to
+  // the verb-only prefix `node -e`. The eval body is data to the recurrence
+  // tracker — body variants are one root-cause class, not distinct classes.
+  assert.strictEqual(groups[0].command_prefix_normalized, "node -e");
 });
 
 await test("findRecurrentGroups: cross-surface dedup", () => {
@@ -293,8 +298,11 @@ await test("checkAndEmit: emits finding when no existing", async () => {
   assert.strictEqual(finding.category, "gate-logic-bug");
   assert.strictEqual(finding.severity, "warning");
   assert.strictEqual(finding.status, "open");
-  // Phase 1: recurrence_key is rule_id::sha256(rule_id::prefix)[:16]
-  const expectedHash = hashRecurrenceKey("rule-no-new-artifact-types", "node -e x");
+  // Re-baselined: the recurrence_key now hashes the COARSER key — the node -e
+  // body is blanked to end, so the normalized prefix is `node -e` (was
+  // `node -e x`). The recurrence_key is a grouping artifact; body variants of
+  // one class must share a key.
+  const expectedHash = hashRecurrenceKey("rule-no-new-artifact-types", "node -e");
   assert.strictEqual(finding.recurrence_key, `rule-no-new-artifact-types::${expectedHash}`);
   assert.ok(!finding.recurrence_key.includes("node -e"), "raw prefix must NOT appear in recurrence_key");
 });
@@ -329,7 +337,10 @@ await test("checkAndEmit: dedup against existing finding", async () => {
     makeEntry(now - 1 * 60000, prefix, "rule-no-new-artifact-types", sid),
   ]);
 
-  const normalized = "node -e x";
+  // Re-baselined: the existing finding must be keyed by the COARSER key
+  // (`node -e`, not `node -e x`) so the dedup index matches the new key
+  // derivation for the same root-cause class.
+  const normalized = "node -e";
   const existingHash = hashRecurrenceKey("rule-no-new-artifact-types", normalized);
   const existingFinding = {
     id: "meta-test-existing",
@@ -1207,4 +1218,174 @@ await test("findRecurrentGroups: malformed-ts entry is skipped by cross-session 
   assert.strictEqual(cross.length, 1, "the 5 valid entries still cross the threshold");
   assert.strictEqual(cross[0].count, 5, "malformed-ts entry must NOT be counted");
   assert.strictEqual(cross[0].sessions_crossing_threshold, 3);
+});
+
+// ─── Phase 2: coarser recurrence-key normalization ──────────────────────────
+//
+// The tracker key (normalizePrefixForKey) blanks data payloads the gate
+// deliberately keeps visible — heredoc bodies (quoted AND unquoted) and node -e
+// bodies — because the key is a grouping artifact with no bypass consequence.
+// All payload variants of one root-cause class under one rule must collapse to
+// a single recurrence_key (one finding per class, not one per command shape).
+
+await test("normalizePrefixForKey: quoted heredoc bodies with different content → one key", () => {
+  const a = normalizePrefixForKey("cat <<'EOF'\npnpm test a | tail\nEOF\n");
+  const b = normalizePrefixForKey("cat <<'EOF'\npnpm test bbb | tail\nEOF\n");
+  assert.strictEqual(a, b, "quoted heredoc body content must not split the key");
+  // The operator `<<` is preserved; the delimiter word + body are blanked to
+  // whitespace, and the 50-char window truncates the trailing whitespace.
+  assert.strictEqual(a, "cat <<", "operator preserved, delimiter + body blanked to whitespace");
+});
+
+await test("normalizePrefixForKey: unquoted heredoc bodies (toolchain-failure path) → one key", () => {
+  // toolchain-failure capture pre-strips quotes → `<<EOF` unquoted.
+  const a = normalizePrefixForKey("cat <<EOF\npnpm test a | tail\nEOF\n");
+  const b = normalizePrefixForKey("cat <<EOF\npnpm test bbb | tail\nEOF\n");
+  assert.strictEqual(a, b, "unquoted heredoc body is also a data variant — one class");
+});
+
+await test("normalizePrefixForKey: node -e escaped-quote variants → one key", () => {
+  const a = normalizePrefixForKey('node -e "console.log(\\"x\\")"');
+  const b = normalizePrefixForKey('node -e "console.log(\\"yyyy\\")"');
+  assert.strictEqual(a, b, "escaped-quote node -e bodies must collapse");
+  assert.strictEqual(a, "node -e", "body blanked to end — verb + flag only");
+});
+
+await test("normalizePrefixForKey: >80-char truncated node -e body → still collapses", () => {
+  const longBody = 'node -e "' + "x".repeat(200) + '"';
+  const variant = 'node -e "' + "y".repeat(200) + '"';
+  assert.strictEqual(
+    normalizePrefixForKey(longBody),
+    normalizePrefixForKey(variant),
+    "truncated closing-quote must not split the class (blank-to-end)",
+  );
+});
+
+await test("normalizePrefixForKey: varying redirect path + delimiter name → one key", () => {
+  const a = normalizePrefixForKey("cat > /tmp/varying-a <<'EOF'\npnpm test x | tail\nEOF\n");
+  const b = normalizePrefixForKey("cat > /tmp/other-b <<\"BOUNDARY\"\npnpm test y | tail\nBOUNDARY\n");
+  assert.strictEqual(a, b, "redirect target + delimiter word are data variants — one class");
+});
+
+await test("normalizePrefixForKey: over-collapse guard — distinct trailing real command stays distinct", () => {
+  const bare = normalizePrefixForKey("cat <<'EOF'\npnpm test a | tail\nEOF\n");
+  const trailing = normalizePrefixForKey("cat <<'EOF'\npnpm test a | tail\nEOF\n; vitest run z | tail -10");
+  assert.notStrictEqual(bare, trailing, "a real trailing command after the heredoc must not collapse into the bare class");
+});
+
+await test("findRecurrentGroups: quoted heredoc burst (different bodies) → one group", () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  writeEntries([
+    makeEntry(now - 5 * 60000, "cat <<'EOF'\npnpm test a | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 3 * 60000, "cat <<'EOF'\npnpm test bbb | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 1 * 60000, "cat <<'EOF'\npnpm test c | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 1, "multi-body quoted heredoc burst → one group");
+  assert.strictEqual(groups[0].count, 3);
+});
+
+await test("findRecurrentGroups: unquoted heredoc burst (different bodies) → one group", () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  writeEntries([
+    makeEntry(now - 5 * 60000, "cat <<EOF\npnpm test a | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 3 * 60000, "cat <<EOF\npnpm test bbb | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 1 * 60000, "cat <<EOF\npnpm test c | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 1, "multi-body unquoted heredoc burst → one group (coarser key)");
+});
+
+await test("checkAndEmit: quoted + unquoted heredoc burst → exactly one finding", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  writeEntries([
+    makeEntry(now - 5 * 60000, "cat <<'EOF'\npnpm test a | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 3 * 60000, "cat <<EOF\npnpm test bbb | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 1 * 60000, "cat <<'EOF'\npnpm test c | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 1, "quoted AND unquoted heredoc bodies collapse to one finding");
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  assert.strictEqual(lines.length, 1);
+});
+
+await test("checkAndEmit: node -e variants under one rule → one finding", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  writeEntries([
+    makeEntry(now - 5 * 60000, 'node -e "a"', "rule-no-new-artifact-types", sid),
+    makeEntry(now - 3 * 60000, 'node -e "b"', "rule-no-new-artifact-types", sid),
+    makeEntry(now - 1 * 60000, "node -e 'c'", "rule-no-new-artifact-types", sid),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 1, "node -e body variants collapse to one finding");
+});
+
+await test("checkAndEmit: distinct real shapes → two findings", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  // Shape A: heredoc false-positive class (3 bodies). Shape B: real
+  // `pnpm test … | grep` (no heredoc) — identical prefix so the 3 occurrences
+  // cross the per-session threshold as one distinct class (a real violation
+  // shape that must NOT collapse into the heredoc class). ALL entries written
+  // in ONE writeEntries call — the helper alternates surfaces and overwrites,
+  // so two separate calls would clobber the first shape.
+  writeEntries([
+    makeEntry(now - 5 * 60000, "cat <<'EOF'\npnpm test a | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 3 * 60000, "cat <<'EOF'\npnpm test b | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 1 * 60000, "cat <<'EOF'\npnpm test c | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 4 * 60000, "pnpm test x 2>&1 | grep FAIL", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 2 * 60000, "pnpm test x 2>&1 | grep FAIL", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 1 * 60000, "pnpm test x 2>&1 | grep FAIL", "rule-no-raw-stdout-vitest", sid),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 2, "two genuinely distinct shapes under one rule → two findings");
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  assert.strictEqual(lines.length, 2);
+});
+
+await test("checkAndEmit: existing same-rule finding with matching recurrence_key suppresses re-file (key equality dedup)", async () => {
+  // The re-file burst mitigation for a changed key is `existingKeys` (key
+  // equality) + post-ship triage — NOT a description-prefix fallback (the
+  // description redacts raw commands, so no prefix is recoverable). This test
+  // locks the actual suppression path: an existing finding carrying the SAME
+  // recurrence_key as a fresh burst suppresses the re-file.
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "cat <<'EOF'\npnpm test a | tail\nEOF\n";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 3 * 60000, "cat <<'EOF'\npnpm test bbb | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+    makeEntry(now - 1 * 60000, "cat <<'EOF'\npnpm test c | tail\nEOF\n", "rule-no-raw-stdout-vitest", sid),
+  ]);
+  const normalized = normalizePrefixForKey(prefix);
+  const existingKey = `rule-no-raw-stdout-vitest::${hashRecurrenceKey("rule-no-raw-stdout-vitest", normalized)}`;
+  writeFileSync(
+    join(root, "meta-state.jsonl"),
+    JSON.stringify({
+      id: "meta-test-key-dedup",
+      entry_kind: "finding",
+      subtype: "recurring-false-positive",
+      recurrence_key: existingKey,
+      status: "resolved",
+      description: `Pattern recurred 3 time(s) across 1 session(s) (latest: ${sid}) under rule rule-no-raw-stdout-vitest. First seen: x. Last seen: y.`,
+      created_at: new Date().toISOString(),
+    }) + "\n"
+  );
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 0, "existing same-rule finding with matching recurrence_key must suppress re-file");
+});
+
+await test("normalizePrefixForKey: herestring followed by newline + real command — command NOT blanked", () => {
+  // Regression: the tracker's herestring exclusion must consume the ENTIRE
+  // `<<<` operator. Emitting only one `<` re-parsed the remaining `<<` as a
+  // heredoc and blanked whatever followed to end — a real `cat file` command
+  // on the next line would be erased from the key, collapsing distinct
+  // commands into one class.
+  const cmd = "grep x <<< 'y'\ncat file";
+  const out = normalizePrefixForKey(cmd);
+  assert.ok(out.includes("cat file"), `real command after herestring must survive the key: ${out}`);
 });

@@ -462,6 +462,197 @@ function stripEchoProse(command) {
   return blankQuotedArgsFor(command, ECHO_PROSE_COMMANDS);
 }
 
+// ─── stripHeredocBodies: heredoc data-blanking pre-pass ─────────────────────
+//
+// Closes the last un-blanked DATA class in the gate's strip family: quoted-
+// delimiter heredoc bodies attached to inert verbs. A quoted delimiter
+// (`<<'EOF'`, `<<"EOF"`, `<<-'EOF'`, or any quote char / backslash in the
+// delimiter word) suppresses POSIX expansion in the body — `$(...)`, backticks
+// and `$var` are literal — so the body can never execute and is pure data.
+// Blanking it removes false-fires like a heredoc-fed `cat` whose data happens
+// to contain `vitest run foo | tail`.
+//
+// Safety model (allowlist, never denylist — unknown verb ⇒ visible):
+//   - BLANKABLE_HEREDOC_VERBS_PROMOTED  (applyPromotedRules):
+//       DATA_COMMANDS ∪ {cat, tee} ∪ node-family.
+//       node-family is an ACCEPTED bypass here, mirroring stripNodeEvalBody —
+//       JS source is data to the shell gate; child_process spawn is the same
+//       accepted class with the same recurrence catch-net.
+//   - BLANKABLE_HEREDOC_VERBS_CONSTRAINT (matchConstraintPattern):
+//       DATA_COMMANDS ∪ {cat, tee} ONLY. node-family is EXCLUDED: `node
+//       <<'EOJS'` reads stdin and EXECUTES it, so blanking would hide
+//       `node <<'EOJS' … require('child_process').execSync('sudo docker run')`
+//       from the docker/sudo constraints. `bash <<'EOF' … docker run` stays
+//       visible (executor verb, not in the set).
+//   - BLANKABLE_HEREDOC_VERBS_GATEVERB  (matchGateVerb/classifyPolicyTokens):
+//       DATA_COMMANDS ∪ {cat, tee} ∪ node-family, applied as a pre-pass BEFORE
+//       classifyPolicyTokens so a heredoc body line containing `| bash` no
+//       longer fractures into a gate-verb block.
+//
+// Deliberately NOT blanked (visible — the safe direction):
+//   - Unquoted `<<EOF` bodies: POSIX expands `$(...)`/backticks/`$var`, so the
+//     body can execute. Visible = no bypass; residual false-fires are collapsed
+//     tracker-side by the coarser recurrence key, not by this blanker.
+//   - Executor-verb heredocs (`bash`/`sh`/`zsh`/`dash`/`python`/`python3`/
+//     `ruby`/`perl`/`awk`/`sed`/`ssh` `<<'EOF'`): bodies run as programs — the
+//     heredoc analogue of the locked stripNodeEvalBody asymmetry. Node-family
+//     is the lone exception (see PROMOTED/GATEVERB allowlists) and only for
+//     stdin-script data, mirroring the accepted node -e bypass.
+//   - Herestrings `<<<`: a distinct op (`shell-parse.js` REDIRECT_OPS) that
+//     feeds stdin directly and executes — never misparsed as a heredoc (the
+//     scan requires the char after `<<-?` to NOT be `<`).
+//
+// Opaque-span recognition: once a heredoc operator + delimiter is recognized,
+// the span from the operator line through the terminator line is opaque to
+// quote-state tracking (the shell does not quote-parse heredoc bodies), so a
+// body `don't` cannot open a quote region that hides a later `<<`. Scanning
+// resumes AFTER the terminator with quote state reset to NORMAL.
+//
+// Fail-closed: any throw returns the command unchanged (the call-site wrapper
+// logs a stderr diagnostic). Kill-switch: GATE_HEREDOC_BLANKER=0 short-circuits
+// the pre-pass at every call site — the recovery lever if a blanker bug ships
+// (hooks run from the working tree on all runtimes simultaneously).
+//
+// The receiving verb is resolved from the segment prefix before `<<` via
+// `segmentVerb` (which skips env-assignments/command-prefixes through
+// `resolveVerbIndex` and basename-normalizes), so `sudo bash <<'EOF'` and
+// `nice python3 <<'EOF'` attribute to the executor and stay visible.
+const BLANKABLE_HEREDOC_VERBS_PROMOTED = new Set(["cat", "tee", "node", "nodejs", ...DATA_COMMANDS]);
+const BLANKABLE_HEREDOC_VERBS_CONSTRAINT = new Set(["cat", "tee", ...DATA_COMMANDS]);
+const BLANKABLE_HEREDOC_VERBS_GATEVERB = new Set(["cat", "tee", "node", "nodejs", ...DATA_COMMANDS]);
+
+// Count newlines in a span — used to blank heredoc bodies while preserving
+// line structure (the operator + terminator lines stay intact).
+function countNewlines(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) if (s[i] === "\n") n++;
+  return n;
+}
+
+// fallow-ignore-next-line complexity -- single-pass scanner; per-heredoc span handling kept inline
+export function stripHeredocBodies(command, allowlist = BLANKABLE_HEREDOC_VERBS_PROMOTED) {
+  if (typeof command !== "string" || !command) return command;
+  if (process.env.GATE_HEREDOC_BLANKER === "0") return command; // kill-switch
+
+  const noop = { onChar() {}, onDelimiter() {} };
+  let out = "";
+  let state = QUOTE_NORMAL;
+  let segmentStart = 0; // start of the current shell segment (for verb attribution)
+  let i = 0;
+
+  while (i < command.length) {
+    // Heredoc operator detection — only outside quotes.
+    if (state === QUOTE_NORMAL && command[i] === "<" && command[i + 1] === "<") {
+      let opEnd = i + 2;
+      let stripTabs = false;
+      if (command[opEnd] === "-") { stripTabs = true; opEnd++; }
+      // Herestring exclusion: `<<<` feeds stdin and executes — not a heredoc.
+      // Emit the ENTIRE `<<<` operator (all three `<` chars) and advance past
+      // it. Emitting only one `<` and advancing one char would leave the
+      // remaining `<<` to be re-parsed as a heredoc operator on the next
+      // iteration — which blanks to end when a NEWLINE follows the herestring
+      // body (a real command on the next line gets hidden from the gate).
+      if (command[opEnd] === "<") {
+        out += command.slice(i, opEnd + 1);
+        // fallow-ignore-next-line code-duplication -- mirror of the tracker-side blanker; kept parallel so gate and tracker stay independently readable
+        state = QUOTE_NORMAL;
+        i = opEnd + 1;
+        continue;
+      }
+      // Parse the delimiter word after optional spaces/tabs.
+      let j = opEnd;
+      while (j < command.length && (command[j] === " " || command[j] === "\t")) j++;
+      let k = j;
+      while (k < command.length && !/\s/.test(command[k])) k++;
+      const delim = command.slice(j, k);
+      if (delim.length === 0) {
+        out += command[i];
+        state = advanceQuoteState(state, command[i], i, noop);
+        i++;
+        continue;
+      }
+      // Quoting ANY part of the delimiter word suppresses expansion → the body
+      // is data-eligible. Unquoted → stop, leave visible (may execute).
+      const quoted = /['"\\]/.test(delim);
+      // The terminator line is the delimiter word with quoting chars stripped
+      // (POSIX: `<<'EOF'` is terminated by a bare `EOF` line).
+      const termDelim = delim.replace(/['"\\]/g, "");
+      const verb = segmentVerb(command.slice(segmentStart, i));
+      const blankable = quoted && verb !== null && allowlist.has(verb);
+
+      // Body starts on the line after the operator line.
+      const lineEnd = command.indexOf("\n", k);
+      const bodyStart = lineEnd === -1 ? command.length : lineEnd + 1;
+
+      // Find the terminator: a line whose content (leading tabs stripped iff
+      // `<<-`) is exactly the delimiter. Unterminated ⇒ blank to end (quoted).
+      let termStart = -1;
+      if (bodyStart < command.length) {
+        let scan = bodyStart;
+        while (scan <= command.length) {
+          const nl = command.indexOf("\n", scan);
+          const lineEndIdx = nl === -1 ? command.length : nl;
+          // The line content excludes the newline. Strip a trailing `\r` so a
+          // CRLF-terminated line (`EOF\r`) matches the POSIX terminator (`EOF`)
+          // — without this, `\r\n` line endings leave the terminator unmatched
+          // and the scanner blanks to end of command, hiding a real command
+          // that follows the heredoc from the constraint gate (CRLF bypass).
+          let content = command.slice(scan, lineEndIdx).replace(/\r$/, "");
+          if (stripTabs) content = content.replace(/^\t+/, "");
+          if (content === termDelim) { termStart = scan; break; }
+          if (nl === -1) break;
+          scan = nl + 1;
+        }
+      }
+
+      // Emit the operator line verbatim, then blank (or keep) the body.
+      out += command.slice(i, bodyStart);
+      const spanEnd = termStart === -1 ? command.length : termStart;
+      if (blankable) {
+        out += "\n".repeat(countNewlines(command.slice(bodyStart, spanEnd)));
+      } else {
+        out += command.slice(bodyStart, spanEnd);
+      }
+      // Opaque span: quote state resets to NORMAL after the terminator; the
+      // segment context restarts AFTER the terminator LINE (the next shell
+      // command begins on the line after it), so the terminator word never
+      // leaks into the next heredoc's verb attribution.
+      state = QUOTE_NORMAL;
+      const termLineEnd = termStart === -1 ? -1 : command.indexOf("\n", termStart);
+      segmentStart = termLineEnd === -1 ? command.length : termLineEnd + 1;
+      i = spanEnd;
+      continue;
+    }
+
+    out += command[i];
+    const nextState = advanceQuoteState(state, command[i], i, noop);
+    // Segment boundary for verb attribution: ; & | and newline terminate a
+    // shell command (newline is a command separator even though the walker's
+    // splitSegments only splits on ; & |).
+    if (state === QUOTE_NORMAL && (command[i] === ";" || command[i] === "&" || command[i] === "|" || command[i] === "\n")) {
+      segmentStart = i + 1;
+    }
+    state = nextState;
+    i++;
+  }
+  return out;
+}
+
+// Fail-closed wrapper: a blanker throw must never crash the gate — treat the
+// command as un-blanked (visible direction) with a stderr diagnostic. Used at
+// every wiring site. Exported so the fail-closed contract is directly testable
+// (a throwing blanker — e.g. a future edit passing a non-Set allowlist — must
+// never propagate into the gate decision).
+// fallow-ignore-next-line unused-export -- public API; consumed by gate-logic-heredoc.test.js
+export function safeStripHeredocBodies(command, allowlist) {
+  try {
+    return stripHeredocBodies(command, allowlist);
+  } catch (err) {
+    console.error(`stripHeredocBodies: failed, treating as un-blanked: ${err.message}`);
+    return command;
+  }
+}
+
 // Loop CLI inline-JSON argv: the canonical loop tool surface is
 //   `node .../bin/loop.mjs <tool> '<json>'`
 // where the quoted JSON argument is user-supplied DATA (it is JSON.parse'd +
@@ -570,7 +761,14 @@ export function stripCliArgvPayload(command) {
 export function matchConstraintPattern(command) {
   if (!command || typeof command !== "string") return null;
 
-  for (const segment of splitSegments(command)) {
+  // Heredoc pre-pass: blank quoted-delimiter heredoc bodies for inert verbs
+  // (DATA_COMMANDS ∪ {cat, tee}) so `cat <<'EOF' … docker run … EOF` doesn't
+  // false-fire on the first-class docker/sudo/package-manager constraints.
+  // Executor verbs (bash/sh/python3) and node-family are NOT in this allowlist
+  // — their heredoc bodies execute, so they must stay visible.
+  const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_CONSTRAINT);
+
+  for (const segment of splitSegments(heredocSafe)) {
     const stripped = stripMessageFlags(segment);
     const nodeStripped = stripNodeEvalBody(stripped);
     const dataStripped = stripDataCommandQuotes(nodeStripped);
@@ -613,7 +811,13 @@ export function checkObservationExists(constraintType, observations) {
  */
 export function matchGateVerb(command) {
   if (!command || typeof command !== "string") return null;
-  const view = classifyPolicyTokens(command);
+  // Heredoc pre-pass BEFORE classifyPolicyTokens: a heredoc body line
+  // containing `| bash` must not fracture into a gate-verb block (a heredoc
+  // body is data, not a pipe to an executor). Node-family is INCLUDED here
+  // (mirrors the promoted-rule accepted bypass; node stdin-script data is
+  // data to the gate-verb layer).
+  const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_GATEVERB);
+  const view = classifyPolicyTokens(heredocSafe);
 
   for (const seg of view.segments) {
     // Indirection verbs (env, xargs) only match via the indirection
@@ -1534,6 +1738,16 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
           continue;
         }
         const re = new RegExp(pattern);
+        // Heredoc pre-pass at the top of the regex branch: blank quoted-
+        // delimiter heredoc bodies for the promoted-rule allowlist
+        // (DATA_COMMANDS ∪ {cat, tee} ∪ node-family). Node-family is an
+        // accepted bypass here (JS source is data to the shell gate, sibling
+        // of the documented stripNodeEvalBody limitation). The pass runs ONCE
+        // over the whole command so both the per-segment pass below and the
+        // fullStripped chain share the blanked form. Null-guard: applyPromotedRules
+        // is called with command=null by evaluate-write-gate.js — the regex
+        // branch already null-guards, and the pre-pass must too.
+        const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_PROMOTED);
         // Per-segment: a forbidden token in any leg of a compound command
         // (splitSegments splits on ; & |, honoring quotes). This remains the
         // primary match surface so substring rules behave exactly as before.
@@ -1544,7 +1758,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // the common case) or where the printed output routes to a configured
         // inert sink; a redirect, an exec segment, or a pipe to anything else
         // preserves the prose, so the bypass shapes still match here.
-        const echoSafe = applyInertSinkBlanking(command);
+        const echoSafe = applyInertSinkBlanking(heredocSafe);
         for (const segment of splitSegments(echoSafe)) {
           const stripped = stripMessageFlags(segment);
           const nodeStripped = stripNodeEvalBody(stripped);
@@ -1579,7 +1793,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // preserve ; & | (quote-aware split) so spanning patterns still match
         // real violations.
         if (!matched) {
-          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripCliArgvPayload(stripNodeEvalBody(stripMessageFlags(command)))));
+          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripCliArgvPayload(stripNodeEvalBody(stripMessageFlags(heredocSafe)))));
           if (re.test(fullStripped)) {
             matched = true;
           }
