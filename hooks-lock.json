@@ -38,6 +38,16 @@
       },
       "notes": "Per plan 260803-1749 risk section: .factory's loop-surface-inject.cjs is hardcoded to the inject-* hooks, so the preflight cannot dispatch through it without invasive adapter changes. .factory and .mastracode coverage deferred to follow-up finding."
     },
+    "session-start-git-merge-driver-preflight": {
+      "path": "tools/learning-loop-mastra/hooks/universal/session-start-git-merge-driver-preflight.cjs",
+      "event": "SessionStart",
+      "wiring": {
+        ".claude":     { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/session-start-git-merge-driver-preflight.cjs" },
+        ".factory":    { "kind": "none" },
+        ".mastracode": { "kind": "none" }
+      },
+      "notes": "Same .factory/.mastracode deferral as session-start-git-push-preflight: the .factory adapter is hardcoded to the inject-* hooks. Reports the clone's merge.union.driver state at session start so the merge-driver's silent-no-op failure mode is surfaced; points to the setup-git.sh orchestrator."
+    },
     "bash-gate": {
       "path": "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
       "event": "PreToolUse",
