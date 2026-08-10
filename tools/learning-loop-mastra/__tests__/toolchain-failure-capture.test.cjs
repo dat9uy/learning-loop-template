@@ -105,6 +105,12 @@ await test("captures pnpm fallow:gate failure", () => {
     assert.strictEqual(entries[0].command_prefix, "pnpm fallow:gate");
     assert.strictEqual(entries[0].session_id, "11111111-2222-3333-4444-555555555555");
     assert.strictEqual(entries[0].session_id_tier, "real");
+    // Explicit separate event source: toolchain-failure capture must be
+    // distinguishable from the promoted-rule evaluator so the recurrence
+    // tracker never treats it as an unexpected-match automatic candidate.
+    assert.strictEqual(entries[0].event_source, "toolchain-failure-capture");
+    assert.strictEqual(entries[0].candidate_kind, undefined, "capture rows carry no candidate kind");
+    assert.strictEqual(entries[0].event, undefined, "capture rows are not telemetry events");
   } finally { teardown(); }
 });
 

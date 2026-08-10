@@ -141,6 +141,54 @@ test("every surface's preflight marker blocks (derived from SURFACES)", () => {
   });
 });
 
+// ── decision-log producer boundary ──
+// The Write/Edit tools must NOT be able to forge a .gate-decision.log row.
+// The decision log is produced exclusively by the bash-gate evaluator hook's
+// appendDecisionLog node call; a tool write could append a forged JSONL row
+// carrying the evaluator producer trio that the recurrence tracker trusts.
+
+test("Write to .claude decision-log blocks", () => {
+  const root = makeRoot();
+  const result = evaluateWriteGate({
+    filePath: ".claude/coordination/.gate-decision.log",
+    root,
+  });
+  assert.strictEqual(result.decision, "block");
+  assert.ok(result.reason.includes("gate-decision.log"), `reason names the log: ${result.reason}`);
+  assert.ok(result.reason.includes("bash-gate evaluator"), "reason names the producer boundary");
+});
+
+test("every surface's decision-log write blocks (derived from SURFACES)", () => {
+  // The decision-log rule is derived from SURFACES. A Write/Edit to ANY
+  // surface's coordination/.gate-decision.log must block. (.forEach, not
+  // for-of, so this core/*.test.js file does not trip the "no inline
+  // for-of-SURFACES loops" invariant that scans core/.)
+  SURFACES.forEach((surface) => {
+    const root = makeRoot();
+    const result = evaluateWriteGate({
+      filePath: `${surface}/coordination/.gate-decision.log`,
+      root,
+    });
+    assert.strictEqual(result.decision, "block", `Write to ${surface} decision-log must block`);
+    assert.ok(
+      result.matched_rule.includes(`${surface}/coordination/.gate-decision.log`),
+      `matched_rule for ${surface} should name its decision-log path: ${result.matched_rule}`,
+    );
+  });
+});
+
+test("Write to a non-decision-log coordination file stays ungated (skills not coordination)", () => {
+  const root = makeRoot();
+  // The decision-log rule is scoped to .gate-decision.log specifically —
+  // other coordination files (e.g. a skills SKILL.md) are NOT covered by it.
+  const result = evaluateWriteGate({
+    filePath: ".claude/skills/learning-loop/SKILL.md",
+    root,
+  });
+  assert.strictEqual(result.decision, "block");
+  assert.ok(result.reason.includes("skills"), "skills rule still applies to skills paths");
+});
+
 // ── product/** preflight delegation ──
 
 test("product/** with valid preflight marker → ok", () => {

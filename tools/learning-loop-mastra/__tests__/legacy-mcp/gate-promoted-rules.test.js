@@ -591,6 +591,138 @@ describe("gate promoted rules G8 subcommand-class fix (P1)", () => {
   });
 });
 
+describe("gate promoted rules evaluator provenance (plan 260809-1538)", () => {
+  const vitestRule = {
+    id: "rule-no-raw-stdout-vitest",
+    entry_kind: "rule",
+    status: "active",
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern: "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b",
+  };
+
+  test("real executable vitest reader pipe → ordinary-rule-fire (executable origin), never unexpected", () => {
+    const result = applyPromotedRules(
+      "vitest run --bail=1 foo.test.js 2>&1 | tail -10",
+      null,
+      [vitestRule],
+      "/tmp",
+    );
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+    // RED: the evaluator must return explicit provenance. Until Phase 3, these
+    // fields are absent — the assertions fail to pin the missing contract.
+    assert.strictEqual(result.match_origin, "executable");
+    assert.strictEqual(result.candidate_kind, "ordinary-rule-fire");
+    assert.strictEqual(result.event_source, "bash-gate-evaluator");
+  });
+
+  test("proven inert-data quoted heredoc containing a raw vitest pipe → unexpected-match, decision stays ok", () => {
+    // A quoted-heredoc body cannot execute (POSIX suppresses expansion). The
+    // raw text carries a banned-looking shape but it is inert data. The event
+    // contract: decision stays ok (no permission change) while a separate
+    // unexpected-match telemetry event is emitted.
+    const result = applyPromotedRules(
+      "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n",
+      null,
+      [vitestRule],
+      "/tmp",
+    );
+    // RED: the evaluator must prove the inert-data origin and emit the
+    // unexpected-match classification without changing the permission result.
+    assert.strictEqual(result.decision, "ok", "inert data must not escalate");
+    assert.strictEqual(result.match_origin, "inert-data");
+    assert.strictEqual(result.candidate_kind, "unexpected-match");
+    assert.strictEqual(result.event_source, "bash-gate-evaluator");
+  });
+
+  test("executable body (bash -c) matching the rule → ordinary/unknown, never unexpected", () => {
+    // bash -c bodies execute; a banned token inside is a real violation.
+    const result = applyPromotedRules(
+      'bash -c "vitest run foo.test.js 2>&1 | tail -10"',
+      null,
+      [vitestRule],
+      "/tmp",
+    );
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.match_origin, "executable");
+    assert.strictEqual(result.candidate_kind, "ordinary-rule-fire");
+  });
+
+  test("null command (write-gate caller) → ok, no provenance assumption", () => {
+    const result = applyPromotedRules(null, "docs/x.md", [vitestRule], "/tmp");
+    assert.strictEqual(result.decision, "ok");
+  });
+});
+
+describe("gate promoted rules inert telemetry deferred past later rules (defect-1 fix)", () => {
+  const inertArtifactRule = {
+    id: "rule-no-new-artifact-types",
+    entry_kind: "rule",
+    status: "active",
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern:
+      "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
+  };
+  const vitestRule = {
+    id: "rule-no-raw-stdout-vitest",
+    entry_kind: "rule",
+    status: "active",
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern: "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b",
+  };
+  const gitNoVerifyRule = {
+    id: "rule-no-verify-bypass-denied",
+    entry_kind: "rule",
+    status: "active",
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern: "git[\\s][^|;&]*\\b(commit|push|cherry-pick|revert|merge)\\b[^|;&]*--no-verify",
+  };
+
+  test("inert heredoc + real vitest pipe (later rule) → escalate rule-no-raw-stdout-vitest, never ok", () => {
+    const result = applyPromotedRules(
+      "cat <<'EOF'\npropose a new schema for X\nEOF\n; vitest run foo.test.js 2>&1 | tail -10",
+      null,
+      [inertArtifactRule, vitestRule],
+      "/tmp",
+    );
+    assert.strictEqual(result.decision, "escalate", "a real violation must win over deferred inert telemetry");
+    assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+    assert.strictEqual(result.match_origin, "executable");
+    assert.strictEqual(result.candidate_kind, "ordinary-rule-fire");
+  });
+
+  test("inert heredoc + git commit --no-verify (same rule, real match) → escalate, real match wins", () => {
+    const result = applyPromotedRules(
+      "cat <<'EOF'\npropose a new schema for X\nEOF\n; git commit -m \"wip\" --no-verify",
+      null,
+      [inertArtifactRule, gitNoVerifyRule],
+      "/tmp",
+    );
+    assert.strictEqual(result.decision, "escalate", "real executable match must win over deferred inert telemetry");
+    assert.strictEqual(result.rule_id, "rule-no-verify-bypass-denied");
+  });
+
+  test("inert heredoc under the SAME rule that also matches it → lone inert telemetry still ok (positive pin)", () => {
+    // The single rule has an inert quoted-heredoc match only. Deferral must not
+    // suppress the unexpected-match telemetry event when no later rule finds a
+    // real violation: decision stays ok with the event marker.
+    const result = applyPromotedRules(
+      "cat <<'EOF'\npropose a new schema for X\nEOF\n",
+      null,
+      [inertArtifactRule],
+      "/tmp",
+    );
+    assert.strictEqual(result.decision, "ok", "lone inert match must stay allowed");
+    assert.strictEqual(result.event, "unexpected-match");
+    assert.strictEqual(result.match_origin, "inert-data");
+    assert.strictEqual(result.candidate_kind, "unexpected-match");
+  });
+});
+
 describe("gate promoted rules status semantics (P1)", () => {
   test("loadPromotedRules loads status='active' rule entries", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-resolved-"));
