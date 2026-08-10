@@ -34,7 +34,6 @@ const PRUNE_FILES = [
   "__tests__/legacy-mcp/sp1-derive-status-acceptance.test.js",
   "__tests__/legacy-mcp/sp2-check-grounding-acceptance.test.js",
   "__tests__/phase-e-foundation/agents-section-1-layers.test.js",
-  "__tests__/phase-e-foundation/fcis-invariant.test.js",
   "__tests__/phase-e-foundation/no-core-legacy-refs.test.js",
   "__tests__/phase-e-foundation/schema-doc-exists.test.js",
   "__tests__/phase-e-shell-restructure/agents-md-layer-locations.test.js",

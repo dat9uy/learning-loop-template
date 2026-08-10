@@ -6,27 +6,20 @@
 // dependency: gate-logic imports classifyCommand from command-classification,
 // and command-classification imported the strip family from gate-logic).
 //
-// This module imports ONLY parse primitives (shell-parse.js) and operator
-// config (patterns.json). It holds no gate state: no promoted rules, no
-// constraint patterns, no observation/registry I/O. gate-logic.js re-exports
-// these primitives so existing callers and tests importing from gate-logic
-// keep working unchanged.
+// This module imports ONLY parse primitives (shell-parse.js) and the shared
+// pattern-config facade (patterns.json loads). It holds no gate state: no
+// promoted rules, no constraint patterns, no observation/registry I/O.
+// gate-logic.js re-exports these primitives so existing callers and tests
+// importing from gate-logic keep working unchanged.
 //
 // Dependencies:
 //   - classifyPolicyTokens, resolveVerbIndex (shell-parse.js)
-//   - patterns.json (message_flags, inert-sinks) — same load as gate-logic.
+//   - message_flags, inert-sinks (pattern-config.js) — same source as gate-logic.
 
 import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "utf8"));
+import { MESSAGE_FLAGS, INERT_SINKS } from "./pattern-config.js";
 
 const SEGMENT_SEPARATORS = /[;&|]+/;
-
-const MESSAGE_FLAGS = new Set(PATTERNS_RAW.message_flags || []);
 
 /**
  * Split a command on `;`, `&`, `|` separators — quote-aware.
@@ -970,14 +963,13 @@ export function applyInertSinkBlanking(command) {
 // Inert-sinks: verbs that cannot execute (tail/head/grep/cat/etc.). When a
 // real pipe's target verb is an inert sink, the inert-side segment's
 // quoted data cannot run there, so promoted-rule blanking can safely
-// suppress it. Loaded from patterns.json — operator-owned config; new
-// entries are a recorded change-log decision.
+// suppress it. Loaded from patterns.json (via pattern-config.js) —
+// operator-owned config; new entries are a recorded change-log decision.
 //
 // awk/sed deliberately held back (red-team #1 dual-role): they are both
 // stdin readers AND execution-capable; the executed-body vs stdin-reader
 // distinction is not cleanly parseable. If friction later recurs, a
 // separate recorded decision adds them with an exec-vs-read predicate.
-const INERT_SINKS = new Set(PATTERNS_RAW["inert-sinks"] || []);
 
 // Inert-sink test for a pipe-chain end segment. Beyond the configured
 // verb allowlist, `node <script>.{js,mjs,cjs}` (no eval flags) counts as

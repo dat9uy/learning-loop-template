@@ -54,7 +54,7 @@ import { stripEvidenceAnchor } from "./gate-logic.js";
 // (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch).
 // Pre-state-only — see core/operation-invariant.js for the architecture.
 import { assertinvariant } from "./operation-invariant.js";
-import { appendGateLog } from "#lib/gate-logging.js";
+import { appendGateLog } from "./gate-logging.js";
 // Structural referential-integrity (RI) at the write boundary. The graph
 // module owns the cross-ref table (per-kind fields) and the id-existence
 // check; the mutation boundaries (writeEntry/updateEntry/metaStateBatch)

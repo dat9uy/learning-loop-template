@@ -1,6 +1,6 @@
 import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
-import { buildParitySchema } from "./schema-parity.js";
+import { buildParitySchema } from "../core/schema-parity.js";
 import { adaptLegacyHandler } from "./handler-adapter.js";
 import { stripMcpContentEnvelope } from "../core/envelope-stripper.js";
 

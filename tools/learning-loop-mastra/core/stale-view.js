@@ -35,7 +35,7 @@ import { canonicalIndexKey, readFileIndex } from "./meta-state.js";
 import { STALENESS_WINDOW_MS, isOpen } from "./constants.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
-import { appendGateLog } from "../tools/lib/gate-logging.js";
+import { appendGateLog } from "./gate-logging.js";
 
 export { isOpen };
 

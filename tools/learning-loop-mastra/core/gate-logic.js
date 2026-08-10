@@ -25,44 +25,9 @@ import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 import { isOpen } from "./stale-view.js";
+import { CONSTRAINT_PATTERNS, GATE_VERBS, INDIRECTION_VERBS } from "./pattern-config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "utf8"));
-
-const CONSTRAINT_PATTERNS = Object.fromEntries(
-  Object.entries(PATTERNS_RAW).map(([key, pattern]) => [key, new RegExp(pattern)])
-);
-
-// Gate-verbs: structured list of executor verbs (direct + indirection) that
-// become observation-gated constraints. Loaded from patterns.json — NOT a
-// hardcoded list. Each entry is either a bare string ("bash") for verb-only
-// match, or an object {verb, flags} for verb+flag match (e.g. node -e), or
-// {verb, indirection: true} for verbs that only count when followed by an
-// executor (env bash, xargs bash).
-// Verb matching uses basename normalization so PATH-qualified /bin/bash
-// matches the bash entry.
-const GATE_VERBS = (() => {
-  const raw = PATTERNS_RAW["gate-verbs"];
-  if (!Array.isArray(raw)) return [];
-  return raw.map((entry) =>
-    typeof entry === "string"
-      ? { verb: entry, flags: null, indirection: false }
-      : {
-          verb: entry.verb,
-          flags: Array.isArray(entry.flags) ? entry.flags : null,
-          indirection: entry.indirection === true,
-        },
-  );
-})();
-
-// Indirection verbs (env, xargs) ONLY count as gate-verbs when followed by
-// an executor. Derived from the same patterns.json config as GATE_VERBS so
-// the match path and the observation path (file-readers.js, also config-
-// derived) can never drift: removing a verb from config removes it from
-// both. `find` is a verb+flag entry (-exec/-execdir/-ok), not indirection.
-const INDIRECTION_VERBS = new Set(
-  GATE_VERBS.filter((e) => e.indirection).map((e) => e.verb),
-);
 
 // `records-evidence` was the only observation-based unlock for `records/evidence/**`.
 // It was migrated to meta-state (the meta-surface reframe) and the unlock removed.

@@ -19,9 +19,9 @@ Both categories are listed here. Future operators should consult this file befor
 
 ### Parity-semantic pins
 
-The 5 files below implement or apply parity guarantees for MCP tool schemas. The canonical contract lives in `mastra/schema-parity.js`; the other 4 files are factories that attach the schema-parity shim to every tool/workflow/agent. See `mastra/schema-parity.js` for the wire-format contract details.
+The 5 files below implement or apply parity guarantees for MCP tool schemas. The canonical contract lives in `core/schema-parity.js`; the other 4 files are factories that attach the schema-parity shim to every tool/workflow/agent. See `core/schema-parity.js` for the wire-format contract details.
 
-- `mastra/schema-parity.js` — implements the wire-format parity contract for MCP tool schemas. Moving it breaks the contract. **Do not move to `legacy/`.**
+- `core/schema-parity.js` — implements the wire-format parity contract for MCP tool schemas. Moving it breaks the contract. **Do not move to `legacy/`.**
 - `mastra/create-loop-tool.js` — factory that attaches the schema-parity shim to every tool. Moving it breaks every tool's wire format. **Do not move to `legacy/`.**
 - `mastra/create-loop-workflow.js` — factory that attaches the schema-parity shim to every workflow. Same as above. **Do not move to `legacy/`.**
 - `mastra/create-loop-agent.js` — factory that attaches the schema-parity shim to every agent. Same as above. **Do not move to `legacy/`.**

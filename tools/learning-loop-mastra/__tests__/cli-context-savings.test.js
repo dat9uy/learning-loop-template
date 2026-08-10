@@ -26,7 +26,7 @@ import { z } from "zod";
 import { CLI_TOOLS } from "../core/cli-tools.js";
 import { resolveToolImportUrl } from "../core/manifest-loader.js";
 import { normalizeInputSchema } from "../core/schema-normalize.js";
-import { buildParitySchema } from "../mastra/schema-parity.js";
+import { buildParitySchema } from "../core/schema-parity.js";
 import {
   parseManifestJsonc,
   resolveWireBytesForCliTools,
@@ -108,7 +108,7 @@ describe("resolveWireBytesForCliTools", () => {
     const { text, manifest } = readLiveManifest();
     void text;
     const { z } = await import("zod");
-    const { buildParitySchema } = await import("../mastra/schema-parity.js");
+    const { buildParitySchema } = await import("../core/schema-parity.js");
 
     // Resolve a small set (one entry) and re-derive the wire bytes by hand
     // to assert the formula. Take the first CLI_TOOLS member the manifest

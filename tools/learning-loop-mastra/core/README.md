@@ -12,7 +12,11 @@ Zero framework dependencies.
 
 This is the load-bearing architectural rule. If you add a
 `from '@mastra/...'` to any file in this directory, the FCIS test
-(`__tests__/phase-e-foundation/fcis-invariant.test.js`) will fail.
+(`__tests__/phase-e-foundation/fcis-invariant.test.js`) will fail. The same
+guard also enforces **no core→outside-core edges**: every relative import
+from a core file must resolve within `core/` (no `../mastra/`, `../tools/`
+escapes) and no bare-specifier import may reach outside `node:` / the
+pure-npm allowlist (no `#lib/*`, no `#mastra/*`).
 
 ## What core may import
 
@@ -27,6 +31,9 @@ This is the load-bearing architectural rule. If you add a
 - Anything under `tools/learning-loop-mastra/mastra/{workflows,agents}/`
   (shell-defined entities); `tools/learning-loop-mastra/tools/handlers/`
   is a separate substrate directory (legacy tool adapters; NOT under `mastra/`)
+- `#lib/*` / `#mastra/*` package-alias bare specifiers, or any `../` that
+  escapes `core/` into `tools/` (e.g. `../tools/lib/...`) — these are
+  outside-core edges of the same class as the `mastra/` imports above.
 
 The reasoning: those would couple core to the shell, breaking the one-way
 dependency. Core must remain portable — if we swap Mastra for another
@@ -34,9 +41,9 @@ framework, only the shell changes.
 
 ## How to add a new core file
 
-See `docs/placement.md` §3 for the full process and §2 for the role taxonomy.
-In short: drop the file, write a summary, add a manifest row in `core/placement.yaml`,
-run the placement-manifest test.
+See `tools/learning-loop-mastra/docs/placement.md` §3 for the full process and
+§2 for the role taxonomy. In short: drop the file, write a summary, add a
+manifest row in `core/placement.yaml`, run the placement-manifest test.
 
 ## Admission rule
 

@@ -1,7 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { normalizeInputSchema } from "../core/schema-normalize.js";
-import { buildParitySchema } from "./schema-parity.js";
+import { buildParitySchema } from "../core/schema-parity.js";
 import { withR2Gate } from "./with-r2-gate.js";
 
 /**

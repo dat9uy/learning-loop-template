@@ -38,7 +38,7 @@
 // must update together. A shared core/jsonc.js is out of scope here.
 
 import { z } from "zod";
-import { buildParitySchema } from "../mastra/schema-parity.js";
+import { buildParitySchema } from "./schema-parity.js";
 import { normalizeInputSchema } from "./schema-normalize.js";
 import { resolveToolImportUrl } from "./manifest-loader.js";
 
