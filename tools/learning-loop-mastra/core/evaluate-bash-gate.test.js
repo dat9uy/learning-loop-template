@@ -14,7 +14,12 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { evaluateBashGate, PATH_WRITE_PATTERNS } from "./evaluate-bash-gate.js";
+import {
+  evaluateBashGate,
+  PATH_WRITE_PATTERNS,
+  DECISION_LOG_WRITE_PATTERNS,
+  DECISION_LOG_WRITE_REASON,
+} from "./evaluate-bash-gate.js";
 import { SURFACES } from "./surfaces.js";
 
 // ── helpers ──
@@ -347,6 +352,64 @@ test("pnpm exec vitest run piped to tail → escalate", () => {
   assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
 });
 
+test("bash -c \"vitest run …\" piped to tail → escalate (executable body never unexpected)", () => {
+  // A bash -c body executes, so a banned token inside is a real violation. The
+  // scenario matrix (plan 260809-1538) requires this shape to stay visible and
+  // ordinary — never an unexpected-match even though it recurs.
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: 'bash -c "vitest run --bail=1 foo.test.js 2>&1 | tail -10"', root });
+  assert.strictEqual(result.decision, "escalate");
+  assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+  assert.notStrictEqual(result.candidate_kind, "unexpected-match", "executable body must never be unexpected-match");
+});
+
+test("unquoted executor heredoc with raw vitest pipe → escalate (never unexpected)", () => {
+  // Unquoted `<<EOF` bodies POSIX-expand, so they can execute. The gate keeps
+  // them visible; the heredoc plan's tracker-side coarser key collapses the
+  // residual class, but the gate decision must stay escalate/ordinary.
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "cat <<EOF\nvitest run foo.test.js 2>&1 | tail -10\nEOF\n", root });
+  assert.strictEqual(result.decision, "escalate");
+  assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+  assert.notStrictEqual(result.candidate_kind, "unexpected-match", "unquoted heredoc body must never be unexpected-match");
+});
+
+test("proven inert-data quoted heredoc → decision ok + separate unexpected-match telemetry marker", () => {
+  // The telemetry event must flow through evaluateBashGate as decision "ok"
+  // (the raw text is inert data — no permission change) plus the
+  // `event: "unexpected-match"` marker the hook logs without a deny/allow
+  // envelope. This must NOT surface as a block/escalate.
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({
+    command: "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n",
+    root,
+  });
+  assert.strictEqual(result.decision, "ok", "inert data must not escalate or block");
+  assert.strictEqual(result.event, "unexpected-match");
+  assert.strictEqual(result.event_source, "bash-gate-evaluator");
+  assert.strictEqual(result.match_origin, "inert-data");
+  assert.strictEqual(result.candidate_kind, "unexpected-match");
+  assert.strictEqual(result.hard_block, undefined, "telemetry event must not carry a permission decision");
+});
+
+test("inert-data telemetry must NOT override a real constraint (docker + inert heredoc → block)", () => {
+  // Precedence lock: a command that is BOTH a proven inert unexpected-match
+  // AND a real first-class constraint must still escalate/block via the
+  // constraint. The telemetry event never wins over a real permission decision.
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({
+    command: "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n; docker run ubuntu",
+    root,
+  });
+  assert.strictEqual(result.decision, "block", "docker constraint must win over the telemetry event");
+  assert.strictEqual(result.constraint_type, "docker");
+  assert.notStrictEqual(result.event, "unexpected-match", "blocked command must not carry the ok telemetry marker");
+});
+
 // False positives — the sanctioned paths must NOT match.
 
 test("pnpm test:iter (wrapper, no pipe) → ok", () => {
@@ -460,9 +523,9 @@ test("null command → ok", () => {
 
 // ── PATH_WRITE_PATTERNS array ──
 
-test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 8 state files)", () => {
+test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 4/surface decision-log + 8 state files)", () => {
   assert.ok(Array.isArray(PATH_WRITE_PATTERNS));
-  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 8);
+  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 4 * SURFACES.length + 8);
   // Every entry should be a RegExp
   for (const p of PATH_WRITE_PATTERNS) {
     assert.ok(p instanceof RegExp);
@@ -486,6 +549,127 @@ test("PATH_WRITE_PATTERNS blocks every surface's preflight-marker redirect and t
       PATH_WRITE_PATTERNS.some((p) => p.test(tee)),
       `tee to ${surface} should be detected as a path-write`,
     );
+  });
+});
+
+// ── decision-log path gate (trusted-producer boundary, defect-2 fix) ──
+// The .gate-decision.log is written ONLY by the bash-gate evaluator hook
+// (appendDecisionLog node call, spawned — bypasses the bash gate). An agent
+// bash command appending a row would forge evaluator provenance, so any shell
+// redirect/append/tee to a surface's decision log must hard-block with the
+// DEDICATED reason (not the records/ reason).
+
+test("echo append to .claude decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "echo 'x' >> .claude/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+  assert.ok(!result.reason.includes("records/"), "must not reuse the records reason");
+});
+
+test("tee append to .claude decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "echo 'x' | tee -a .claude/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test(".factory and .mastracode decision-log appends → block with dedicated reason", () => {
+  const root = makeRoot();
+  const factory = evaluateBashGate({ command: "echo 'x' >> .factory/coordination/.gate-decision.log", root });
+  assert.strictEqual(factory.decision, "block");
+  assert.strictEqual(factory.hard_block, true);
+  assert.strictEqual(factory.reason, DECISION_LOG_WRITE_REASON);
+
+  const mastracode = evaluateBashGate({ command: "echo 'x' | tee -a .mastracode/coordination/.gate-decision.log", root });
+  assert.strictEqual(mastracode.decision, "block");
+  assert.strictEqual(mastracode.hard_block, true);
+  assert.strictEqual(mastracode.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("DECISION_LOG_WRITE_PATTERNS covers every surface's decision-log redirect and tee", () => {
+  // Derived from SURFACES — catches the failure mode where a surface is added
+  // to SURFACES but not covered by the decision-log gate. (.forEach, not
+  // for-of, per the core/ no-inline-for-of-SURFACES-loop invariant.)
+  SURFACES.forEach((surface) => {
+    const redirect = `echo x > ${surface}/coordination/.gate-decision.log`;
+    const append = `echo x >> ${surface}/coordination/.gate-decision.log`;
+    const tee = `echo x | tee -a ${surface}/coordination/.gate-decision.log`;
+    assert.ok(
+      DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(redirect)),
+      `redirect to ${surface} decision log should be detected`,
+    );
+    assert.ok(
+      DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(append)),
+      `append to ${surface} decision log should be detected`,
+    );
+    assert.ok(
+      DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(tee)),
+      `tee to ${surface} decision log should be detected`,
+    );
+  });
+});
+
+test("plain echo (no gated path) → ok, not blocked by the decision-log gate", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "echo 'x'", root });
+  assert.strictEqual(result.decision, "ok");
+});
+
+// cp/mv/dd/install/rsync can overwrite or append the decision log without a
+// redirect operator, so the redirect/tee patterns alone do not close the seam.
+// Each must hard-block with the dedicated decision-log reason (forged rows
+// carrying the evaluator producer trio would be trusted by the tracker).
+test("cp into .claude decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "cp /tmp/forged.json .claude/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("mv into .factory decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "mv /tmp/evil .factory/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("dd of= into .claude decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "dd if=/tmp/forged.json of=.claude/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("install into .mastracode decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "install -m 644 /tmp/forged.json .mastracode/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("rsync into .claude decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "rsync /tmp/forged.json .claude/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("DECISION_LOG_WRITE_PATTERNS covers every surface's decision-log cp/mv/dd/install/rsync", () => {
+  SURFACES.forEach((surface) => {
+    const cp = `cp /tmp/x ${surface}/coordination/.gate-decision.log`;
+    const mv = `mv /tmp/x ${surface}/coordination/.gate-decision.log`;
+    const dd = `dd if=/tmp/x of=${surface}/coordination/.gate-decision.log`;
+    const install = `install -m 644 /tmp/x ${surface}/coordination/.gate-decision.log`;
+    const rsync = `rsync /tmp/x ${surface}/coordination/.gate-decision.log`;
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(cp)), `cp to ${surface} decision log should be detected`);
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(mv)), `mv to ${surface} decision log should be detected`);
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(dd)), `dd of= to ${surface} decision log should be detected`);
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(install)), `install to ${surface} decision log should be detected`);
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(rsync)), `rsync to ${surface} decision log should be detected`);
   });
 });
 

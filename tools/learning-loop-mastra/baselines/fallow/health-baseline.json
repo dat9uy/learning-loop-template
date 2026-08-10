@@ -5,47 +5,258 @@
         "count": 4
       }
     },
-    "core/consistency-check.js": {
-      "complexity_high": {
+    "__tests__/with-mcp-server.js": {
+      "crap_moderate": {
         "count": 1
       }
     },
-    "core/evaluate-inbound-gate.js": {
+    "core/blanking.js": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "complexity_moderate": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "core/canonical-compare.js": {
       "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/cli-context-savings.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/cli-stderr.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "core/command-classification.js": {
+      "complexity_high": {
+        "count": 4
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/consistency-check.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "core/constants.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/derive-status.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/entry/index.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/entry/relationship-graph.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "core/entry/rule.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/envelope-stripper.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/evaluate-inbound-gate.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "core/evaluate-write-gate.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/gate-decision-log.js": {
+      "crap_critical": {
         "count": 1
       }
     },
     "core/gate-logic.js": {
       "complexity_critical": {
-        "count": 2
+        "count": 1
       },
       "complexity_high": {
         "count": 1
-      },
-      "complexity_moderate": {
-        "count": 2
       },
       "crap_critical": {
         "count": 2
       },
       "crap_high": {
+        "count": 3
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "core/gate-override.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/hint-registry.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/hint-renderer.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/identity-pin.js": {
+      "crap_moderate": {
         "count": 1
       }
     },
     "core/inbound-state.js": {
-      "complexity_moderate": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/loop-introspect-cache.js": {
+      "crap_critical": {
         "count": 1
       }
     },
     "core/loop-introspect.js": {
-      "complexity_high": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 4
+      }
+    },
+    "core/observation-staleness.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/path-containment.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "core/r2/allowlist-cache.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/r2/allowlist-shape.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "core/r2/denial-log.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/r2/path-field-detector.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/read-registry-cache.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/registry-stats.js": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/runtime-agnostic-checklist.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 3
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "core/runtime-state.js": {
+      "crap_critical": {
         "count": 1
       },
       "crap_high": {
         "count": 2
+      },
+      "crap_moderate": {
+        "count": 3
       }
     },
-    "core/runtime-state.js": {
+    "core/schema-normalize.js": {
       "crap_moderate": {
         "count": 1
       }
@@ -58,16 +269,91 @@
         "count": 1
       }
     },
+    "core/stable-artifacts-lineage.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "core/stale-view.js": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/surfaces.js": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "core/update-entry-helpers.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/workflow-registry.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
     "hooks/universal/inbound-gate.js": {
       "crap_moderate": {
         "count": 3
       }
     },
-    "mastra/schema-parity.js": {
-      "complexity_high": {
+    "hooks/universal/lib/protocol-adapter.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "interface/contract.js": {
+      "crap_critical": {
         "count": 1
       },
       "crap_high": {
+        "count": 4
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "mastra/agents/load-agents-manifest.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "mastra/create-loop-agent.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "mastra/create-loop-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "mastra/create-loop-workflow.js": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "mastra/handler-adapter.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "mastra/schema-parity.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
         "count": 1
       }
     },
@@ -79,13 +365,82 @@
         "count": 1
       }
     },
+    "mastra/with-r2-gate.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
     "scripts/validate-registry-refs.js": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 3
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/check-runtime-agnostic-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/handlers/gate-tool.js": {
       "crap_high": {
         "count": 1
       }
     },
     "tools/handlers/loop-describe-tool.js": {
-      "complexity_high": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/loop-get-instruction-tool.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/meta-state-archive-tool.js": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "tools/handlers/meta-state-batch-tool.js": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "tools/handlers/meta-state-check-grounding-tool.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/handlers/meta-state-derive-status-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/meta-state-dispatch-finding-tool.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
         "count": 1
       }
     },
@@ -97,11 +452,16 @@
         "count": 1
       }
     },
+    "tools/handlers/meta-state-log-change-tool.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "tools/handlers/meta-state-patch-tool.js": {
-      "complexity_high": {
+      "complexity_critical": {
         "count": 1
       },
-      "crap_high": {
+      "crap_critical": {
         "count": 1
       }
     },
@@ -113,16 +473,123 @@
         "count": 1
       }
     },
-    "tools/handlers/meta-state-re-verify-tool.js": {
-      "complexity_high": {
-        "count": 1
-      },
+    "tools/handlers/meta-state-propose-design-tool.js": {
       "crap_high": {
         "count": 1
       }
     },
+    "tools/handlers/meta-state-re-verify-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/handlers/meta-state-refresh-file-index-tool.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/handlers/meta-state-relationship-validate-tool.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "tools/handlers/meta-state-relationships-tool.js": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "tools/handlers/meta-state-report-tool.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "tools/handlers/meta-state-resolve-tool.js": {
-      "complexity_moderate": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/handlers/meta-state-ship-loop-design-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/meta-state-supersede-tool.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/handlers/meta-state-touch-tool.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "tools/handlers/runtime-state-pause-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/runtime-state-read-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/runtime-state-record-tool.js": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "tools/handlers/runtime-state-resume-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/handlers/runtime-state-stop-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/trigger-workflow-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/workflow-classify-prompt-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/handlers/workflow-generate-prompt-tool.js": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "tools/handlers/workflow-intentional-skip-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/handlers/workflow-prepare-runtime-request-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/handlers/workflow-runtime-probe-tool.js": {
+      "crap_moderate": {
         "count": 1
       }
     }
@@ -135,18 +602,23 @@
     "core/worktree-session-id.js:dead code",
     "core/gate-logic.js:complexity",
     "core/meta-state.js:complexity",
+    "core/canonical-compare.js:untested risk",
     "core/loop-introspect.js:complexity",
     "core/registry-append-atomic.js:dead code",
     "core/shell-parse.js:complexity",
     "tools/handlers/meta-state-re-verify-tool.js:complexity",
     "mastra/schema-parity.js:complexity",
     "core/evaluate-bash-gate.js:complexity",
-    "tools/handlers/loop-describe-tool.js:complexity",
     "core/surfaces.js:complexity",
+    "tools/handlers/loop-describe-tool.js:complexity",
+    "core/recurrence-tracker.js:complexity",
     "tools/handlers/meta-state-list-tool.js:complexity",
     "tools/handlers/meta-state-promote-rule-tool.js:complexity",
+    "tools/handlers/workflow-generate-prompt-tool.js:untested risk",
     "tools/handlers/meta-state-patch-tool.js:complexity",
+    "core/command-classification.js:complexity",
     "tools/handlers/meta-state-dispatch-finding-tool.js:complexity",
+    "core/blanking.js:complexity",
     "interface/contract.js:complexity"
   ]
 }

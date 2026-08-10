@@ -49,7 +49,45 @@
     {
       "file": "core/gate-logic.js",
       "exports": [
-        "stripHeredocBodies"
+        "stripHeredocBodies",
+        "safeStripHeredocBodies",
+        "splitSegments",
+        "stripMessageFlags",
+        "stripNodeEvalBody",
+        "stripDataCommandQuotes",
+        "stripEchoProse",
+        "BLANKABLE_HEREDOC_VERBS_PROMOTED",
+        "stripCliArgvPayload",
+        "applyInertSinkBlanking"
+      ]
+    },
+    {
+      "file": "core/blanking.js",
+      "exports": [
+        "splitSegments",
+        "stripMessageFlags",
+        "stripNodeEvalBody",
+        "stripDataCommandQuotes",
+        "stripEchoProse",
+        "BLANKABLE_HEREDOC_VERBS_PROMOTED",
+        "BLANKABLE_HEREDOC_VERBS_CONSTRAINT",
+        "BLANKABLE_HEREDOC_VERBS_GATEVERB",
+        "stripHeredocBodies",
+        "safeStripHeredocBodies",
+        "stripCliArgvPayload",
+        "applyInertSinkBlanking"
+      ]
+    },
+    {
+      "file": "core/command-classification.js",
+      "exports": [
+        "CLASSIFIER_MODES"
+      ]
+    },
+    {
+      "file": "core/gate-decision-log.js",
+      "exports": [
+        "readDecisionLog"
       ]
     },
     {

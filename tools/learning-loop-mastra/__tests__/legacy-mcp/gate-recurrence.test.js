@@ -46,7 +46,13 @@ function writeEntries(entries) {
   if (factoryLines.length) writeFileSync(decisionLogPath(".factory"), factoryLines.join("\n") + "\n");
 }
 
-function makeEntry(ts, prefix, ruleId = "rule-no-new-artifact-types", sessionId = "11111111-2222-3333-4444-555555555555", sessionTier = "real") {
+const UNEXPECTED_PROV = {
+  event_source: "bash-gate-evaluator",
+  match_origin: "inert-data",
+  candidate_kind: "unexpected-match",
+};
+
+function makeEntry(ts, prefix, ruleId = "rule-no-new-artifact-types", sessionId = "11111111-2222-3333-4444-555555555555", sessionTier = "real", provenance = {}) {
   return {
     ts: new Date(ts).toISOString(),
     command_prefix: prefix,
@@ -57,6 +63,14 @@ function makeEntry(ts, prefix, ruleId = "rule-no-new-artifact-types", sessionId 
     skipped_via_override: false,
     session_id: sessionId,
     session_id_tier: sessionTier,
+    // Explicit evaluator-produced unexpected-match provenance by default, so
+    // a plain entry is a REAL recurrence candidate under the eligibility
+    // filter. Callers override with a `provenance` object to exercise
+    // ordinary fires, legacy (absent), contradictory pairs, or a wrong
+    // producer marker. The legacy no-provenance shape is covered by dedicated
+    // tests that inline plain rows.
+    ...UNEXPECTED_PROV,
+    ...provenance,
   };
 }
 
@@ -251,6 +265,7 @@ await test("findRecurrentGroups: distinct session_ids stay distinct under cross-
         skipped_via_override: false,
         session_id: sid,
         session_id_tier: "real",
+        ...UNEXPECTED_PROV,
       });
     }
   }
@@ -1388,4 +1403,134 @@ await test("normalizePrefixForKey: herestring followed by newline + real command
   const cmd = "grep x <<< 'y'\ncat file";
   const out = normalizePrefixForKey(cmd);
   assert.ok(out.includes("cat file"), `real command after herestring must survive the key: ${out}`);
+});
+
+// ─── Phase 4 eligibility regression (plan 260809-1538, Phase 1 RED baseline) ──
+//
+// The tracker must NOT infer candidate kind from `rule_id`, `reason`, command
+// prefix, or key collision. Only an EXPLICIT evaluator-produced
+// `unexpected-match` event (proven inert-data origin + `bash-gate-evaluator`
+// producer marker) is eligible for automatic promoted-rule recurrence filing.
+// Ordinary rule fires, legacy rows without provenance, and contradictory
+// provenance pairs remain telemetry-only.
+//
+// These were RED while `checkAndEmit` filed a finding for ANY repeated rule_id
+// event; the eligibility filter makes the ordinary-fire and legacy-row
+// assertions GREEN.
+
+await test("checkAndEmit: three ordinary-rule-fire events → telemetry only, zero findings (RED)", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "vitest run --bail=1 foo.test.js 2>&1 | tail -10";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "bash-gate-evaluator", match_origin: "executable", candidate_kind: "ordinary-rule-fire" }),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "bash-gate-evaluator", match_origin: "executable", candidate_kind: "ordinary-rule-fire" }),
+    makeEntry(now - 1 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "bash-gate-evaluator", match_origin: "executable", candidate_kind: "ordinary-rule-fire" }),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.entries_scanned, 3);
+  assert.strictEqual(result.findings_emitted, 0, "ordinary rule fires must NOT auto-file a finding");
+});
+
+await test("checkAndEmit: legacy rows without provenance → zero findings (RED)", async () => {
+  // Current capture shape: no event_source / match_origin / candidate_kind.
+  // Inlined (not makeEntry) because makeEntry defaults to explicit
+  // unexpected-match provenance — the legacy shape is the absence of all three.
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "vitest run --bail=1 foo.test.js 2>&1 | tail -10";
+  const plain = (t) => ({
+    ts: new Date(t).toISOString(),
+    command_prefix: prefix,
+    rule_id: "rule-no-raw-stdout-vitest",
+    decision: "escalate",
+    reason: "Promoted rule matched",
+    matched_pattern: "tail",
+    skipped_via_override: false,
+    session_id: sid,
+    session_id_tier: "real",
+  });
+  writeEntries([
+    plain(now - 5 * 60000),
+    plain(now - 3 * 60000),
+    plain(now - 1 * 60000),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 0, "historical rows lacking provenance must NOT auto-file");
+});
+
+await test("checkAndEmit: three explicit unexpected-match events → one finding (unchanged schema/key)", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+    makeEntry(now - 1 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 1, "proven unexpected-match recurrences remain eligible");
+  const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+  assert.strictEqual(lines.length, 1);
+  const finding = JSON.parse(lines[0]);
+  assert.strictEqual(finding.subtype, "recurring-false-positive");
+  assert.ok(finding.recurrence_key.startsWith("rule-no-raw-stdout-vitest::"), "recurrence_key unchanged shape");
+});
+
+await test("findRecurrentGroups: sample_commands are privacy-safe (hash + classes, no raw command_prefix)", async () => {
+  // Automatic candidate recurrence samples must not expose raw inert payloads
+  // through gate_check_recurrence: each sample is reduced to the provenance
+  // classes plus a short opaque hash of the raw prefix. Pins the
+  // privacySafeSample invariant (red-team #5) so a future revert to raw
+  // command_prefix is caught.
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+    makeEntry(now - 1 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 1);
+  const samples = groups[0].sample_commands;
+  assert.ok(Array.isArray(samples) && samples.length > 0, "group carries sample_commands");
+  const s = samples[0];
+  assert.strictEqual(typeof s.prefix_hash, "string");
+  assert.ok(s.prefix_hash.length > 0, "prefix_hash present");
+  assert.strictEqual(s.match_origin, "inert-data");
+  assert.strictEqual(s.candidate_kind, "unexpected-match");
+  // No key for the raw command payload — only the structural fields above.
+  assert.ok(!("command_prefix" in s), "sample must not carry the raw command_prefix field");
+  const serialized = JSON.stringify(samples);
+  assert.ok(!serialized.includes("vitest run foo.test.js | tail"),
+    "sample_commands must not expose the raw inert payload");
+});
+
+await test("checkAndEmit: wrong producer marker with unexpected-match fields → zero findings (RED)", async () => {
+  // A row carrying the flat unexpected-match fields but from a NON-evaluator
+  // producer (toolchain-failure capture) is not an automatic candidate.
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "toolchain-failure-capture", match_origin: "inert-data", candidate_kind: "unexpected-match" }),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "toolchain-failure-capture", match_origin: "inert-data", candidate_kind: "unexpected-match" }),
+    makeEntry(now - 1 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "toolchain-failure-capture", match_origin: "inert-data", candidate_kind: "unexpected-match" }),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 0, "wrong producer marker must be ineligible");
+});
+
+await test("checkAndEmit: contradictory pair (unexpected-match + executable origin) → zero findings (RED)", async () => {
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "bash-gate-evaluator", match_origin: "executable", candidate_kind: "unexpected-match" }),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "bash-gate-evaluator", match_origin: "executable", candidate_kind: "unexpected-match" }),
+    makeEntry(now - 1 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", { event_source: "bash-gate-evaluator", match_origin: "executable", candidate_kind: "unexpected-match" }),
+  ]);
+  const result = await checkAndEmit(root);
+  assert.strictEqual(result.findings_emitted, 0, "contradictory pair must normalize to unclassified");
 });

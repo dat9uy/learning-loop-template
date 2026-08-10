@@ -103,6 +103,88 @@ await test("appendDecisionLog concurrent calls do not corrupt the file", async (
   }
 });
 
+await test("appendDecisionLog round-trips optional provenance fields (match_origin, candidate_kind, event_source)", () => {
+  appendDecisionLog(root, {
+    command_prefix: "cat <<'EOF'\nvitest run x | tail\nEOF\n",
+    rule_id: "rule-no-raw-stdout-vitest",
+    decision: "ok",
+    reason: "inert-data match",
+    matched_pattern: "tail",
+    skipped_via_override: false,
+    event_source: "bash-gate-evaluator",
+    match_origin: "inert-data",
+    candidate_kind: "unexpected-match",
+  });
+
+  const line = JSON.parse(readFileSync(surfaceLogPath(".claude"), "utf8").trim());
+  assert.strictEqual(line.event_source, "bash-gate-evaluator");
+  assert.strictEqual(line.match_origin, "inert-data");
+  assert.strictEqual(line.candidate_kind, "unexpected-match");
+  // Existing fields preserved.
+  assert.strictEqual(line.rule_id, "rule-no-raw-stdout-vitest");
+  assert.strictEqual(line.decision, "ok");
+});
+
+await test("appendDecisionLog old rows without provenance read back with absent optional fields (legacy compatibility)", () => {
+  // Simulate a pre-provenance line: write the JSON directly, bypassing the
+  // serializer, then confirm the reader does not drop or corrupt it.
+  const legacy = {
+    ts: new Date().toISOString(),
+    command_prefix: "vitest run x | tail -10",
+    rule_id: "rule-no-raw-stdout-vitest",
+    decision: "escalate",
+    reason: "Promoted rule matched",
+    matched_pattern: "tail",
+    skipped_via_override: false,
+  };
+  mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
+  writeFileSync(surfaceLogPath(".claude"), JSON.stringify(legacy) + "\n");
+
+  const entries = readDecisionLog(root);
+  assert.strictEqual(entries.length, 1);
+  const entry = entries[0];
+  assert.strictEqual(entry.rule_id, "rule-no-raw-stdout-vitest");
+  // The optional provenance fields are absent, not null — callers must treat
+  // missing as unclassified/telemetry-only.
+  assert.ok(!("candidate_kind" in entry), "legacy row must not fabricate candidate_kind");
+  assert.ok(!("event_source" in entry), "legacy row must not fabricate event_source");
+});
+
+await test("appendDecisionLog preserves newline hardening when provenance fields are supplied", () => {
+  // Seed a baseline line so the append-count assertion is meaningful.
+  appendDecisionLog(root, {
+    command_prefix: "baseline",
+    rule_id: "r",
+    decision: "escalate",
+    reason: "test",
+    matched_pattern: null,
+    skipped_via_override: false,
+  });
+  const before = readFileSync(surfaceLogPath(".claude"), "utf8").trim().split("\n").filter(Boolean).length;
+
+  // A multi-line command_prefix must be flattened by oneLinePrefix even when
+  // optional provenance fields are present. JSON escaping of string values
+  // means a provenance field can never inject a raw line break; the hardening
+  // boundary is the JSONL one-line invariant, so the append must be exactly
+  // one line and the round-tripped command_prefix must carry no newline.
+  appendDecisionLog(root, {
+    command_prefix: "cat <<'EOF'\nvitest run x | tail\nEOF\n",
+    rule_id: "rule-no-raw-stdout-vitest",
+    decision: "escalate",
+    reason: "Promoted rule matched",
+    matched_pattern: "tail",
+    skipped_via_override: false,
+    event_source: "bash-gate-evaluator",
+    match_origin: "inert-data",
+    candidate_kind: "unexpected-match",
+  });
+  const after = readFileSync(surfaceLogPath(".claude"), "utf8").trim().split("\n").filter(Boolean).length;
+  assert.strictEqual(after, before + 1, "a multi-line command must serialize as exactly one JSONL line");
+
+  const last = JSON.parse(readFileSync(surfaceLogPath(".claude"), "utf8").trim().split("\n").filter(Boolean).at(-1));
+  assert.ok(!/[\r\n]/.test(last.command_prefix), "command_prefix must be newline-flattened on read-back");
+});
+
 await test("readDecisionLog returns entries from all surfaces, deduped", () => {
   const ts = new Date().toISOString();
   const shared = { ts, command_prefix: "shared", rule_id: "rule-x", decision: "block", reason: "r", matched_pattern: null, skipped_via_override: false };

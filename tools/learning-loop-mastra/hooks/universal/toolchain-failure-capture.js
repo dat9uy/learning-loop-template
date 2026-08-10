@@ -119,6 +119,11 @@ function main() {
       skipped_via_override: false,
       session_id: session.session_id,
       session_id_tier: session.session_id_tier,
+      // Explicit separate event source: toolchain-failure capture is NOT the
+      // promoted-rule evaluator, so its rows are never automatic
+      // unexpected-match candidates (the recurrence tracker keys off the
+      // producer marker).
+      event_source: "toolchain-failure-capture",
     });
     emitDebug(root, { outcome: "captured", command_prefix: normalizePrefix(command) });
   } catch (err) {

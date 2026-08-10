@@ -40,7 +40,18 @@ function main() {
 }
 
 function emitIfBlocked(decision, command, root, session) {
-  if (decision.decision === "ok") return;
+  if (decision.decision === "ok") {
+    // Separate non-permission telemetry channel: a proven inert-data match
+    // carries `decision: "ok"` plus `event: "unexpected-match"`. Append the
+    // log entry (the recurrence tracker consumes it) but emit NO
+    // hookSpecificOutput envelope — the command is allowed and the harness
+    // must not see a deny/allow override. Ordinary `ok` commands are NOT
+    // logged globally — only this explicit event adds an ok line.
+    if (decision.event === "unexpected-match") {
+      appendDecisionLog(root, buildLogEntry(decision, command, session));
+    }
+    return;
+  }
   appendDecisionLog(root, buildLogEntry(decision, command, session));
   console.log(formatHookDecision(decision, { channel: "hookSpecificOutput" }));
 }
@@ -56,6 +67,14 @@ function buildLogEntry(decision, command, session) {
     skipped_via_override: false,
     session_id: session?.session_id ?? null,
     session_id_tier: session?.session_id_tier ?? "fallback",
+    // Optional evaluator-provenance fields — copied when present so the
+    // cross-surface decision log carries the producer marker + discriminated
+    // pair for the recurrence tracker. Absent for non-evaluator decisions
+    // (constraint blocks, path writes), matching the pre-provenance shape.
+    ...(decision.event_source !== undefined && { event_source: decision.event_source }),
+    ...(decision.match_origin !== undefined && { match_origin: decision.match_origin }),
+    ...(decision.candidate_kind !== undefined && { candidate_kind: decision.candidate_kind }),
+    ...(decision.event !== undefined && { event: decision.event }),
   };
 }
 

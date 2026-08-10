@@ -201,6 +201,12 @@ files:
   - path: recurrence-tracker.js
     role: helper
     summary: Tracks recurring patterns in gate decision log.
+  - path: blanking.js
+    role: primitive
+    summary: Pure command blanking primitives (quote-state machine, strip family, heredoc/data/echo/cli-argv/inert-sink blankers) shared by gate-logic, the classifier, and the tracker — no gate state, no I/O.
+  - path: command-classification.js
+    role: helper
+    summary: Pure runtime-neutral command classifier — gate/recurrence/event modes over shell-parse + blanker primitives; dual-view inert-span provenance for unexpected-match events.
   - path: workflow-registry.js
     role: helper
     summary: Reads workflow manifest and provides lookup helpers.
