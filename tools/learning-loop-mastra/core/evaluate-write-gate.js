@@ -69,6 +69,13 @@ function buildPreflightChecklist(surface) {
 // The marker may only be created via the mark_preflight_complete MCP tool.
 const PREFLIGHT_MARKER_PATHS = getAllCoordinationPaths(".loop-preflight-*");
 
+// Decision-log paths across every runtime surface, derived from SURFACES so a
+// Write/Edit tool cannot forge a `.gate-decision.log` row. The decision log is
+// produced exclusively by the bash-gate evaluator hook (`appendDecisionLog`
+// node call, a spawned process); a tool write could append a forged JSONL row
+// carrying the evaluator producer trio that the recurrence tracker trusts.
+const DECISION_LOG_PATHS = getAllCoordinationPaths(".gate-decision.log");
+
 // Skills paths across every runtime surface, derived from SURFACES so the
 // skills rule covers .claude + .factory + .mastracode consistently.
 // The skills rule is preflight-delegating (like product/**) but uses an
@@ -148,6 +155,13 @@ const WRITE_GATE_RULES = [
     matchedRule: PREFLIGHT_MARKER_PATHS.join(" | "),
     match: (relPath) => PREFLIGHT_MARKER_PATHS.some((g) => globMatch(g, relPath)),
     reason: "Preflight marker files can only be created via the mark_preflight_complete MCP tool. Direct writes are blocked.",
+  },
+  {
+    name: "decision-log",
+    matchedRule: DECISION_LOG_PATHS.join(" | "),
+    match: (relPath) => DECISION_LOG_PATHS.some((g) => globMatch(g, relPath)),
+    reason:
+      "Direct Write/Edit to .gate-decision.log is blocked. The decision log is produced exclusively by the bash-gate evaluator hook's appendDecisionLog node call; a tool write could append forged rows the recurrence tracker would trust. Use the gate (bash) or report operator-filed recurrence instead of editing the log.",
   },
   {
     name: "skills",

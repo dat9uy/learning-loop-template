@@ -201,6 +201,9 @@ files:
   - path: recurrence-tracker.js
     role: helper
     summary: Tracks recurring patterns in gate decision log.
+  - path: command-classification.js
+    role: helper
+    summary: Pure runtime-neutral command classifier — gate/recurrence/event modes over shell-parse + blanker primitives; dual-view inert-span provenance for unexpected-match events.
   - path: workflow-registry.js
     role: helper
     summary: Reads workflow manifest and provides lookup helpers.

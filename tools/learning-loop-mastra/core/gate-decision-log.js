@@ -41,6 +41,14 @@ export function appendDecisionLog(root, entry) {
     skipped_via_override: entry.skipped_via_override ?? false,
     session_id: entry.session_id ?? null,
     session_id_tier: entry.session_id_tier ?? null,
+    // Optional evaluator-provenance fields (additive). Absent when not
+    // provided, so old callers produce byte-identical lines and legacy rows
+    // read back with the fields absent — the recurrence tracker treats
+    // missing provenance as unclassified/telemetry-only.
+    ...(entry.event_source !== undefined && { event_source: entry.event_source }),
+    ...(entry.match_origin !== undefined && { match_origin: entry.match_origin }),
+    ...(entry.candidate_kind !== undefined && { candidate_kind: entry.candidate_kind }),
+    ...(entry.event !== undefined && { event: entry.event }),
   });
 
   if (line.includes("\n") || line.includes("\r")) {

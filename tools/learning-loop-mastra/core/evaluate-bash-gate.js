@@ -40,6 +40,40 @@ function preflightMarkerPatterns() {
   });
 }
 
+// Decision-log path-write patterns, derived from SURFACES so every runtime
+// surface's coordination/.gate-decision.log redirect (`>`/`>>`) and `tee`
+// append is detected. This is the trusted-producer boundary for the decision
+// log: the ONLY legitimate writer is the bash-gate evaluator hook's
+// `appendDecisionLog` node call (a spawned process, not a bash command), so an
+// agent bash command must never be able to append a forged JSONL row carrying
+// `event_source:"bash-gate-evaluator"` + `candidate_kind:"unexpected-match"`.
+// Mirror the preflight-marker pattern shape (per-surface, redirect + tee).
+function decisionLogPathPatterns() {
+  return SURFACES.flatMap((surface) => {
+    const seg = escapeForRegex(surface);
+    // The decision log is the trusted-producer boundary: the ONLY legitimate
+    // writer is the bash-gate evaluator hook's `appendDecisionLog` node call,
+    // so ANY agent shell write to a surface's coordination/.gate-decision.log
+    // must be blocked, regardless of path spelling. The prefix before the
+    // surface segment is deliberately loose (`[^\\s"';&|]*`) so `./.claude/…`,
+    // `/.claude/…`, `.//.claude//…`, and an absolute `/repo/.claude/…` all
+    // match; the anchor is the surface + coordination + filename, not the path
+    // head (records-style `[^\\s"';&|]+` tail semantics). `seg` is already
+    // escaped for regex. Accepted limitation: a filename that merely BEGINS
+    // with `.gate-decision.log` (e.g. `.gate-decision.log.backup`) also
+    // matches — fail-closed over-match, no bypass.
+    return [
+      new RegExp(`>{1,2}\\s*["']?[^\\s"';&|]*${seg}\\/+coordination\\/+\\.gate-decision\\.log["']?`),
+      new RegExp(`\\btee\\b[^;&|]*["']?[^\\s"';&|]*${seg}\\/+coordination\\/+\\.gate-decision\\.log["']?`),
+    ];
+  });
+}
+
+// Built once at module load so the gate helper and PATH_WRITE_PATTERNS share
+// the same per-surface patterns.
+// fallow-ignore-next-line unused-export
+export const DECISION_LOG_WRITE_PATTERNS = decisionLogPathPatterns();
+
 // Runtime-state path-write patterns (shell redirect + tee to
 // runtime-state.jsonl and the session-local substrate). Split out of the
 // shared records block so the bash gate can exempt these matches when an
@@ -66,12 +100,24 @@ export const PATH_WRITE_PATTERNS = [
   /<<['"]?\w+['"]?\s*>\s*["']?\.?\/?records\//,
   /\btee\b.*["']?\.?\/?records\/[^\s"';&|]+["']?/,
   ...preflightMarkerPatterns(),
+  ...decisionLogPathPatterns(),
   />{1,2}\s*["']?\.?\/?meta-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?meta-state\.jsonl["']?/,
   ...RUNTIME_STATE_WRITE_PATTERNS,
   />{1,2}\s*["']?\.?\/?\.loop\/runtime-tracking\.json["']?/,
   /\btee\b.*["']?\.?\/?\.loop\/runtime-tracking\.json["']?/,
 ];
+
+// Self-remediating? No — the decision log is NOT operator-maintained. It is
+// produced exclusively by the bash-gate evaluator hook (`appendDecisionLog`
+// node call, spawned as a process that bypasses the bash gate). Appending a
+// forged row via shell would let a command fabricate an
+// `event_source:"bash-gate-evaluator"` + `candidate_kind:"unexpected-match"`
+// row that the recurrence tracker trusts — so direct shell writes are blocked
+// with a dedicated reason (mirroring the runtime-state path-write pattern).
+// fallow-ignore-next-line unused-export
+export const DECISION_LOG_WRITE_REASON =
+  "Direct shell writes to .gate-decision.log are blocked. The decision log is produced by the bash-gate evaluator hook; appending forged rows is prohibited.";
 
 // Every gated path-write EXCEPT runtime-state.jsonl. Evaluated independently
 // of the runtime-state branch below so that a runtime-state match covered by
@@ -94,6 +140,17 @@ function commandWritesToGatedPath(command) {
 function commandWritesToRuntimeState(command) {
   if (!command || typeof command !== "string") return false;
   return RUNTIME_STATE_WRITE_PATTERNS.some((p) => p.test(command));
+}
+
+// True when a decision-log path-write pattern matches the command (redirect,
+// append, or tee to any surface's .gate-decision.log). This is the
+// trusted-producer boundary: the decision log is written ONLY by the bash-gate
+// evaluator hook's appendDecisionLog node call (spawned, bypasses the gate), so
+// an agent bash command matching here gets a dedicated block reason rather than
+// falling through to the generic records/ reason.
+function commandWritesToDecisionLog(command) {
+  if (!command || typeof command !== "string") return false;
+  return DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(command));
 }
 
 // Self-remediating block reason for observation-gated gate-verb constraints.
@@ -225,6 +282,18 @@ export function evaluateBashGate({ command, root }) {
       };
     }
   }
+  // Decision-log writes get a DEDICATED reason (not the records/ reason): the
+  // log is produced ONLY by the bash-gate evaluator hook, so a shell append is
+  // forging rows, not maintaining records. Checked independently BEFORE the
+  // generic gated-path check so a compound command matching both still reports
+  // the decision-log seam.
+  if (!pathResult && commandWritesToDecisionLog(command)) {
+    pathResult = {
+      decision: "block",
+      reason: DECISION_LOG_WRITE_REASON,
+      hard_block: true,
+    };
+  }
   if (!pathResult && commandWritesToGatedPath(command)) {
     pathResult = {
       decision: "block",
@@ -234,6 +303,14 @@ export function evaluateBashGate({ command, root }) {
   }
 
   // --- Promoted rules check (meta-state as rule registry) ---
+  // The promoted-rule result carries evaluator provenance (event_source /
+  // match_origin / candidate_kind). A proven inert-data match returns
+  // decision "ok" plus the separate `event: "unexpected-match"` telemetry
+  // marker. That marker must NOT turn into a block/allow override: it falls
+  // through the hard_block / constraint / path combine below and is only
+  // emitted when the final decision is ok — a real constraint (docker, path
+  // write) still wins over the telemetry event. Real executable matches
+  // escalate (provenance rides on the returned object).
   const promotedRules = loadPromotedRules(resolvedRoot);
   const promotedCheck = applyPromotedRules(command, null, promotedRules, resolvedRoot);
   if (promotedCheck.decision === "escalate") {
@@ -247,6 +324,13 @@ export function evaluateBashGate({ command, root }) {
     return constraintResult;
   } else if (pathResult) {
     return pathResult;
+  }
+
+  // Only a genuinely allowed command reaches here. If the evaluator proved an
+  // inert-data unexpected-match, surface the telemetry marker (decision stays
+  // ok) so the Bash hook can log it without a deny/allow envelope.
+  if (promotedCheck.event === "unexpected-match" && promotedCheck.decision === "ok") {
+    return promotedCheck;
   }
 
   return { decision: "ok" };

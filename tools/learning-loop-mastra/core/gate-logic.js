@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
 import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
+import { classifyCommand } from "./command-classification.js";
 import { readRegistry, metaStateRuleEntrySchema, readFileIndex } from "./meta-state.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
@@ -458,7 +459,7 @@ export function stripDataCommandQuotes(command) {
 // matchConstraintPattern strips no echo prose at all. Executed-body verbs
 // (bash -c, sh -c, python -c, awk, sed) are NOT here — their quoted bodies run.
 const ECHO_PROSE_COMMANDS = new Set(["echo", "printf"]);
-function stripEchoProse(command) {
+export function stripEchoProse(command) {
   return blankQuotedArgsFor(command, ECHO_PROSE_COMMANDS);
 }
 
@@ -520,6 +521,9 @@ function stripEchoProse(command) {
 const BLANKABLE_HEREDOC_VERBS_PROMOTED = new Set(["cat", "tee", "node", "nodejs", ...DATA_COMMANDS]);
 const BLANKABLE_HEREDOC_VERBS_CONSTRAINT = new Set(["cat", "tee", ...DATA_COMMANDS]);
 const BLANKABLE_HEREDOC_VERBS_GATEVERB = new Set(["cat", "tee", "node", "nodejs", ...DATA_COMMANDS]);
+// Exported for the shared command-classification substrate so its gate mode
+// can reuse the exact promoted-rule heredoc allowlist without forking it.
+export { BLANKABLE_HEREDOC_VERBS_PROMOTED };
 
 // Count newlines in a span — used to blank heredoc bodies while preserving
 // line structure (the operator + terminator lines stay intact).
@@ -904,7 +908,12 @@ function matchVerbAgainstGateList(verb, args) {
  */
 // Module-internal: consumed by applyPromotedRules only; not part of the
 // module's exported surface.
-function applyInertSinkBlanking(command) {
+//
+// Exported for the shared command-classification substrate: the classifier's
+// gate mode must reproduce this exact inert-sink blanking policy without
+// forking it, so gate decisions and classifier views cannot drift. The export
+// is additive — existing callers and tests are unaffected.
+export function applyInertSinkBlanking(command) {
   if (!command || typeof command !== "string") return command || "";
   const view = classifyPolicyTokens(command);
 
@@ -1697,10 +1706,103 @@ export function checkResolutionEvidence(rule, root) {
   return { satisfied: true, rule_id };
 }
 
+// ─── Promoted-rule provenance helpers ────────────────────────────────────────
+//
+// Event-source markers (frozen vocabulary). The evaluator is the ONLY
+// automatic-candidate producer; toolchain-failure capture is a separate explicit
+// source (its own branch in the recurrence tracker). `event_source` is a producer
+// marker, never user-supplied classification.
+const EVENT_SOURCE_BASH_GATE_EVALUATOR = "bash-gate-evaluator";
+
+// Provenance for a matched rule. Decision stays fail-closed:
+//   - a real executable match keeps `decision: "escalate"` with the classifier
+//     provenance filled (ordinary-rule-fire / executable);
+//   - a parser-proven inert-data match (the raw text carries a banned-looking
+//     shape but the whole match lies inside an inert region the gate blanked)
+//     is a SEPARATE non-permission telemetry event: `decision: "ok"` plus
+//     `event: "unexpected-match"`, never an allow override.
+// The classifier never throws; the try/catch is belt-and-suspenders so a future
+// classifier throw can never reach applyPromotedRules' catch/continue and turn a
+// matched command into `{decision:"ok"}`.
+function buildPromotedMatchResult(command, rule) {
+  const base = {
+    decision: "escalate",
+    reason: `Promoted rule "${rule.id}" matched: ${rule.pattern}`,
+    rule_id: rule.id,
+    meta_state_id: rule.id,
+    pattern_type: rule.pattern_type,
+  };
+
+  // The gate already proved the regex matched; classify for provenance only.
+  let event;
+  try {
+    event = command != null
+      ? classifyCommand(command, { mode: "event", rulePattern: rule.pattern })
+      : null;
+  } catch {
+    event = null;
+  }
+
+  const match_origin = event?.match_origin ?? "unknown";
+  const candidate_kind = event?.candidate_kind ?? "unclassified";
+
+  // Kill-switch guard: GATE_HEREDOC_BLANKER=0 short-circuits the heredoc
+  // blanker, so the gate evaluated the command un-blanked and the classifier's
+  // inert proof is UNSOUND for heredoc-derived spans. A match under the
+  // kill-switch must escalate as a visible command (a real executor shape is
+  // not inert data just because the kill-switch turned the blanker off).
+  if (process.env.GATE_HEREDOC_BLANKER === "0") {
+    if (command == null) return base;
+    return {
+      ...base,
+      event_source: EVENT_SOURCE_BASH_GATE_EVALUATOR,
+      match_origin,
+      candidate_kind,
+    };
+  }
+
+  if (match_origin === "inert-data" && candidate_kind === "unexpected-match") {
+    // Proven inert-data: the raw text does not actually violate (it is data),
+    // so the permission decision stays ok while a separate unexpected-match
+    // telemetry event is emitted. Never weakens a real executable match —
+    // `bash -c "vitest ..." | tail` classifies executable and escalates.
+    return {
+      decision: "ok",
+      reason: "inert-data match (unexpected-match telemetry)",
+      rule_id: rule.id,
+      meta_state_id: rule.id,
+      pattern_type: rule.pattern_type,
+      event: "unexpected-match",
+      event_source: EVENT_SOURCE_BASH_GATE_EVALUATOR,
+      match_origin,
+      candidate_kind,
+    };
+  }
+
+  // Real executable / mixed / unknown match: keep the escalate decision with the
+  // provenance filled. A rule that matched via a glob path (command == null)
+  // has no command provenance — omit the fields (absent, not guessed).
+  if (command == null) return base;
+  return {
+    ...base,
+    event_source: EVENT_SOURCE_BASH_GATE_EVALUATOR,
+    match_origin,
+    candidate_kind,
+  };
+}
+
 // fallow-ignore-next-line complexity
 export function applyPromotedRules(command, filePath, rules, root = findProjectRoot()) {
   const override = readGateOverride(root);
   const overrideSet = override ? new Set(override.rule_ids) : new Set();
+
+  // Proven inert-data telemetry is deferred to AFTER the full rule loop: an
+  // `event: "unexpected-match"` marker is a non-permission telemetry event, so
+  // it must never short-circuit evaluation of later rules. If any LATER rule
+  // matches a real violation, that escalate wins and this pending marker is
+  // discarded. Only when the whole loop finds no real violation is the single
+  // (first) inert marker returned as `{decision:"ok", event:"unexpected-match"}`.
+  let pendingTelemetry = null;
 
   for (const rule of rules) {
     // Defense-in-depth: skip rules that should not have been loaded.
@@ -1798,6 +1900,38 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
             matched = true;
           }
         }
+        // Dual-view inert-data telemetry: the gate blanked the raw match (so
+        // `matched` stayed false), but the RAW command still carries the
+        // banned-looking shape. If the classifier proves the raw match lies
+        // ENTIRELY inside an inert region the gate blanked (quoted heredoc
+        // body, node -e body, echo prose, data-command quote), emit the
+        // separate `event: "unexpected-match"` telemetry marker with decision
+        // staying ok. Cheap pre-filter: the raw command must contain the raw
+        // pattern before we spend a classify. A non-inert (executable) raw
+        // match is NOT emitted here — only the discrimated inert-data pair.
+        // `buildPromotedMatchResult` returns `event: "unexpected-match"` only
+        // for that pair; anything else is discarded so a non-matched command
+        // can never be flipped to escalate.
+        //
+        // Deferred, never returned inline: the inert marker is recorded and
+        // the loop CONTINUES, because a real violation from a LATER rule in
+        // the same compound command must still escalate. Returning here would
+        // mask e.g. a `rule-no-raw-stdout-vitest` violation chained behind an
+        // inert `rule-no-new-artifact-types` heredoc. `if (!pendingTelemetry)`
+        // keeps the FIRST inert marker (deterministic) while a real escalate
+        // on any rule returns from inside the loop and discards it.
+        //
+        // Kill-switch guard: when GATE_HEREDOC_BLANKER=0 the blanker returns
+        // the command unchanged, so the inert classification is UNSOUND — the
+        // body was never proven inert by the gate and a real executor shape
+        // must escalate. Skip the telemetry path entirely so the raw match
+        // reaches the normal escalate branch.
+        if (!matched && command != null && process.env.GATE_HEREDOC_BLANKER !== "0" && re.test(command)) {
+          const prov = buildPromotedMatchResult(command, rule);
+          if (prov.event === "unexpected-match") {
+            if (!pendingTelemetry) pendingTelemetry = prov;
+          }
+        }
       } else if (pattern_type === "glob" && filePath) {
         if (!isGlobScopeWhitelisted(pattern)) {
           console.warn(`Rule ${rule_id}: glob pattern "${pattern}" rejected by scope whitelist`);
@@ -1811,15 +1945,13 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
     }
 
     if (matched) {
-      return {
-        decision: "escalate",
-        reason: `Promoted rule "${rule_id}" matched: ${pattern}`,
-        rule_id,
-        meta_state_id: rule.id,
-        pattern_type,
-      };
+      return buildPromotedMatchResult(command, rule);
     }
   }
+  // No rule produced a real violation. If the loop recorded a proven inert-data
+  // unexpected-match marker, surface it now (decision stays ok — it is a
+  // non-permission telemetry event). An ordinary no-match still returns ok.
+  if (pendingTelemetry) return pendingTelemetry;
   return { decision: "ok" };
 }
 

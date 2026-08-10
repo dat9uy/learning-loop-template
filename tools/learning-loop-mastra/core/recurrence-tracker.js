@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { readDecisionLog } from "./gate-decision-log.js";
 import { readRegistry, writeEntryIfAbsent } from "./meta-state.js";
+import { readJsonlFromAllSurfaces } from "./surfaces.js";
 
 const RECURRENCE_THRESHOLD_N = 3;
 const COMMAND_PREFIX_MAX_LEN = 50;
@@ -8,6 +8,138 @@ const FALLBACK_TIER_SPAN_MS = 24 * 60 * 60 * 1000;
 const CROSS_SESSION_THRESHOLD_N = 5;
 const CROSS_SESSION_MIN_REAL_SESSIONS = 2;
 const CROSS_SESSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const DECISION_LOG_FILE = ".gate-decision.log";
+
+/**
+ * Promoted-rule recurrence eligibility. ONLY an explicit, evaluator-produced
+ * unexpected-match event — event_source "bash-gate-evaluator" + candidate_kind
+ * "unexpected-match" + match_origin "inert-data" — is an automatic recurrence
+ * candidate. Every other state (missing fields, unclassified,
+ * ordinary-rule-fire, wrong producer, contradictory pair, toolchain source) is
+ * telemetry-only.
+ *
+ * Provenance is a discriminated, fail-closed pair: the tracker never infers
+ * candidate kind from rule_id, reason, command prefix, or key collision.
+ *
+ * @param {object} entry
+ * @returns {boolean}
+ */
+export function isUnexpectedMatchCandidate(entry) {
+  return (
+    entry?.event_source === "bash-gate-evaluator"
+    && entry?.candidate_kind === "unexpected-match"
+    && entry?.match_origin === "inert-data"
+  );
+}
+
+/**
+ * Partition an entry into the recurrence grouping path. Toolchain-failure
+ * rows (rule_id "toolchain-failure") keep the EXISTING toolchain grouping
+ * semantics exactly — they are never filtered by promoted-rule candidate
+ * logic. Every other rule_id requires the evaluator-produced
+ * unexpected-match trio; a wrong producer marker (e.g. a
+ * toolchain-failure-capture-sourced row carrying a promoted-rule rule_id),
+ * missing provenance, or a contradictory pair is ineligible.
+ *
+ * @param {object} entry
+ * @returns {boolean}
+ */
+function isRecurrenceGroupableEntry(entry) {
+  if (!entry?.rule_id) return false;
+  if (entry.rule_id === "toolchain-failure") return true;
+  return isUnexpectedMatchCandidate(entry);
+}
+
+/**
+ * Same-identity key used by the cross-surface JSONL reader to dedupe. Matches
+ * readJsonlFromAllSurfaces exactly: ts::command_prefix::rule_id::decision::
+ * session_id. Provenance is deliberately NOT part of the key, so a
+ * same-identity row fan-out across surfaces with differing provenance must be
+ * detected before dedup order can select a surface winner.
+ */
+function decisionLogIdentityKey(entry) {
+  return `${entry.ts}::${entry.command_prefix ?? ""}::${entry.rule_id ?? ""}::${entry.decision ?? ""}::${entry.session_id ?? ""}`;
+}
+
+function provenanceSignature(entry) {
+  return `${entry.event_source ?? ""}|${entry.match_origin ?? ""}|${entry.candidate_kind ?? ""}`;
+}
+
+/**
+ * Read the cross-surface decision log with provenance-conflict downgrade.
+ * Uses readJsonlFromAllSurfaces with dedupe:false to get the FULL raw union
+ * of every surface's lines (the cross-surface JSONL reader is the only
+ * surfaces.js helper; a hand-rolled per-surface loop would break the
+ * core/ no-inline-SURFACES-iteration invariant). BEFORE any dedup order can
+ * pick a surface winner, detects same-identity rows whose provenance differs
+ * across surfaces and downgrades them to candidate_kind "unclassified" /
+ * match_origin "unknown" (fail closed). A `.claude` unexpected-match row +
+ * `.factory` ordinary row for one identity is one conflicted event that can
+ * never auto-file.
+ *
+ * The raw union is read in surface order (`.claude`, `.factory`,
+ * `.mastracode`); identical rows (duplicated on the same surface, or
+ * byte-identical fan-out across surfaces) dedupe to the first occurrence with
+ * the SAME provenance signature, preserving the reader's previous behavior.
+ * The full log is scanned — no `since` filter.
+ *
+ * @param {string} root
+ * @returns {Array} deduped, ts-sorted entries (conflicted identities downgraded)
+ */
+function readDecisionLogEntries(root) {
+  const raw = readJsonlFromAllSurfaces(root, DECISION_LOG_FILE, {
+    dedupe: false,
+    since: 0,
+    sort: "none",
+  });
+
+  // First pass: per-identity provenance signatures across ALL surfaces.
+  const identitySignatures = new Map();
+  for (const entry of raw) {
+    const key = decisionLogIdentityKey(entry);
+    let sigs = identitySignatures.get(key);
+    if (!sigs) {
+      sigs = new Set();
+      identitySignatures.set(key, sigs);
+    }
+    sigs.add(provenanceSignature(entry));
+  }
+
+  // Second pass: dedupe first-occurrence-wins; downgrade conflicted
+  // identities BEFORE dedup order can select a surface winner.
+  const seen = new Set();
+  const entries = [];
+  for (const entry of raw) {
+    const key = decisionLogIdentityKey(entry);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const sigs = identitySignatures.get(key);
+    if (sigs && sigs.size > 1) {
+      entries.push({ ...entry, candidate_kind: "unclassified", match_origin: "unknown" });
+      continue;
+    }
+    entries.push(entry);
+  }
+  entries.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+  return entries;
+}
+
+/**
+ * Privacy-safe command samples for a recurrence group. Automatic candidates
+ * must not surface raw command payloads through gate_check_recurrence: each
+ * sample is reduced to the provenance classes plus a short opaque hash of the
+ * raw prefix (correlation without payload reconstruction).
+ *
+ * @param {Array} entries
+ * @returns {Array<{ match_origin: string, candidate_kind: string, prefix_hash: string }>}
+ */
+function privacySafeSample(entries) {
+  return entries.slice(0, 3).map((e) => ({
+    match_origin: e.match_origin ?? "unknown",
+    candidate_kind: e.candidate_kind ?? "unclassified",
+    prefix_hash: createHash("sha256").update(e.command_prefix ?? "").digest("hex").slice(0, 8),
+  }));
+}
 
 /**
  * Normalize a command prefix for grouping.
@@ -243,17 +375,25 @@ export function findRecurrentGroups(root, options = {}) {
   const threshold = options.threshold ?? RECURRENCE_THRESHOLD_N;
 
   // Scan the full log — no `since` filter. `since` is a tool, not the
-  // default; the trigger relies on dedup, not time-window pruning.
-  const allEntries = readDecisionLog(root);
+  // default; the trigger relies on dedup, not time-window pruning. The read
+  // detects cross-surface provenance disagreement (fail closed) before dedup
+  // order can select a surface winner.
+  const allEntries = readDecisionLogEntries(root);
   if (options.out) options.out.log_entries_scanned = allEntries.length;
   // (Clean-cutover rule: entries with no session_id group into a bucket that
   // never fires, so the historical backlog does not flood the first post-ship
   // SessionStart. Fallback-tier session_ids are bounded to a 24h span.)
+  //
+  // Eligibility is applied at GROUPING time, not scan time: `entries_scanned`
+  // still reports the full decision-log line count. Only explicit
+  // evaluator-produced unexpected-match events (plus toolchain-failure rows on
+  // their own branch) enter a group; ordinary rule fires and unclassified/
+  // legacy rows remain telemetry.
 
   /** @type {Map<string, { rule_id: string, command_prefix_normalized: string, session_id: string, entries: Array }>} */
   const groups = new Map();
   for (const entry of allEntries) {
-    if (!entry.rule_id) continue;
+    if (!isRecurrenceGroupableEntry(entry)) continue;
     const sid = entry.session_id ?? "no-session";
     // Clean cutover: never fire on no-session entries (historical backlog).
     if (sid === "no-session") continue;
@@ -280,7 +420,7 @@ export function findRecurrentGroups(root, options = {}) {
       count: entries.length,
       first_ts: entries[0].ts,
       last_ts: entries[entries.length - 1].ts,
-      sample_commands: entries.slice(0, 3).map((e) => e.command_prefix),
+      sample_commands: privacySafeSample(entries),
     });
   }
 
@@ -315,7 +455,12 @@ export function findRecurrentGroups(root, options = {}) {
 function findCrossSessionGroups(allEntries, recurrent) {
   const windowStart = Date.now() - CROSS_SESSION_WINDOW_MS;
   const firedKeys = withinWindowFiredKeys(recurrent, windowStart);
-  const crossGroups = groupCrossSessionEntries(allEntries, windowStart);
+  // Same eligibility filter as the per-session pass: only explicit
+  // unexpected-match candidates and toolchain-failure rows may accumulate
+  // across sessions. Ordinary/legacy/unclassified rows never enter a
+  // cross-session group.
+  const eligible = allEntries.filter(isRecurrenceGroupableEntry);
+  const crossGroups = groupCrossSessionEntries(eligible, windowStart);
   return emitCrossSessionGroups(crossGroups, firedKeys);
 }
 
@@ -397,7 +542,7 @@ function emitCrossSessionGroups(crossGroups, firedKeys) {
       count: cg.entries.length,
       first_ts: cg.entries[0].ts,
       last_ts: cg.entries[cg.entries.length - 1].ts,
-      sample_commands: cg.entries.slice(0, 3).map((e) => e.command_prefix),
+      sample_commands: privacySafeSample(cg.entries),
       sessions_crossing_threshold: cg.realSessions.size,
       cross_session_slow_burn: true,
     });
