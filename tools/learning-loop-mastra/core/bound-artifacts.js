@@ -3,14 +3,14 @@
  * simple-glob rules the write-gate matches.
  *
  * Bound-artifact registry: the trust root for which generated files the
- * gate may touch. Order is pinned by legacy-mcp/bound-artifacts.test.js.
+ * gate may touch. Order is pinned by integration/bound-artifacts.test.js.
  *
  * Scope:
  *   - This module is data-only (glob strings + labels + reasons). It does NOT
  *     import any other core/ module (no gate-logic, no surfaces) — that would
  *     risk a circular dependency and reverse the dependency direction.
  *   - The FCIS (no framework imports) is enforced by
- *     legacy-mcp/bound-artifacts.test.js.
+ *     integration/bound-artifacts.test.js.
  *   - Special-case rules (preflight-marker, product/**) are NOT in this
  *     constant; they delegate to `evaluatePreflight` and stay in
  *     `evaluate-write-gate.js`.
@@ -20,7 +20,7 @@
  *
  * Rule order is load-bearing: `evaluateWriteGate` walks the rules in array
  * order and returns on the first match (first-match-wins). The order is
- * pinned by `legacy-mcp/bound-artifacts.test.js` — do not reorder.
+ * pinned by `integration/bound-artifacts.test.js` — do not reorder.
  */
 
 import { globMatch } from "./gate-logic.js";
@@ -89,7 +89,7 @@ const buildArtifacts = {
 
 /**
  * The bound-artifacts ruleset. FROZEN to prevent accidental mutation;
- * order is pinned by `legacy-mcp/bound-artifacts.test.js`.
+ * order is pinned by `integration/bound-artifacts.test.js`.
  *
  * 5 simple-glob rules (records, runtime-tracking, meta-state, file-index,
  * build-artifacts). The `schemas/**` and `runtime-state.jsonl` rules were

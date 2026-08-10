@@ -118,8 +118,9 @@ meta_state_list({ id: "<id>", include_all_versions: true, include_archived: true
 | Gate | Use case |
 |---|---|
 | `pnpm test:unit` | Fast per-commit feedback (vitest unit project only; coverage off; ~1:30 wall) |
+| `pnpm test:integration` | In-process composition tests (core/handlers/mastra/interface/storage; no subprocess) |
 | `pnpm test:e2e` | MCP-server / CLI-subprocess tests in isolation (with coverage) |
-| `pnpm test` | Full gate — both projects + coverage (use for pre-push, CI, fix-loop) |
+| `pnpm test` | Full gate — all three projects + coverage (use for pre-push, CI, fix-loop) |
 | `pnpm fallow:gate` | Stable coverage+complexity audit AFTER refresh_file_index |
 | `pnpm gate:self-verify` | Pre-push local CI-equivalent (test + coverage + fallow) |
 

@@ -116,7 +116,7 @@ const SKILL_PATHS = getAllSurfacePaths("skills", "**");
 // — gate_override cannot reach simple-glob blocks; closes finding
 // meta-260720T1447Z), and product/** (delegates to evaluatePreflight).
 // Rule order is load-bearing (first-match-wins) — see
-// legacy-mcp/bound-artifacts.test.js for the pinned-order assertion.
+// integration/bound-artifacts.test.js for the pinned-order assertion.
 const SKILL_CANONICAL_GLOB = "tools/learning-loop-mastra/skills/**";
 const SKILL_MANIFEST_GLOB = "skills-lock.json";
 const SCHEMAS_GLOB = "schemas/**";

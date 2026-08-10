@@ -39,7 +39,7 @@ The runtime MUST host loop-maintained skills at `<surface>/skills/<name>/SKILL.m
 
 `learning-loop` MUST reference `loop_describe` AND `meta_state_list` (it documents the loop's tool surface). Other loop-maintained skills are NOT required to reference those tools — the tool-ref check is scoped to `learning-loop` only.
 
-**Mirror requirement:** a loop-maintained skill is mirrored when the same `<name>` SKILL.md exists in ≥ 2 of the 3 runtime surfaces (`.claude`, `.factory`, `.mastracode`). A single-surface placement fails with `skill-mirror-gap`. The cross-runtime parity test (`legacy-mcp/skills-mirror-parity.test.js`) is the backstop for byte-identity.
+**Mirror requirement:** a loop-maintained skill is mirrored when the same `<name>` SKILL.md exists in ≥ 2 of the 3 runtime surfaces (`.claude`, `.factory`, `.mastracode`). A single-surface placement fails with `skill-mirror-gap`. The cross-runtime parity test (`integration/skills-mirror-parity.test.js`) is the backstop for byte-identity.
 
 **Skill files are gated artifacts:** direct writes to `<surface>/skills/**` are blocked by the write-gate (`.loop-preflight-skills` marker required); edits go through the gated authoring path (`gate_mark_preflight(surface: "skills")` → write → `meta_state_log_change`).
 

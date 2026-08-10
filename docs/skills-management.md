@@ -1,6 +1,6 @@
 # Skills management
 
-This doc is the canonical user-facing reference for managing skills under the loop. It covers the two editing paths (canonical authoring + provider install) and the post-edit recovery flow. For the loop's invariant on the canonical-vs-mirror parity contract, see `tools/learning-loop-mastra/__tests__/legacy-mcp/skills-mirror-parity.test.js`.
+This doc is the canonical user-facing reference for managing skills under the loop. It covers the two editing paths (canonical authoring + provider install) and the post-edit recovery flow. For the loop's invariant on the canonical-vs-mirror parity contract, see `tools/learning-loop-mastra/__tests__/integration/skills-mirror-parity.test.js`.
 
 ## Skill kinds
 

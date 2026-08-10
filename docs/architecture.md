@@ -241,7 +241,7 @@ Validates a command against an allowlist and spawns it with isolated stdio. Only
 
 #### check_runtime_agnostic
 
-Audits a feature against the 6-item runtime-agnostic checklist (core-in-universal-location, shims-in-sync, protocol-adapter-i-o, manifest-registered, cross-surface-iteration, parameterized-for-new-surfaces). Returns structured feedback with fix suggestions for each failure. Use when adding a new feature to verify the shim-not-fork + cross-surface-iteration pattern. The checklist is shared between this MCP tool and `__tests__/runtime-agnostic.test.js`.
+Audits a feature against the 6-item runtime-agnostic checklist (core-in-universal-location, shims-in-sync, protocol-adapter-i-o, manifest-registered, cross-surface-iteration, parameterized-for-new-surfaces). Returns structured feedback with fix suggestions for each failure. Use when adding a new feature to verify the shim-not-fork + cross-surface-iteration pattern. The checklist is shared between this MCP tool and `__tests__/integration/runtime-agnostic.test.js`.
 
 ### Workflow Layer
 
