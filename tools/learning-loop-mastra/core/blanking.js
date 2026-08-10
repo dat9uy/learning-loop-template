@@ -307,13 +307,32 @@ function blankStep(state, ch) {
 // segment whose verb is a pure-data command, where every quoted region is
 // data (pattern + any quoted filenames), so dropping their content is safe
 // and creates no bypass (data commands cannot exec).
+//
+// Command-substitution withhold: a double-quoted region containing `$(...)`
+// or a backtick EXECUTES before the data command runs (POSIX expands command
+// substitution inside double quotes), so it is real execution, not inert
+// data — the banned token there must stay visible to the rule regex. Preserve
+// the whole region verbatim, mirroring blankInertQuoted's region check and
+// applyInertSinkBlanking's tokenHasCommandSubst (see also the classifier's
+// data-command span exclusion in command-classification.js:438-449).
+// Single-quoted regions never expand and stay blanked (the POSIX asymmetry).
 function blankAllQuoted(segment) {
   let out = "";
   let state = BLANK_NORMAL;
-  for (let i = 0; i < segment.length; i++) {
+  let i = 0;
+  while (i < segment.length) {
+    // Double-quote opening in the normal state: decide blank-vs-preserve on
+    // the WHOLE region's content before entering the blanking state machine.
+    if (state === BLANK_NORMAL && segment[i] === '"') {
+      const r = emitDquoteRegion(segment, i);
+      out += r.text;
+      i = r.next;
+      continue;
+    }
     const step = blankStep(state, segment[i]);
     state = step.next;
     out += step.emit;
+    i++;
   }
   return out;
 }
@@ -639,6 +658,19 @@ function findDquoteEnd(segment, start) {
   return segment.length - 1;
 }
 
+// Double-quote region emit for the quote-aware blankers. A region containing a
+// command substitution (`$(...)` or backtick) EXECUTES before the surrounding
+// command runs, so it must be preserved verbatim (real execution — never
+// blanked); any other double-quoted region is inert data and collapses to `""`.
+// Single quotes are handled by the caller (always inert). Shared by
+// `blankAllQuoted` and `blankInertQuoted` so the two blankers cannot drift on
+// the preserve-vs-blank decision.
+function emitDquoteRegion(segment, i) {
+  const end = findDquoteEnd(segment, i);
+  const region = segment.slice(i, end + 1);
+  return { text: /\$\(/.test(region) || /`/.test(region) ? region : '""', next: end + 1 };
+}
+
 // Quote-kind-aware blanker. Single-quoted → always blanked (inert).
 // Double-quoted → blanked only when free of `$(` and backtick (a double-quoted
 // command substitution is real execution → preserved verbatim). Outside quotes
@@ -654,10 +686,9 @@ function blankInertQuoted(segment) {
       out += "''";
       i = end === -1 ? segment.length : end + 1;
     } else if (ch === '"') {
-      const end = findDquoteEnd(segment, i);
-      const region = segment.slice(i, end + 1);
-      out += /\$\(/.test(region) || /`/.test(region) ? region : '""';
-      i = end + 1;
+      const r = emitDquoteRegion(segment, i);
+      out += r.text;
+      i = r.next;
     } else if (ch === "\\") {
       out += segment.slice(i, i + 2);
       i += 2;

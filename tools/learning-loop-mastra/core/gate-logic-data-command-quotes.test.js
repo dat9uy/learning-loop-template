@@ -71,6 +71,50 @@ describe("data-command quote blanking: false-positive cases (must NOT match)", (
   });
 });
 
+describe("data-command quote blanking: command substitutions stay visible (must match)", () => {
+  // A double-quoted `$(...)` or backtick region EXECUTES before the data
+  // command runs (POSIX). The data-command blanker (blankAllQuoted) must NOT
+  // blank it — a banned pattern inside is real execution, not inert data —
+  // mirroring blankInertQuoted / collectQuotedInertSpans / the classifier's
+  // data-command span exclusion (see command-classification.js:438-449).
+  test('grep "$(vitest run x | tail)" file → escalate ($() inside grep arg executes)', () => {
+    const result = applyPromotedRules('grep "$(vitest run x | tail)" file', null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "escalate", `expected escalate, got ${result.decision}`);
+  });
+
+  test('grep "$(pnpm test foo | grep bar)" file → escalate ($() inside grep arg executes)', () => {
+    const result = applyPromotedRules('grep "$(pnpm test foo | grep bar)" file', null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "escalate", `expected escalate, got ${result.decision}`);
+  });
+
+  test('rg "`vitest run x | tail`" file → escalate (backtick inside rg arg executes)', () => {
+    const result = applyPromotedRules('rg "`vitest run x | tail`" file', null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "escalate", `expected escalate, got ${result.decision}`);
+  });
+
+  test('echo "$(vitest run x | tail)" → escalate ($() inside echo prose executes)', () => {
+    // Same class through the echo-prose full-command pass (stripEchoProse uses
+    // the same blankAllQuoted default blanker).
+    const result = applyPromotedRules('echo "$(vitest run x | tail)"', null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "escalate", `expected escalate, got ${result.decision}`);
+  });
+
+  test("single-quoted $(...) stays inert → ok (POSIX: no expansion in single quotes)", () => {
+    // The asymmetry is mandatory: a literal $(...) inside single quotes is data
+    // and must remain blanked.
+    const result = applyPromotedRules("grep '$(vitest run x | tail)' file", null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "ok", `expected ok, got ${result.decision}`);
+  });
+
+  test('matchConstraintPattern: grep "$(docker run x)" file → docker ($() executes)', () => {
+    assert.strictEqual(matchConstraintPattern('grep "$(docker run ubuntu)" file'), "docker");
+  });
+
+  test('matchConstraintPattern: grep "$(sudo apt install)" file → sudo ($() executes)', () => {
+    assert.strictEqual(matchConstraintPattern('grep "$(sudo apt install x)" file'), "sudo");
+  });
+});
+
 describe("data-command quote blanking: real violations preserved (must match)", () => {
   test("vitest run … | tail → escalate (real pipe, no quotes)", () => {
     const result = applyPromotedRules("pnpm exec vitest run x.test.js 2>&1 | tail -30", null, [VITEST_RULE]);
