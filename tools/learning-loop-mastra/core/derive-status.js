@@ -49,7 +49,7 @@ const TERMINAL_RAW_STATUSES = new Set(["resolved", "superseded", "accepted"]);
  * sanitize paths. Relative paths are joined with `codeContext.root` using
  * standard path resolution (e.g., `../` traverses upward).
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- signal-extraction → derive → assemble pipeline with stale/drift threading; the linear pipeline is the canonical shape
 export function deriveStatus(entry, codeContext) {
   const root = codeContext.root;
   const now = codeContext.now ?? (() => Date.now());
@@ -124,7 +124,7 @@ function checkExists(root, path) {
   }
 }
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 4-branch guard chain (no-signals/code-missing/mechanism-shipped/code-only) with load-bearing order
 function computeKind(codeRefExists, testFileExists, testPassed, codeRef, testPath) {
   if (codeRef === null && testPath === null) return "no-signals";
   if (codeRefExists === false) return "code-missing";
@@ -142,7 +142,7 @@ function computeDerivedStatus(kind) {
   return "active-no-signal"; // code-missing or no-signals
 }
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- ordered recommendation decision table (terminal guard first, then stale-view before generic open); order is load-bearing
 function computeRecommendation(entry, derivedStatus, kind, isStaleOpts = {}) {
   // Terminal findings (resolved / superseded): the authoritative verdict is
   // raw_status + drift, and computeDrift returns false for terminal statuses.

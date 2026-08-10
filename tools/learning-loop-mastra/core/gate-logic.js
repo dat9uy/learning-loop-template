@@ -450,7 +450,7 @@ const GLOB_SCOPE_WHITELIST = [
  *
  * This is a lightweight replacement for the safe-regex package.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- single-pass character state machine (depth/groupHadQuantifier/inCharClass/escaped); the 3 documented nested-quantifier cases are load-bearing
 export function isSafeRegexPattern(pattern) {
   if (!pattern || typeof pattern !== "string") return false;
   if (pattern.length > 500) return false;
@@ -680,68 +680,17 @@ export function stripEvidenceAnchor(codeRef) {
   return stripped;
 }
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- Branch-1 orphan loop delegates to evaluateOrphanCandidate; Branch-2 determinism-checklist is a 3-condition find. Splitting per-branch keeps the global vs per-finding contract distinct
 export function checkResolutionEvidence(rule, root) {
   const rule_id = rule.id;
 
   // Branch 1: global orphan-evidence rule
   if (rule_id === "rule-no-orphaned-evidence") {
     const entries = readRegistry(root);
-    const activeGrounded = entries.filter(
-      (e) => e.entry_kind === "finding" && isOpen(e) && e.mechanism_check === true
-    );
-    const orphans = [];
-    for (const entry of activeGrounded) {
-      const codeRef = entry.evidence_code_ref;
-      if (!codeRef) {
-        orphans.push({ id: entry.id, reason: "no_evidence_code_ref" });
-        continue;
-      }
-      // Strip both `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
-      // and loop-introspect.js discoverability hint) and `#anchor` suffixes before
-      // resolving the file path. Without the `:line` strip, the gate treated
-      // `path/to/file.js:37` as a literal file path and flagged it as
-      // code_ref_missing even when the file existed. See finding
-      // meta-260607T1625Z-gate-line-suffix-not-stripped-from-evidence-code-ref.
-      // LIM-4: realpath containment — rejects traversal/symlink/hardlink escape.
-      // See core/path-containment.js. A missing file inside root (ENOENT,
-      // resolvedPath === null) or a read-race FileNotFoundError is preserved as
-      // code_ref_missing; security rejections (escape, hardlink, realpath_failed)
-      // propagate. Invoked at moment of use per NF3.
-      let currentHash;
-      try {
-        const absPath = resolveSafePath(root, stripEvidenceAnchor(codeRef));
-        currentHash = computeFileHash(absPath);
-      } catch (err) {
-        const isMissing = err instanceof PathContainmentError
-          ? (err.reason === "outside_root" && err.resolvedPath === null)
-          : err.name === "FileNotFoundError";
-        if (isMissing) {
-          orphans.push({ id: entry.id, reason: "code_ref_missing" });
-          continue;
-        }
-        throw err;
-      }
-      // Baseline resolution (red-team F2): the file-index
-      // sidecar is the authoritative baseline, with the per-record field as the
-      // vestigial fallback. Without repointing this gate, every edited source
-      // file fails CI post-migration because the live hash no longer matches the
-      // frozen per-record value. Both baselines are compared to the live hash;
-      // a mismatch against the authoritative baseline is fingerprint_mismatch.
-      const canonical = stripEvidenceAnchor(codeRef);
-      const fileIndex = readFileIndex(root);
-      const indexBaseline = fileIndex.has(canonical) ? fileIndex.get(canonical) : null;
-      // Validate the per-record fallback against TERMINAL_HASH_REGEX (mirrors
-      // checkGrounding's per-record branch): a corrupt stored value must never
-      // be compared as a baseline — it's dropped to null so a malformed value
-      // can't surface as a false fingerprint_mismatch.
-      const perRecord = typeof entry.code_fingerprint === "string" && TERMINAL_HASH_REGEX.test(entry.code_fingerprint)
-        ? entry.code_fingerprint : null;
-      const expected = indexBaseline ?? perRecord;
-      if (expected && expected !== currentHash) {
-        orphans.push({ id: entry.id, reason: "fingerprint_mismatch", expected, actual: currentHash });
-      }
-    }
+    const orphans = entries
+      .filter((e) => e.entry_kind === "finding" && isOpen(e) && e.mechanism_check === true)
+      .map((entry) => evaluateOrphanCandidate(entry, root))
+      .filter(Boolean);
     if (orphans.length > 0) {
       return { satisfied: false, rule_id: "rule-no-orphaned-evidence", blocking_id: orphans[0]?.id, applies_to_resolution: rule.applies_to_resolution, orphans };
     }
@@ -766,6 +715,63 @@ export function checkResolutionEvidence(rule, root) {
     };
   }
   return { satisfied: true, rule_id };
+}
+
+/**
+ * Evaluate one active mechanism-checked finding for orphan-evidence drift.
+ * Returns an orphan record `{ id, reason, expected?, actual? }` when the entry
+ * is orphaned (no evidence code ref, code ref missing, or fingerprint
+ * mismatch), or null when the entry grounds cleanly.
+ *
+ * Baseline resolution (red-team F2): the file-index sidecar is the
+ * authoritative baseline, with the per-record field as the vestigial fallback.
+ * Both baselines are compared to the live hash; a mismatch against the
+ * authoritative baseline is fingerprint_mismatch.
+ */
+// fallow-ignore-next-line complexity -- extracted Branch-1 orphan evaluation: LIM-4 path resolution + hash guard + dual-baseline comparison; the guard chain is the canonical shape
+function evaluateOrphanCandidate(entry, root) {
+  const codeRef = entry.evidence_code_ref;
+  if (!codeRef) {
+    return { id: entry.id, reason: "no_evidence_code_ref" };
+  }
+  // Strip both `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
+  // and loop-introspect.js discoverability hint) and `#anchor` suffixes before
+  // resolving the file path. Without the `:line` strip, the gate treated
+  // `path/to/file.js:37` as a literal file path and flagged it as
+  // code_ref_missing even when the file existed. See finding
+  // meta-260607T1625Z-gate-line-suffix-not-stripped-from-evidence-code-ref.
+  // LIM-4: realpath containment — rejects traversal/symlink/hardlink escape.
+  // See core/path-containment.js. A missing file inside root (ENOENT,
+  // resolvedPath === null) or a read-race FileNotFoundError is preserved as
+  // code_ref_missing; security rejections (escape, hardlink, realpath_failed)
+  // propagate. Invoked at moment of use per NF3.
+  let currentHash;
+  try {
+    const absPath = resolveSafePath(root, stripEvidenceAnchor(codeRef));
+    currentHash = computeFileHash(absPath);
+  } catch (err) {
+    const isMissing = err instanceof PathContainmentError
+      ? (err.reason === "outside_root" && err.resolvedPath === null)
+      : err.name === "FileNotFoundError";
+    if (isMissing) {
+      return { id: entry.id, reason: "code_ref_missing" };
+    }
+    throw err;
+  }
+  const canonical = stripEvidenceAnchor(codeRef);
+  const fileIndex = readFileIndex(root);
+  const indexBaseline = fileIndex.has(canonical) ? fileIndex.get(canonical) : null;
+  // Validate the per-record fallback against TERMINAL_HASH_REGEX (mirrors
+  // checkGrounding's per-record branch): a corrupt stored value must never
+  // be compared as a baseline — it's dropped to null so a malformed value
+  // can't surface as a false fingerprint_mismatch.
+  const perRecord = typeof entry.code_fingerprint === "string" && TERMINAL_HASH_REGEX.test(entry.code_fingerprint)
+    ? entry.code_fingerprint : null;
+  const expected = indexBaseline ?? perRecord;
+  if (expected && expected !== currentHash) {
+    return { id: entry.id, reason: "fingerprint_mismatch", expected, actual: currentHash };
+  }
+  return null;
 }
 
 // ─── Promoted-rule provenance helpers ────────────────────────────────────────
@@ -853,7 +859,7 @@ function buildPromotedMatchResult(command, rule) {
   };
 }
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- per-rule match loop with strip helpers (heredoc/sinks/segments/message-flags/node-eval/data-quotes/cli-argv) + two-pass segment/full matching; extraction would scatter the match surface
 export function applyPromotedRules(command, filePath, rules, root = findProjectRoot()) {
   const override = readGateOverride(root);
   const overrideSet = override ? new Set(override.rule_ids) : new Set();

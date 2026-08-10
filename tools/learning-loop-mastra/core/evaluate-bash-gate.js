@@ -83,7 +83,6 @@ function decisionLogPathPatterns() {
 
 // Built once at module load so the gate helper and PATH_WRITE_PATTERNS share
 // the same per-surface patterns.
-// fallow-ignore-next-line unused-export
 export const DECISION_LOG_WRITE_PATTERNS = decisionLogPathPatterns();
 
 // Runtime-state path-write patterns (shell redirect + tee to
@@ -94,8 +93,7 @@ export const DECISION_LOG_WRITE_PATTERNS = decisionLogPathPatterns();
 // substrate is protected by the SAME marker class as the committed file:
 // both are the "runtime-state row maintenance" surface, and the marker is
 // operator-intentional (30-min TTL).
-// fallow-ignore-next-line unused-export
-export const RUNTIME_STATE_WRITE_PATTERNS = [
+const RUNTIME_STATE_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?runtime-state\.jsonl["']?/,
   />{1,2}\s*["']?\.?\/?\.loop\/runtime-state-local\.jsonl["']?/,
@@ -106,7 +104,6 @@ export const RUNTIME_STATE_WRITE_PATTERNS = [
 // Preflight-marker patterns are derived from SURFACES (all runtime surfaces).
 // runtime-state patterns are named so evaluateBashGate can exempt them when
 // the `.loop-preflight-runtime-state-edit` marker is active.
-// fallow-ignore-next-line unused-export
 export const PATH_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?records\/[^\s"';&|]+["']?/,
   /<<['"]?\w+['"]?\s*>\s*["']?\.?\/?records\//,
@@ -127,7 +124,6 @@ export const PATH_WRITE_PATTERNS = [
 // `event_source:"bash-gate-evaluator"` + `candidate_kind:"unexpected-match"`
 // row that the recurrence tracker trusts — so direct shell writes are blocked
 // with a dedicated reason (mirroring the runtime-state path-write pattern).
-// fallow-ignore-next-line unused-export
 export const DECISION_LOG_WRITE_REASON =
   "Direct shell writes to .gate-decision.log are blocked. The decision log is produced by the bash-gate evaluator hook; appending forged rows is prohibited.";
 
@@ -182,7 +178,7 @@ function buildGateVerbRemediation(gateVerbMatch, { expired }) {
   );
 }
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- four independent detection sections (constraint/gate-verb/path-write/promoted-rules) plus combine/precedence; the orchestrator seam is the canonical shape
 export function evaluateBashGate({ command, root }) {
   if (!command || typeof command !== "string") {
     return { decision: "ok" };

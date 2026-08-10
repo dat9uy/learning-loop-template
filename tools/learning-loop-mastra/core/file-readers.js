@@ -88,7 +88,7 @@ function resolveRoot() {
  * rows are out by kind, so emitting a drift observation for them would
  * pollute the gate.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- collapse → per-row lifecycle/kind guard chain with the assertinvariantSync unmapped-active-entry invariant; branches are validation guards
 export function readRuntimeObservations(root) {
   const resolvedRoot = root || resolveRoot();
   try {

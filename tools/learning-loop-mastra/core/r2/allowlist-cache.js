@@ -68,7 +68,6 @@ export function invalidateAllowlist(root) {
 /**
  * Test-only: clear the entire cache. NOT for production use.
  */
-// fallow-ignore-next-line unused-export
 export function __clearCache() {
   cache.clear();
 }

@@ -26,7 +26,6 @@ import {
  * Named seam for the product/** preflight check (locked by convergence addendum).
  * Returns { decision: "ok" } or { decision: "block", reason, surface?, preflight_checklist? }.
  */
-// fallow-ignore-next-line unused-export
 export function evaluatePreflight({ filePath, root }) {
   const surface = inferSurface(filePath);
   if (!surface) return { decision: "ok" };
@@ -118,7 +117,6 @@ const SKILL_PATHS = getAllSurfacePaths("skills", "**");
 // meta-260720T1447Z), and product/** (delegates to evaluatePreflight).
 // Rule order is load-bearing (first-match-wins) — see
 // legacy-mcp/bound-artifacts.test.js for the pinned-order assertion.
-// fallow-ignore-next-line complexity
 const SKILL_CANONICAL_GLOB = "tools/learning-loop-mastra/skills/**";
 const SKILL_MANIFEST_GLOB = "skills-lock.json";
 const SCHEMAS_GLOB = "schemas/**";
@@ -269,8 +267,7 @@ export function evaluateWriteGate({ filePath, root, authoredContent }) {
  *
  * Skills preflight seam — named seam for the dedicated `.loop-preflight-skills` marker.
  */
-// fallow-ignore-next-line unused-export
-export function evaluateSkillsPreflight({ filePath, root, matchedRule }) {
+function evaluateSkillsPreflight({ filePath, root, matchedRule }) {
   const resolvedRoot = root || findProjectRoot();
   const marker = findPreflightMarker("skills", resolvedRoot);
   if (marker) return { decision: "ok" };
@@ -305,8 +302,7 @@ export function evaluateSkillsPreflight({ filePath, root, matchedRule }) {
  * *promoted* rule_id, and `schemas/**` was a simple-glob block, not
  * promoted). Closes finding `meta-260720T1104Z`.
  */
-// fallow-ignore-next-line unused-export
-export function evaluateSchemasPreflight({ filePath, root, matchedRule }) {
+function evaluateSchemasPreflight({ filePath, root, matchedRule }) {
   const resolvedRoot = root || findProjectRoot();
   const marker = findPreflightMarker("schemas", resolvedRoot);
   if (marker) return { decision: "ok" };
@@ -340,8 +336,7 @@ export function evaluateSchemasPreflight({ filePath, root, matchedRule }) {
  * that routine appends during normal loop operation do not keep the
  * direct-write gate warm.
  */
-// fallow-ignore-next-line unused-export
-export function evaluateRuntimeStatePreflight({ filePath, root, matchedRule }) {
+function evaluateRuntimeStatePreflight({ filePath, root, matchedRule }) {
   const resolvedRoot = root || findProjectRoot();
   const marker = findPreflightMarker("runtime-state-edit", resolvedRoot);
   if (marker) return { decision: "ok" };

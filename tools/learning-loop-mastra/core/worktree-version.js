@@ -21,7 +21,6 @@
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
 
 const VERSION_FILE = ".loop-version";
 
@@ -125,14 +124,4 @@ export function isSchemaBranchSupported(root, branch) {
   if (!branch) return true; // omit-branch writers get current branch accepted
   const version = readLoopVersion(root);
   return Array.isArray(version.schema_branches) && version.schema_branches.includes(branch);
-}
-
-/**
- * Hash the .loop-version file content for cross-process invalidation. The
- * file is tiny; a sha256 prefix is enough to detect drift.
- */
-export function hashLoopVersion(root) {
-  const path = join(root, VERSION_FILE);
-  if (!existsSync(path)) return "missing";
-  return createHash("sha256").update(readFileSync(path, "utf8")).digest("hex").slice(0, 16);
 }

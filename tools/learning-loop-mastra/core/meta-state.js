@@ -1,4 +1,7 @@
-// fallow-ignore-file complexity — registry CRUD with Zod, CAS, TTL
+// fallow-ignore-file complexity
+// File-wide: 2600-line registry CRUD (Zod schemas, CAS appends, TTL caches) is
+// inherently high-complexity; kept as a file-level suppression per the fallow
+// workaround-refactor plan (P1 classified, NOT stale).
 import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync, unlinkSync, statSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
 import { z } from "zod";
@@ -346,7 +349,6 @@ export { META_STATE_FINDING_CATEGORIES };
  */
 const ENTRY_ID_REF_PREFIXES = ["meta-", "rule-", "loop-design-", "citation-"];
 
-// fallow-ignore-next-line unused-export -- public predicate consumed by cold-tier-regression.test.js; also used internally by entryIdRefsRefine
 export function isValidEntryIdRef(ref) {
   return typeof ref === "string" && ENTRY_ID_REF_PREFIXES.some((p) => ref.startsWith(p));
 }
@@ -561,7 +563,6 @@ export const metaStateChangeEntrySchema = z.object({
  * citation's id, but a citation never transitions to "archived" or
  * "resolved" (those are finding-side lifecycle concepts).
  */
-// fallow-ignore-next-line unused-export -- public API consumed by core citation-substrate tests
 export const metaStateCitationEntrySchema = z.object({
   id: z.string().regex(/^citation-[a-z0-9-]+$/).describe("Stable citation id; see field_glossary.id"),
   entry_kind: z.literal("citation").describe("Discriminator: citation"),

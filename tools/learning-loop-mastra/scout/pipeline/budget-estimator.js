@@ -23,7 +23,7 @@ const DEFAULT_LATENCIES = {
   otherIo: 3,
 };
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- env-override merge with fail-safe fallback; three-branch early return is the canonical shape
 function loadLatencies() {
   if (typeof process !== "undefined" && process.env && process.env.SCOUT_BUDGET_LATENCIES) {
     try {
@@ -41,8 +41,8 @@ function loadLatencies() {
  *
  * Simple state machine tracking 'string', "string", `template`, /regex/ states.
  */
-// fallow-ignore-next-line complexity
-export function stripComments(sourceText) {
+// fallow-ignore-next-line complexity -- single-pass 6-state char machine (string/string/template/regex/comments); splitting states would scatter the invariant
+function stripComments(sourceText) {
   if (!sourceText) return "";
   let result = "";
   let i = 0;
@@ -147,7 +147,7 @@ export function stripComments(sourceText) {
  *   wall_clock_estimate, timeout, utilization, risk
  * }}
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- budget model fuses per-metric counters (reads/MCP/reasoning) with timeouts into one estimate; the linear accumulation chain is the canonical shape
 export function estimateBudget(filePath, promptText, timeoutSeconds) {
   const lat = loadLatencies();
   const cleaned = stripComments(promptText || "");

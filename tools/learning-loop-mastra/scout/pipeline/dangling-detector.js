@@ -55,7 +55,7 @@ function detectD1(sourceCode) {
  * Heuristic: any meta-state id referenced near a `status` assertion.
  * If that id is in the resolvedFindings set, flag it.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- per-line regex scan correlating status assertions with finding ids; the match/assert chain is the canonical shape
 function detectD2(sourceCode, resolvedFindings) {
   const matches = [];
   if (!resolvedFindings || resolvedFindings.size === 0) return matches;
@@ -120,7 +120,7 @@ function symbolMatchesToolSet(sym, currentToolNames) {
  * the import path looks like a tool module (ends in -tool.js).
  * Skips Node.js builtin imports (node:*, fs, path, etc.).
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- import-parsing with builtin/module/tool-path classification branches; the per-import decision chain is the canonical shape
 function detectD3(sourceCode, currentToolNames) {
   const matches = [];
   if (!currentToolNames) return matches;
@@ -135,7 +135,7 @@ function detectD3(sourceCode, currentToolNames) {
     // Tool path: ends in -tool.js OR contains "-tool-" OR is in a /tools/ dir
     const looksLikeToolPath = /-tool(\.js)?$/.test(importPath) || /-tool-/.test(importPath) || /\/tools\//.test(importPath);
 
-    // fallow-ignore-next-line complexity
+    // fallow-ignore-next-line complexity -- symbol-matching closure with tool-path heuristics and dedup; the guard chain is the canonical shape
 const checkAndAdd = (sym) => {
       if (!sym) return;
       if (symbolMatchesToolSet(sym, currentToolNames)) return;
@@ -168,7 +168,7 @@ const checkAndAdd = (sym) => {
  * D4 detector: stale fixture (mtime > 30 days, no test references).
  * Caller passes the fixtures array; this function checks each.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- per-fixture existence/shape validation with dedup and category mapping; the per-fixture chain is the canonical shape
 function detectD4(fixtures) {
   const matches = [];
   if (!fixtures) return matches;
@@ -196,7 +196,7 @@ function detectD4(fixtures) {
  * Per F7: comment must contain one of {intentional, expected, computed, derived}
  * to suppress the flag. Vague "tolerance" comments do NOT suppress.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- suppression-comment parsing with tolerance-vs-explicit reason discrimination; the comment-classification chain is the canonical shape
 function detectD5(sourceCode) {
   const matches = [];
   const re = new RegExp(D5_TOLERANCES_REGEX.source, "g");
@@ -234,7 +234,7 @@ function detectD5(sourceCode) {
  * @param {object} context - { resolvedFindings, currentToolNames, fixtures }
  * @returns {Array<{file, pattern, line, match, suggested_fix, requires_runtime_check?}>}
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- fan-out dispatcher running D1–D5 detectors and merging findings; the per-detector orchestration chain is the canonical shape
 export function detectDangling(testFilePath, sourceCode, context) {
   const ctx = context || {};
   const resolved = ctx.resolvedFindings || new Set();

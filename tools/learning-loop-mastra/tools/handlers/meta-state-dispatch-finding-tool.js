@@ -178,7 +178,7 @@ function handlePrepareStage(root, finding, id) {
  * functions and hurt readability. Suppressed per the codebase pattern (see
  * core/gate-override.js, core/query-drift.js, core/derive-status.js).
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 3-coord validation + existing-row branch + 3 CAS-patch outcomes; splitting scatters the idempotency/CAS contract
 async function handleCommitStage(root, finding, id, coords) {
   const { issue_number, issue_url, repo, delegated_to } = coords;
   const ledgerId = dispatchLedgerId(id);

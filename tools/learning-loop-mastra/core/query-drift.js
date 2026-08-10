@@ -22,7 +22,7 @@ import { isOpen } from "./stale-view.js";
  * Change-log fast path: SP1 returns kind:"no-signals" for entry_kind:"change-log";
  * those entries are skipped here without further inspection.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- orchestration loop (derive → skip no-signals → optional grounding → filter → push); the linear pipeline is the canonical shape
 export function queryDrift(entries, codeContext = {}) {
   const runGrounding = codeContext.run_grounding === true;
   const driftEvents = [];
@@ -71,7 +71,7 @@ export function queryDrift(entries, codeContext = {}) {
  * `derived_status`. So we also check `derivation.kind === "code-missing"`
  * to detect "the mechanism's file is gone" as a drift event.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 5-branch decision table for the locked 4-case join logic; each branch maps to a documented case number
 function computeIsDrift(derivation, grounding, entry) {
   // Terminal statuses (resolved, superseded) are always non-drift — the entry's
   // claim is consistent with its terminal state, since the entry is no longer
@@ -106,7 +106,7 @@ function computeIsDrift(derivation, grounding, entry) {
  * the lean drift event shape filters to actionable outcomes; `no_action` and
  * `re_verify` are not drift conditions (see `computeIsDrift`).
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- ordered guard chain mapping join cases to recommendation enums with documented precedence
 function computeRecommendation(derivation, grounding, entry) {
   // Terminal findings never reach here in practice: computeIsDrift (above)
   // returns false for terminal statuses so the loop `continue`s before this

@@ -14,14 +14,17 @@
       "complexity_critical": {
         "count": 2
       },
-      "complexity_moderate": {
+      "complexity_high": {
         "count": 1
       },
       "crap_critical": {
-        "count": 1
+        "count": 5
       },
       "crap_high": {
-        "count": 1
+        "count": 4
+      },
+      "crap_moderate": {
+        "count": 2
       }
     },
     "core/canonical-compare.js": {
@@ -46,11 +49,17 @@
       }
     },
     "core/command-classification.js": {
-      "complexity_high": {
+      "complexity_critical": {
         "count": 4
       },
+      "crap_critical": {
+        "count": 7
+      },
+      "crap_high": {
+        "count": 3
+      },
       "crap_moderate": {
-        "count": 1
+        "count": 5
       }
     },
     "core/consistency-check.js": {
@@ -81,7 +90,7 @@
         "count": 1
       },
       "crap_high": {
-        "count": 1
+        "count": 2
       },
       "crap_moderate": {
         "count": 3
@@ -94,10 +103,10 @@
     },
     "core/envelope-stripper.js": {
       "crap_high": {
-        "count": 1
+        "count": 2
       },
       "crap_moderate": {
-        "count": 2
+        "count": 1
       }
     },
     "core/evaluate-inbound-gate.js": {
@@ -120,19 +129,16 @@
     },
     "core/gate-logic.js": {
       "complexity_critical": {
-        "count": 1
-      },
-      "complexity_high": {
-        "count": 1
-      },
-      "crap_critical": {
         "count": 2
       },
+      "crap_critical": {
+        "count": 4
+      },
       "crap_high": {
-        "count": 3
+        "count": 4
       },
       "crap_moderate": {
-        "count": 3
+        "count": 4
       }
     },
     "core/gate-override.js": {
@@ -226,6 +232,22 @@
         "count": 1
       }
     },
+    "core/recurrence-tracker.js": {
+      "crap_critical": {
+        "count": 3
+      },
+      "crap_high": {
+        "count": 4
+      },
+      "crap_moderate": {
+        "count": 4
+      }
+    },
+    "core/registry-append-atomic.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
     "core/registry-stats.js": {
       "crap_high": {
         "count": 2
@@ -262,10 +284,13 @@
       }
     },
     "core/shell-parse.js": {
-      "complexity_high": {
-        "count": 1
+      "complexity_critical": {
+        "count": 2
       },
-      "complexity_moderate": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
         "count": 1
       }
     },
@@ -296,6 +321,14 @@
       }
     },
     "core/workflow-registry.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/worktree-version.js": {
+      "crap_high": {
+        "count": 2
+      },
       "crap_moderate": {
         "count": 1
       }
@@ -369,6 +402,11 @@
       "crap_high": {
         "count": 1
       },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "scout/pipeline/bucket-classifier.js": {
       "crap_moderate": {
         "count": 1
       }
@@ -596,27 +634,23 @@
   },
   "runtime_coverage_findings": [],
   "target_keys": [
-    "core/entry/index.js:dead code",
-    "core/check-grounding.js:dead code",
-    "core/derive-status.js:dead code",
-    "core/worktree-session-id.js:dead code",
     "core/gate-logic.js:complexity",
     "core/meta-state.js:complexity",
-    "core/canonical-compare.js:untested risk",
     "core/loop-introspect.js:complexity",
-    "core/registry-append-atomic.js:dead code",
-    "core/shell-parse.js:complexity",
     "tools/handlers/meta-state-re-verify-tool.js:complexity",
     "mastra/schema-parity.js:complexity",
     "core/evaluate-bash-gate.js:complexity",
     "core/surfaces.js:complexity",
     "tools/handlers/loop-describe-tool.js:complexity",
-    "core/recurrence-tracker.js:complexity",
     "tools/handlers/meta-state-list-tool.js:complexity",
+    "core/canonical-compare.js:untested risk",
     "tools/handlers/meta-state-promote-rule-tool.js:complexity",
     "tools/handlers/workflow-generate-prompt-tool.js:untested risk",
+    "core/shell-parse.js:complexity",
+    "core/recurrence-tracker.js:complexity",
     "tools/handlers/meta-state-patch-tool.js:complexity",
     "core/command-classification.js:complexity",
+    "scout/pipeline/budget-estimator.js:complexity",
     "tools/handlers/meta-state-dispatch-finding-tool.js:complexity",
     "core/blanking.js:complexity",
     "interface/contract.js:complexity"

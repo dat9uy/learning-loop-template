@@ -46,7 +46,7 @@ const _cache = new Map();
  * Caller must invoke invalidateCache(root) after any file write to ANY of
  * the three files. Safe to call when no cache entry exists.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 3-file stat + cold-empty guard + cache-hit comparison; the linear read chain is the canonical shape
 export function readRegistryWithCache(root, parseFns) {
   const metaStatePath = join(root, REGISTRY_FILENAME);
   const changeLogPath = join(root, CHANGE_LOG_FILENAME);

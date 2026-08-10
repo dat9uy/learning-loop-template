@@ -285,7 +285,7 @@ function loadDispatchIds(root) {
  * via stderr (the hook's observability channel — universal hooks do not use
  * the MCP gate-log).
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- two guarded best-effort blocks (drift-signal build, then hint build) with documented degrade-to-age-only fallbacks
 function loadStaleDispatchHints(entries, dispatchIds, root) {
   let fileIndex;
   let codeHashes;

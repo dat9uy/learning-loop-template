@@ -324,7 +324,6 @@ export function normalizePrefixForKey(command) {
  * @param {string} prefix
  * @returns {string} 16 hex chars (64 bits, birthday-safe far beyond registry scale)
  */
-// fallow-ignore-next-line unused-export -- public API consumed by gate-recurrence tests to assert key derivation
 export function hashRecurrenceKey(ruleId, prefix) {
   return createHash("sha256")
     .update(`${ruleId}::${prefix}`)
