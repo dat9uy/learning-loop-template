@@ -140,14 +140,6 @@
       ]
     },
     {
-      "file": "core/pattern-config.js",
-      "exports": [
-        "message_flags",
-        "inert_sinks",
-        "gate_verbs"
-      ]
-    },
-    {
       "file": "tools/lib/patch-hints.js",
       "exports": [
         "listMutableFieldsCsv"

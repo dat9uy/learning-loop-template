@@ -12,10 +12,12 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "utf8"));
 
-// Raw parsed sets (byte-identical to the per-module loads they replace).
-export const message_flags = PATTERNS_RAW.message_flags || [];
-export const inert_sinks = PATTERNS_RAW["inert-sinks"] || [];
-export const gate_verbs = PATTERNS_RAW["gate-verbs"] || [];
+// Raw parsed sets — private locals feeding the derived exports below
+// (byte-identical to the per-module loads they replace). Not exported: no
+// consumer reads the raw arrays; blanking.js and gate-logic.js use the
+// derived Sets / structured forms.
+const message_flags = PATTERNS_RAW.message_flags || [];
+const inert_sinks = PATTERNS_RAW["inert-sinks"] || [];
 
 export const MESSAGE_FLAGS = new Set(message_flags);
 export const INERT_SINKS = new Set(inert_sinks);

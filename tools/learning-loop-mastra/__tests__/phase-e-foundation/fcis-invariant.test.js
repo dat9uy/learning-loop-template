@@ -46,6 +46,33 @@ function isCommentLine(line) {
   return t.startsWith("//") || t.startsWith("/*") || t.startsWith("*");
 }
 
+// Find every relative ('.'-prefixed) import specifier in `content` with its
+// 1-based line. Matches the four real import forms: `import ... from "..."`,
+// `require("...")`, dynamic `import("...")`, and side-effect `import "..."`.
+// The `from` clause is matched only when it is a real import clause — preceded
+// on the line by `import ...` (single-line form) or `}` (multi-line brace
+// form), or at the start of the line (multi-line default form) — NOT when it
+// appears inside a string literal (e.g. `src.includes('from "../surfaces.js"')`
+// in the runtime-agnostic checklist, which is code that scans other files, not
+// an import). An earlier single-line regex required `import` and `from` on
+// the same line and silently missed the multi-line form (a core→shell escape).
+function findRelativeImports(content) {
+  const hits = [];
+  const re =
+    /}\s*from\s+['"](\.[^'"]+)['"]|import\s+[^;]*?from\s+['"](\.[^'"]+)['"]|^\s*from\s+['"](\.[^'"]+)['"]|require\s*\(\s*['"](\.[^'"]+)['"]\s*\)|import\s*\(\s*['"](\.[^'"]+)['"]\s*\)|import\s+['"](\.[^'"]+)['"]/g;
+  const lines = content.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (isCommentLine(lines[i])) continue;
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(lines[i])) !== null) {
+      const spec = m[1] || m[2] || m[3] || m[4] || m[5] || m[6];
+      if (spec) hits.push({ line: i + 1, spec });
+    }
+  }
+  return hits;
+}
+
 test("core/ has zero @mastra/* imports", () => {
   const importRe =
     /(?:from\s+['"]@mastra|require\s*\(\s*['"]@mastra|import\s*\(\s*['"]@mastra)/;
@@ -75,45 +102,31 @@ test("core/ may import only within core/ (no shell escapes)", () => {
   const files = walkJsFiles(CORE_DIR);
   const broken = [];
 
-  const importRe =
-    /(?:^|[{;,])\s*(?:import\s+.*?from|import)\s+['"](\.[^'"]+)['"]|(?:^|[{;,])\s*require\s*\(\s*['"](\.[^'"]+)['"]\s*\)/g;
-
   for (const file of files) {
     const content = readFileSync(file, "utf8");
-    const lines = content.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (isCommentLine(line)) continue;
+    for (const { line, spec } of findRelativeImports(content)) {
+      // A relative import from a core file must resolve to a path that
+      // stays inside core/ — any `..` that walks above core/ is an escape
+      // into the shell (mastra/, tools/, lib/) and violates the one-way rule.
+      const resolved = resolve(dirname(file), spec);
+      if (!resolved.startsWith(CORE_DIR + sep)) {
+        broken.push({ file: relative(CORE_DIR, file), line, import: spec });
+        continue;
+      }
 
-      let match;
-      importRe.lastIndex = 0;
-      while ((match = importRe.exec(line)) !== null) {
-        const importPath = match[1] || match[2];
-        if (!importPath || !importPath.startsWith(".")) continue;
-
-        // A relative import from a core file must resolve to a path that
-        // stays inside core/ — any `..` that walks above core/ is an escape
-        // into the shell (mastra/, tools/, lib/) and violates the one-way rule.
-        const resolved = resolve(dirname(file), importPath);
-        if (!resolved.startsWith(CORE_DIR + sep)) {
-          broken.push({ file: relative(CORE_DIR, file), line: i + 1, import: importPath });
-          continue;
+      const candidates = [resolved];
+      if (!extname(resolved)) {
+        candidates.push(resolved + ".js", resolved + ".cjs", resolved + ".mjs");
+      }
+      const exists = candidates.some((c) => {
+        try {
+          return statSync(c).isFile();
+        } catch {
+          return false;
         }
-
-        const candidates = [resolved];
-        if (!extname(resolved)) {
-          candidates.push(resolved + ".js", resolved + ".cjs", resolved + ".mjs");
-        }
-        const exists = candidates.some((c) => {
-          try {
-            return statSync(c).isFile();
-          } catch {
-            return false;
-          }
-        });
-        if (!exists) {
-          broken.push({ file: relative(CORE_DIR, file), line: i + 1, import: importPath });
-        }
+      });
+      if (!exists) {
+        broken.push({ file: relative(CORE_DIR, file), line, import: spec });
       }
     }
   }
@@ -124,6 +137,22 @@ test("core/ may import only within core/ (no shell escapes)", () => {
     `Core-escape or broken sibling imports in core/:\n` +
       broken.map((b) => `  ${b.file}:${b.line} imports ${b.import}`).join("\n"),
   );
+});
+
+// Regression: the relative-import guard must catch the multi-line import form
+// where `from "..."` sits on its own line. The original single-line regex
+// (`import\s+.*?from` on one line) missed `import {\n  foo\n} from "../mastra/bad.js"`
+// and let a core→shell escape slip through. This locks the fix.
+test("relative-import guard catches multi-line core-escape imports", () => {
+  const multiLineEscape = [
+    "import {",
+    "  foo",
+    '} from "../mastra/bad.js";',
+  ].join("\n");
+  const hits = findRelativeImports(multiLineEscape);
+  assert.strictEqual(hits.length, 1, "expected the multi-line escape to be detected");
+  assert.strictEqual(hits[0].spec, "../mastra/bad.js");
+  assert.strictEqual(hits[0].line, 3, "expected the hit on the `from` line");
 });
 
 test("core/ has no bare-specifier imports outside node:/pure-npm allowlist", () => {
