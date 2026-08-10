@@ -3,7 +3,7 @@ title: "Audit: Functional Core / Imperative Shell"
 type: audit-report
 date: 2026-08-10
 status: complete
-scope: read-only architectural audit (P1), plan 260810-0604
+scope: read-only architectural audit (P1), plan 260810-0604; remediation applied 2026-08-10
 ---
 
 # Audit: Functional Core / Imperative Shell
@@ -16,6 +16,38 @@ The learning loop substantially follows the general **Functional Core / Imperati
 - **Effect placement:** MIXED BY DOCUMENTED DESIGN. `core/` contains both pure primitives/evaluators and I/O-owning facades. The placement manifest (`core/placement.yaml`) and role taxonomy (`docs/placement.md`) codify this split. The audit found one doc/manifest contradiction (`file-readers.js` listed as `primitive` example in docs vs `facade` in manifest) and one primitive-with-import-time-I/O (`blanking.js:25` reads `patterns.json` at module load).
 - **CLI classification:** `bin/loop.mjs` is unambiguously an imperative shell — it owns argv/file input, JSON parsing, dynamic dispatch, environment/runtime pinning, serialization, and exit-code mapping. Statelessness does not change this.
 - **Filesystem topology:** The 3-layer model (core / Mastra shell / runtime interface) is expressed in directory structure and enforced by the placement manifest. Two layers exist outside the named 3: `tools/lib/` (shared handler helpers, 39× `resolveRoot` + 22× `appendGateLog` import sites) and `tools/handlers/` (transport-neutral imperative adapters, 48 files). `tools/handlers/` imports core; `core/meta-state.js:57` and `core/operation-invariant.js:29` import `#lib/gate-logging.js` — a core→tools/lib edge.
+
+---
+
+## Post-Audit Status (2026-08-10 — remediation applied)
+
+> This section records what the operator chose to fix after the audit, what was implemented and verified, and what remains for the operator to decide. The audit body below remains the original evidence record.
+
+### Resolved — implemented and verified
+
+| Audit finding | Resolution | Verification |
+|---|---|---|
+| **§1.2** core→mastra edge: `cli-context-savings.js:41` → `mastra/schema-parity.js` | `schema-parity.js` moved to `core/schema-parity.js` (pure zod transform; git mv, content byte-identical). All 5 importers repointed (`cli-context-savings.js`, `mastra/create-loop-tool.js`, `mastra/create-loop-workflow.js`, `cli-context-savings.test.js`, `coerce-correctness.test.js`). `.fallowrc.json` entry + `health-baseline.json` keys renamed. | `fcis-invariant`, `cli-context-savings` (22), `coerce-correctness` (14) green |
+| **§1.3 + §5.3** core→`tools/lib` edges: `meta-state.js:57`, `operation-invariant.js:29` import `#lib/gate-logging.js`; **§6-stale-view** third edge (`stale-view.js:38` → `../tools/lib/gate-logging.js`, same class, not flagged in the original audit) | `tools/lib/gate-logging.js` moved to `core/gate-logging.js` (role `facade`). Root `tools/lib/gate-logging.js` is now a 1-line re-export (`../learning-loop-mastra/core/gate-logging.js`) so all 25 shell-side `#lib/gate-logging.js` importers keep working. Core callers import `./gate-logging.js`. `operation-invariant.js` reclassified `primitive` → `helper` so it may import the facade. | `lib/gate-logging` (6), `stale-view` (26), full unit suite green |
+| **§2.4.2** doc/manifest contradiction: `file-readers.js` listed as `primitive` example in `docs/placement.md:31` vs `facade` in manifest | `docs/placement.md` role-taxonomy example fixed → `file-readers.js` moved to the `facade` row. | `placement-manifest` (6) green |
+| **§2.4.3** `blanking.js` (primitive) reads `patterns.json` at module load (`blanking.js:25`) | New `core/pattern-config.js` (role `facade`) owns the single `patterns.json` load; `blanking.js` and `gate-logic.js` both import from it (outputs byte-identical). `blanking.js` reclassified `primitive` → `helper`. | `gate-logic` family (shell-parse-classify 54, heredoc 39, inert-sink 15, cli-argv 17) green |
+| **§6.3** deleted whole-core FCIS guard (`7952f162`); documented invariant unenforced at whole-core scope | Restored as Vitest `__tests__/phase-e-foundation/fcis-invariant.test.js` with 3 assertions: (1) zero `@mastra/*` anywhere in core; (2) every relative import resolves within `core/` (no `../mastra/`, `../tools/` escapes); (3) zero bare-specifier imports outside `node:` / pure-npm allowlist (no `#lib/*`, `#mastra/*`). Removed `fcis-invariant.test.js` from `PRUNE_FILES` in `prune-coverage-parity.test.js`. | `fcis-invariant` (3), `prune-coverage-parity` (22) green |
+| **§5.3 / dangling docs** | `core/README.md` (FCIS test name + explicit `#lib/*`/`../tools/` prohibition), `docs/placement.md` (`node --test` → Vitest `pnpm test:one` command), `schema-normalize.js` stale "MCP-only sibling" comment, `docs/mcp-tool-schema-architecture.md`, `tools/learning-loop-mastra/docs/schemas.md`, `tools/learning-loop-mastra/docs/legacy-pins.md`, `AGENTS.md` Mastra-shell inventory (removed `schema-parity.js`; noted core module) all updated. | doc review + full unit suite |
+
+**Full-suite evidence:** `pnpm test:unit` → 295 files passed / 3196 tests passed (4 skipped). `pnpm fallow:brief` → exit 0 (gate `new-only` passes). Manual grep → zero `@mastra/`, `../mastra/`, `../tools/`, `#lib/` imports in core production files.
+
+### Operator decisions made
+
+- **§7 Q2 (CLI naming):** keep the "transport" framing. Decided: "transport" (CLI vs MCP) and "imperative shell" are **not a contrast** — they describe different axes. `bin/loop.mjs` is a stateless transport **and** an imperative shell; docs stay as-is.
+- **§7 Q3 (restore whole-core FCIS guard):** **yes** — restored (see resolved row above).
+
+### Remains for operator to decide (not implemented)
+
+| §7 / final Q | Question | Status |
+|---|---|---|
+| Q1 | Is strict effect purity a future target for `core/`, or is framework-independent policy core with documented I/O facades the accepted design? | **OPEN — operator decision** |
+| Q4 | Is `tools/handlers/` a stable fourth architectural layer or a legacy-substrate exception to be named/retired? | **OPEN — operator decision** |
+| Q5 | Is `tools/lib/` core-adjacent shared code or an undeclared layer? (The core-side blur is removed — `core/` no longer imports `tools/lib/` — but the layer-naming question for the remaining `resolve-root.js`, `patch-hints.js`, etc. stands.) | **OPEN — operator decision** |
 
 ## Audit Lens
 
@@ -286,34 +318,36 @@ The surviving guards are **narrow and per-file**. There is **no surviving whole-
 
 ## 7. Open Questions / Design Trade-offs
 
-1. **Does "functional core" here intentionally mean framework-independent policy core (including I/O-owning facades), or is strict effect purity the eventual target?** The repo's FCIS shorthand (`core/README.md`, `AGENTS.md`) defines the invariant as zero-`@mastra/*`; the broader FCIS literature also cares about effects. This audit reports both dimensions; the decision is the user's.
+> Resolution status updated 2026-08-10. Q2, Q3, Q6 **resolved**; Q1, Q4, Q5 remain open for operator decision. See **Post-Audit Status** above for the implemented fixes and evidence.
 
-2. **Should the CLI be named explicitly in the 3-layer docs?** `docs/architecture.md:5` and `AGENTS.md:15` name the Mastra shell as *the* imperative shell; the CLI is treated as a transport (`docs/architecture.md:22–23`, `docs/runtime-contract.md`). The audit confirms the CLI is a full imperative shell (argv, env, dispatch, serialize, exit) — the docs' "transport" framing undersells its shell role.
+1. **OPEN — operator decision.** Does "functional core" here intentionally mean framework-independent policy core (including I/O-owning facades), or is strict effect purity the eventual target? The repo's FCIS shorthand (`core/README.md`, `AGENTS.md`) defines the invariant as zero-`@mastra/*`; the broader FCIS literature also cares about effects. This audit reports both dimensions; the decision is the user's.
 
-3. **Should the whole-core FCIS regression guard be restored?** The deleted test caught new `@mastra/*` imports anywhere in core and broken sibling imports. Its absence is the reason the `cli-context-savings.js → mastra/schema-parity.js` edge (§1.2) shipped unnoticed. The placement manifest + per-file guards partially cover this, but no single guard scans the whole core.
+2. **RESOLVED (2026-08-10).** Should the CLI be named explicitly in the 3-layer docs? `docs/architecture.md:5` and `AGENTS.md:15` name the Mastra shell as *the* imperative shell; the CLI is treated as a transport (`docs/architecture.md:22–23`, `docs/runtime-contract.md`). The audit confirms the CLI is a full imperative shell (argv, env, dispatch, serialize, exit) — the docs' "transport" framing undersells its shell role. **Operator decided:** keep the "transport" framing — "transport" (CLI vs MCP) and "imperative shell" are different axes, not a contrast; `bin/loop.mjs` is both.
 
-4. **Is `tools/handlers/` a stable fourth architectural layer or a legacy-substrate exception?** `core/README.md:27–29` calls it a "separate substrate directory (legacy tool adapters)." It is 48 files, heavily used, transport-neutral, and imports core inward. It deserves an explicit name in the layer model if it's stable.
+3. **RESOLVED (2026-08-10).** Should the whole-core FCIS regression guard be restored? The deleted test caught new `@mastra/*` imports anywhere in core and broken sibling imports. Its absence is the reason the `cli-context-savings.js → mastra/schema-parity.js` edge (§1.2) shipped unnoticed. The placement manifest + per-file guards partially cover this, but no single guard scans the whole core. **Operator decided:** yes — restored as Vitest `fcis-invariant.test.js` (zero `@mastra/*`, no core-escape relative imports, no `#lib/*`/`#mastra/*` bare specifiers).
 
-5. **Is `tools/lib/` core-adjacent shared code or a fifth undeclared layer?** Two core files import `#lib/gate-logging.js` — the core facade registry and the invariant wrapper depend on an I/O helper outside core and outside the Mastra shell. This blurs the core's self-containment claim.
+4. **OPEN — operator decision.** Is `tools/handlers/` a stable fourth architectural layer or a legacy-substrate exception? `core/README.md:27–29` calls it a "separate substrate directory (legacy tool adapters)." It is 48 files, heavily used, transport-neutral, and imports core inward. It deserves an explicit name in the layer model if it's stable.
 
-6. **The core→mastra `schema-parity.js` edge**: since `schema-parity.js` is pure (zod-only), moving it into core (or a shared neutral location) would restore strict one-way dependency without coupling core to `@mastra`. Whether to do this is an implementation decision, out of scope here.
+5. **OPEN — operator decision.** Is `tools/lib/` core-adjacent shared code or a fifth undeclared layer? Two core files import `#lib/gate-logging.js` — the core facade registry and the invariant wrapper depend on an I/O helper outside core and outside the Mastra shell. This blurs the core's self-containment claim. *(Post-audit: the core-side blur is removed — `core/` no longer imports `tools/lib/`; the layer-naming question for the remaining `resolve-root.js`, `patch-hints.js`, etc. stands.)*
+
+6. **RESOLVED (2026-08-10).** The core→mastra `schema-parity.js` edge: since `schema-parity.js` is pure (zod-only), moving it into core (or a shared neutral location) would restore strict one-way dependency without coupling core to `@mastra`. Whether to do this is an implementation decision, out of scope here. **Done:** moved to `core/schema-parity.js`; strict one-way dependency restored.
 
 ## 8. Honest Test/Check Reporting
 
 | Check | Result | Notes |
 |---|---|---|
-| Whole-core `@mastra/*` grep | PASS | NONE FOUND |
-| Core→mastra imports | 1 edge | `cli-context-savings.js:41` |
-| Core→tools/lib imports | 2 edges | `meta-state.js:57`, `operation-invariant.js:29` |
+| Whole-core `@mastra/*` grep | PASS | NONE FOUND (audit + post-fix) |
+| Core→mastra imports | 1 edge → **0 (fixed)** | `cli-context-savings.js:41` resolved by moving `schema-parity.js` into core (2026-08-10) |
+| Core→tools/lib imports | 2 edges → **0 (fixed)** | `meta-state.js:57`, `operation-invariant.js:29` + `stale-view.js:38` resolved by moving `gate-logging.js` into core (2026-08-10) |
 | Placement + boundary tests | 45 PASSED | unit project, this audit |
 | Interface contract validators | 3/3 ok:true | advisory notes unchanged from warmup |
 | Shim byte-identity | 5/5 MATCH | `.claude` vs `.factory` |
 | `check_runtime_agnostic` on `loop.mjs` | 6/6 passed | warmup result; tool is MCP-residue, not CLI-runnable in this runtime |
-| git working tree | CLEAN | only intentional plan/report artifacts untracked; no source/docs/config/test/registry modified |
+| git working tree | CLEAN **at audit**; MODIFIED post-fix | audit was read-only; remediation touched 27 files (moves + tests + docs) |
 
-**Not run in this audit:** full suite (`pnpm test`) — not executed to avoid the test seed step (`seed-file-index.mjs`) modifying `file-index.jsonl`, which is an untracked regen artifact (side-effect-bearing). The focused boundary tests (45 passed) are side-effect-light and sufficient for the enforcement question. The `*.universal-missing` advisory notes are per `CONTRACT.md` non-blocking.
+**Not run in this audit:** full suite (`pnpm test`) — not executed to avoid the test seed step (`seed-file-index.mjs`) modifying `file-index.jsonl`, which is an untracked regen artifact (side-effect-bearing). The focused boundary tests (45 passed) are side-effect-light and sufficient for the enforcement question. The `*.universal-missing` advisory notes are per `CONTRACT.md` non-blocking. *(Post-fix, the full unit suite was run: 295 files / 3196 tests passed, 4 skipped.)*
 
-**Audit side effects:** recording session-scoped `gate-verb` allowances (node, python3) to the gitignored `.loop/runtime-state-local.jsonl` to unblock read-only validator/test commands. These are ephemeral, session-local, and not committed. No tracked file was modified (verified `git status --short` + `git diff --name-only`).
+**Audit side effects:** recording session-scoped `gate-verb` allowances (node, python3) to the gitignored `.loop/runtime-state-local.jsonl` to unblock read-only validator/test commands. These are ephemeral, session-local, and not committed. No tracked file was modified during the audit itself (verified `git status --short` + `git diff --name-only`). Post-fix, the working tree is intentionally modified (remediation, uncommitted).
 
 ## References
 
@@ -336,9 +370,11 @@ The surviving guards are **narrow and per-file**. There is **no surviving whole-
 
 ## Unresolved Questions (final)
 
-1. Is strict effect purity a future target for core, or is framework-independent policy core with documented I/O facades the accepted design?
-2. Should the CLI be named as an imperative shell in `AGENTS.md`/`docs/architecture.md`?
-3. Should the whole-core FCIS regression guard be restored, or are per-file/role guards the intended trade-off?
-4. Is `tools/handlers/` a fourth stable layer or a legacy substrate to be named/retired?
-5. Is `tools/lib/` core-adjacent shared code or an undeclared layer that blurs core self-containment?
-6. Should the `file-readers.js` doc-example contradiction (`docs/placement.md:31` vs `placement.yaml:111`) be reconciled?
+> Updated 2026-08-10 after remediation. **Resolved:** Q2, Q3, Q6 (see Post-Audit Status above). **Remaining for operator decision:** Q1, Q4, Q5.
+
+1. **OPEN — operator decision.** Is strict effect purity a future target for core, or is framework-independent policy core with documented I/O facades the accepted design?
+2. **RESOLVED (2026-08-10).** CLI stays described as a "transport" in `AGENTS.md`/`docs/architecture.md`. Decided: "transport" (CLI vs MCP) and "imperative shell" are not a contrast — different axes; `bin/loop.mjs` is both.
+3. **RESOLVED (2026-08-10).** Whole-core FCIS regression guard restored as Vitest `__tests__/phase-e-foundation/fcis-invariant.test.js` (zero `@mastra/*`, no core-escape relative imports, no `#lib/*`/`#mastra/*` bare specifiers). Per-file/role guards remain alongside it.
+4. **OPEN — operator decision.** Is `tools/handlers/` a fourth stable layer or a legacy substrate to be named/retired?
+5. **OPEN — operator decision.** Is `tools/lib/` core-adjacent shared code or an undeclared layer? (The core-side blur is removed — `core/` no longer imports `tools/lib/` — but the layer-naming question stands.)
+6. **RESOLVED (2026-08-10).** `docs/placement.md:31` `file-readers.js` example reconciled → moved to the `facade` row (matches `placement.yaml:111`).
