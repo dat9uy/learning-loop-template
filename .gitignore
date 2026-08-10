@@ -45,7 +45,7 @@ product/*/dist/
 # Intentionally untracked: a time-based freshness gate must not live as committed
 # state (it misleads agents into attributing failures as "pre-existing"). Enforced
 # by `pnpm check:freshness`, not by the regression suite.
-tools/learning-loop-mastra/__tests__/legacy-mcp/.cold-session-sentinel.json
+tools/learning-loop-mastra/__tests__/integration/.cold-session-sentinel.json
 # Regenerated fingerprint sidecar (seed-file-index.mjs at test/pre-commit/CI).
 # Never edited by humans; recomputable from the tree.
 file-index.jsonl
