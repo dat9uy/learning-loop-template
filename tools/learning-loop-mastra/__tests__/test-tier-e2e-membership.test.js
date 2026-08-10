@@ -1,27 +1,34 @@
 import { test, expect } from "vitest";
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { classifySource, parseConfiguredE2E } from "./tier-detector.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
 
-// Guard test: the `e2e` project's `include` list must match the files that
-// contain e2e markers — MCP-server spawns (`connectMcpServer`,
-// `with-mcp-server`, `StdioClientTransport`, `@modelcontextprotocol/sdk/client`)
-// OR CLI-subprocess spawns of the `bin/loop.mjs` binary (`LOOP_BIN`/`cliPath`
-// are the spawn-arg variables that carry the loop.mjs path). When a new test
-// file starts spawning the MCP server or the CLI binary but isn't added to
-// the e2e project's include, this guard fails loud — preventing a silent
-// misclassification where an e2e file lands in the fast `unit` project.
+// Guard test: the `e2e` project's `include` list must EXACTLY equal the files
+// whose strongest runtime boundary is a real process or transport. The
+// classification is done by `tier-detector.mjs` (shared with the config):
 //
-// The CLI-spawn markers are scoped to the spawn-arg variable names, not the
-// path string: files that only reference `bin/loop.mjs` in comments/strings
-// (passed to a pure `evaluateBashGate`) use `CLI_BIN_PATH`/`CLI_COMMAND` and
-// are correctly NOT matched. This keeps pure-function tests in `unit`.
+//   - MCP transport / server bootstrap markers (`StdioClientTransport`,
+//     `@modelcontextprotocol/sdk/client`, `connectMcpServer`, `withMcpServer`)
+//   - real subprocess call-sites whose first arg is `process.execPath`, a bare
+//     identifier variable, or a real binary name (`node`/`bash`/`git`/`jq`/...)
 //
-// See `plans/260803-1314-hybrid-test-tiering-and-pre-push-gate/` for context.
+// Call-site detection (not raw marker grep) is mandatory: the legacy
+// gate-logic tests contain inert `execSync(...)`/`spawn(...)` STRINGS as test
+// data, and session-start-inject-degraded-sources mentions `spawn` only in a
+// comment. Raw grep would misclassify both.
+//
+// Strict equality (both directions) means:
+//   - a file that matches e2e markers but is missing from E2E_FILES fails →
+//     it would otherwise run in unit/integration, which is the bug this guard
+//     prevents;
+//   - a stale configured entry that no longer matches markers also fails → the
+//     list must stay exactly in sync with the real boundary classification.
+//
+// See `plans/260810-0908-test-tier-architecture-refactor/` for context.
 
 const SEARCH_DIRS = [
   "tools/learning-loop-mastra/__tests__",
@@ -30,84 +37,62 @@ const SEARCH_DIRS = [
   "tools/scripts/__tests__",
 ];
 
-// Marker pattern covers both e2e classes:
-//   - MCP-server spawn: `connectMcpServer`/`with-mcp-server` (shared helper)
-//     and `StdioClientTransport`/`@modelcontextprotocol/sdk/client` (SDK-direct
-//     spawn, bypassing the helper).
-//   - CLI-subprocess spawn: `LOOP_BIN`/`cliPath` — the spawn-arg variables
-//     that carry the `bin/loop.mjs` path into `spawnSync("node", [VAR, …])` /
-//     `spawn("node", [VAR, …])`. The async `spawn` form is included (one file
-//     uses it); a sync-only assumption would miss it.
-const MARKER_PATTERN =
-  "connectMcpServer|with-mcp-server|StdioClientTransport|@modelcontextprotocol/sdk/client|LOOP_BIN|cliPath";
+// Guard self-references: these files contain the marker strings in their own
+// error messages / detection code and must never be classified e2e.
+const GUARD_SELF = [
+  "tools/learning-loop-mastra/__tests__/test-tier-e2e-membership.test.js",
+  "tools/learning-loop-mastra/__tests__/test-tier-completeness.test.js",
+];
 
 function deriveE2EFiles() {
-  const result = execFileSync(
-    "grep",
-    [
-      "-rlE",
-      MARKER_PATTERN,
-      "--include=*.test.js",
-      "--include=*.test.cjs",
-      "--include=*.test.mjs",
-      ...SEARCH_DIRS,
-    ],
-    { cwd: projectRoot, encoding: "utf8" },
-  );
-  return result
-    .split("\n")
-    .filter(Boolean)
-    // Drop the guard test itself (self-reference: this file contains the
-    // marker string in its own error message + comment).
-    .filter((f) => f !== "tools/learning-loop-mastra/__tests__/test-tier-e2e-membership.test.js")
-    .sort();
+  const result = [];
+  function walk(dir) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        // Support dirs are not test homes; tier homes (e2e/integration/unit)
+        // hold real tests and MUST be walked.
+        if (["node_modules", "__snapshots__", "fixtures", "helpers", "debug", "scout"].includes(entry.name)) continue;
+        walk(full);
+      } else if (/\.test\.(js|cjs|mjs)$/.test(entry.name)) {
+        if (GUARD_SELF.includes(full)) continue;
+        const src = readFileSync(full, "utf8");
+        if (classifySource(src) === "e2e") result.push(full);
+      }
+    }
+  }
+  for (const dir of SEARCH_DIRS) walk(dir);
+  return result.sort();
 }
 
 function readConfiguredE2EFiles() {
   const configPath = resolve(projectRoot, "vitest.config.mjs");
   const source = readFileSync(configPath, "utf8");
-
-  // Parse the `E2E_FILES = [...]` array literal. Naive but adequate for our
-  // hand-maintained list — fails fast on syntax drift.
-  const match = source.match(/const E2E_FILES = \[([\s\S]*?)\];/);
-  if (!match) {
-    throw new Error(
-      `Could not find E2E_FILES constant in ${configPath}. The guard test expects the array literal to be named exactly E2E_FILES.`,
-    );
-  }
-
-  return match[1]
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('"') && line.endsWith('",'))
-    .map((line) => line.slice(1, -2))
-    .sort();
+  return parseConfiguredE2E(source);
 }
 
-test("e2e project's include list matches grep-derived e2e markers", () => {
+test("e2e project's include list exactly equals derived e2e markers", () => {
   const configured = readConfiguredE2EFiles();
   const derived = deriveE2EFiles();
 
-  // Derived set must be a strict subset of configured (a derived file
-  // outside the configured list = drift = the unit project would run it,
-  // which is the bug this guard prevents).
+  // Missing: derived but not configured → the e2e test would run in unit/integration.
   const missingFromConfigured = derived.filter((f) => !configured.includes(f));
   expect(
     missingFromConfigured,
-    `Files match e2e markers but are missing from vitest.config.mjs's E2E_FILES array. Add them so they run in the e2e project (not unit):\n${missingFromConfigured.join("\n")}`,
+    `Files match e2e markers but are missing from vitest.config.mjs's E2E_FILES array. Add them so they run in the e2e project (not unit/integration):\n${missingFromConfigured.join("\n")}`,
   ).toEqual([]);
 
-  // The configured list should be a strict subset of derived (a file in the
-  // configured list that no longer matches markers = stale entry = cleanup
-  // signal; we don't fail on it, just surface it as a warning).
+  // Stale: configured but not derived → the list has drifted from the real
+  // boundary classification. Per the plan, stale entries must FAIL (not just warn).
   const staleEntries = configured.filter((f) => !derived.includes(f));
-  if (staleEntries.length > 0) {
-    console.warn(
-      `Stale entries in E2E_FILES (no longer match markers):\n${staleEntries.join("\n")}`,
-    );
-  }
+  expect(
+    staleEntries,
+    `Stale entries in E2E_FILES (no longer match e2e markers). Remove them so the e2e list exactly tracks the boundary classification:\n${staleEntries.join("\n")}`,
+  ).toEqual([]);
 
-  // Sanity: at least one e2e file exists (otherwise the e2e project is empty
-  // and the guard test is itself untested).
+  // Exact equality (both directions clean implies equal cardinality + subset).
+  expect(configured.length).toBe(derived.length);
+
+  // Sanity: at least one e2e file exists (otherwise the e2e project is empty).
   expect(configured.length).toBeGreaterThan(0);
 });
