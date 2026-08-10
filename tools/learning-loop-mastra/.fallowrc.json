@@ -32,6 +32,7 @@
   "ignorePatterns": [
     "__tests__/fixtures/**",
     "__tests__/phase-e-foundation/fixtures/**",
+    "__tests__/tier-detector.mjs",
     "tools/handlers/evals/**",
     "tools/handlers/references/**",
     "tools/handlers/fixtures/**",

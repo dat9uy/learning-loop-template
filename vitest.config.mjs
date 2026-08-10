@@ -1,72 +1,299 @@
 import { defineConfig } from "vitest/config";
 
-// Vitest hybrid test tiering — `unit` (fast, no subprocess) and `e2e` (MCP
-// server + CLI subprocess). See `plans/260803-1314-hybrid-test-tiering-and-pre-push-gate/`.
+// Three-tier test contract — unit / integration / e2e.
+// See plans/260810-0908-test-tier-architecture-refactor/.
 //
-// Shared config (top-level `test`):
-//   - timeouts 120s for the 6 `before(fn,{timeout})` hooks that bootstrap a Mastra MCP server.
-//   - reporters default + json — agent-context fix (vitest --reporter=json emits
-//     `.test-logs/vitest-results.json` with numFailedTests + assertionResults[]).
-//   - globals: true — the 12 .claude/coordination/ + .factory/hooks/ gate tests are CJS and
-//     cannot `require("vitest")`; vitest globals let those files run without an import.
+// Shared config (top-level test):
+//   - timeouts 120s for the before(fn,{timeout}) hooks that bootstrap a Mastra MCP server.
+//   - reporters default + json.
+//   - globals: true — CJS gate tests cannot require("vitest").
 //
 // Coverage:
-//   - istanbul (chosen over v8 because fallow:gate's coverage input requires
-//     Istanbul-format JSON; @vitest/coverage-istanbul produces it natively).
-//   - top-level `enabled: true` so CI/pre-push (running all projects) collects
-//     coverage from every project; `unit` overrides to `false` so the pre-commit
-//     fast gate skips the ~19s istanbul transform tax.
+//   - istanbul (fallow:gate needs Istanbul-format JSON).
+//   - top-level enabled: true so the full run collects coverage; unit overrides to
+//     false via CLI flag so the pre-commit fast gate skips the transform tax.
 //
 // Project boundary:
-//   - `unit` = the 4 original globs MINUS the e2e files (see
-//     `tools/learning-loop-mastra/__tests__/test-tier-e2e-membership.test.js`
-//     for the guard test).
-//   - `e2e` = the explicit e2e file list — MCP-server-spawning tests AND
-//     CLI-subprocess tests that `spawnSync`/`spawn` the `bin/loop.mjs` binary
-//     (Strategy A from the plan: explicit list + guard test, KISS; drift
-//     caught loud by the guard, not silently).
-//
-// Known noise: vitest's coverage instrumentation emits `vite:dynamic-import-vars`
-// warnings for `mastra/server.js` and `agents/build-meta-state-tools.js` (they
-// use dynamic `import(\`./${file}\`)` for plugin loading). Intentional production
-// pattern; warnings are cosmetic. Suppressing would require a production change.
+//   - e2e: explicit file list derived by tools/learning-loop-mastra/__tests__/tier-detector.mjs
+//     (transport markers + real subprocess call-sites). Guarded by
+//     test-tier-e2e-membership.test.js (strict equality).
+//   - integration: in-process composition — existing composition homes
+//     (__tests__/{core,interface,r2,freshness,phase-e-foundation,lib}), the
+//     __tests__/integration/ home (Phase 3), the legacy integration-tier files,
+//     and the top-level integration files. Guarded by test-tier-completeness.test.js.
+//   - unit: the fast project — pure colocated core/handlers tests, aligned unit
+//     dirs, and the unit-tier legacy files. Explicit excludes keep it disjoint.
 
+// E2E_FILES — derived by tier-detector.mjs (see the guard test). A file that
+// spawns a child process or boots MCP/transport lands here.
 const E2E_FILES = [
+  ".claude/coordination/__tests__/artifact-aware-gate.test.cjs",
+  ".claude/coordination/__tests__/bash-coordination-gate.test.cjs",
   ".claude/coordination/__tests__/claude-code-mcp-loading.test.cjs",
   ".claude/coordination/__tests__/gate-integration.test.cjs",
+  ".claude/coordination/__tests__/inbound-state-gate.test.cjs",
+  ".claude/coordination/__tests__/preflight-gate.test.cjs",
+  ".claude/coordination/__tests__/write-coordination-gate-minimal.test.cjs",
+  ".claude/coordination/__tests__/write-gate-index-capabilities.test.cjs",
+  ".factory/hooks/__tests__/loop-surface-inject.test.cjs",
   "tools/learning-loop-mastra/__tests__/agent-parity.test.cjs",
+  "tools/learning-loop-mastra/__tests__/cli-args-file-dispatch.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-bare-key-json-hint.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-context-savings-script.test.js",
   "tools/learning-loop-mastra/__tests__/cli-mcp-subset-registration.test.js",
   "tools/learning-loop-mastra/__tests__/cli-read-parity.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-schema-flag.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-sessionstart-banner.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-workflow-dispatch.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-write-exit-codes.test.js",
   "tools/learning-loop-mastra/__tests__/cli-write-parity.test.js",
+  "tools/learning-loop-mastra/__tests__/cold-session-enumerate-mastra.test.cjs",
+  "tools/learning-loop-mastra/__tests__/commit-msg-stable-artifacts.test.js",
   "tools/learning-loop-mastra/__tests__/connect-mcp-server-mutex.test.js",
-  "tools/learning-loop-mastra/__tests__/legacy-mcp/change-log-operation-envelope.test.js",
-  "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-get-instruction.test.js",
-  "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-id-stdio.test.js",
-  "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-derived-schema.test.js",
-  "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-entry-kind-invariant.test.js",
-  "tools/learning-loop-mastra/__tests__/legacy-mcp/mcp-protocol-e2e.test.cjs",
-  "tools/learning-loop-mastra/__tests__/legacy-mcp/zod-coerce-top-level.test.js",
+  "tools/learning-loop-mastra/__tests__/cross-process-file-lock.test.cjs",
+  "tools/learning-loop-mastra/__tests__/delivery-classify.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/backfill-versions.test.cjs",
+  "tools/learning-loop-mastra/__tests__/e2e/bash-gate-decision-visibility.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/bash-gate-no-verify.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/budget-option-c-e2e.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/change-log-operation-envelope.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/ci-registry-deltas.test.cjs",
+  "tools/learning-loop-mastra/__tests__/e2e/cross-surface.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/gate-recurrence.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/git-diff.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/loop-get-instruction.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/mastra-code-smoke.test.cjs",
+  "tools/learning-loop-mastra/__tests__/e2e/mcp-protocol-e2e.test.cjs",
+  "tools/learning-loop-mastra/__tests__/e2e/meta-state-list-id-stdio.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/meta-state-patch-derived-schema.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/meta-state-patch-entry-kind-invariant.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/normalize-skills.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/sarif-patch.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/session-start-inject-discoverability.test.cjs",
+  "tools/learning-loop-mastra/__tests__/e2e/session-start-inject-process-hints.test.cjs",
+  "tools/learning-loop-mastra/__tests__/e2e/sync-skills.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/write-gate-decision-visibility.test.js",
+  "tools/learning-loop-mastra/__tests__/e2e/zod-coerce-top-level.test.js",
+  "tools/learning-loop-mastra/__tests__/hint-render-cli.test.cjs",
   "tools/learning-loop-mastra/__tests__/mcp-protocol-e2e.test.cjs",
   "tools/learning-loop-mastra/__tests__/mcp-tools-list-parity.test.js",
   "tools/learning-loop-mastra/__tests__/mcp-wire-budget.test.js",
   "tools/learning-loop-mastra/__tests__/meta-state-patch-jit-payload.test.js",
+  "tools/learning-loop-mastra/__tests__/migrate-runtime-state-ephemeral-rows.test.js",
   "tools/learning-loop-mastra/__tests__/mutex-scope.test.js",
-  "tools/learning-loop-mastra/__tests__/server-runid.test.js",
-  "tools/learning-loop-mastra/__tests__/storage-parity.test.cjs",
-  "tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs",
-  "tools/learning-loop-mastra/__tests__/cold-session-enumerate-mastra.test.cjs",
-  // CLI-subprocess tests: spawn the `bin/loop.mjs` binary directly via
-  // spawnSync/spawn. The plan's e2e definition is "MCP-server-spawning OR
-  // CLI-subprocess"; these are the CLI-spawn half. Caught by the `LOOP_BIN`
-  // / `cliPath` markers in the guard test (the spawn-arg variables that
-  // carry the loop.mjs path). Mention-only files that reference the path in
-  // comments/strings use `CLI_BIN_PATH`/`CLI_COMMAND` and are NOT caught.
-  "tools/learning-loop-mastra/__tests__/cli-args-file-dispatch.test.js",
-  "tools/learning-loop-mastra/__tests__/cli-bare-key-json-hint.test.js",
-  "tools/learning-loop-mastra/__tests__/cli-schema-flag.test.js",
-  "tools/learning-loop-mastra/__tests__/cli-workflow-dispatch.test.js",
-  "tools/learning-loop-mastra/__tests__/cli-write-exit-codes.test.js",
   "tools/learning-loop-mastra/__tests__/runtime-state-versioned-dedup.test.js",
+  "tools/learning-loop-mastra/__tests__/server-runid.test.js",
+  "tools/learning-loop-mastra/__tests__/session-start-git-merge-driver-preflight.test.js",
+  "tools/learning-loop-mastra/__tests__/session-start-git-push-preflight.test.js",
+  "tools/learning-loop-mastra/__tests__/storage-parity.test.cjs",
+  "tools/learning-loop-mastra/__tests__/toolchain-failure-capture.test.cjs",
+  "tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs",
+  "tools/scripts/__tests__/ci-registry-deltas-duplicate-version.test.js",
+  "tools/scripts/__tests__/ci-registry-deltas.test.js",
+  "tools/scripts/__tests__/compact-registry.test.js",
+  "tools/scripts/__tests__/meta-state-merge-union.test.js",
+  "tools/scripts/__tests__/registry-table-all-versions.test.js",
+  "tools/scripts/__tests__/registry-table.test.js",
+  "tools/scripts/__tests__/setup-branch-protection.test.js",
+  "tools/scripts/__tests__/setup-git-merge-drivers.test.js",
+  "tools/scripts/__tests__/setup-git-push.test.js",
+  "tools/scripts/__tests__/setup-git.test.js",
+  "tools/scripts/__tests__/test-one.test.js",
+  "tools/scripts/__tests__/vitest-failures.test.js",
+];
+
+// INTEGRATION_FILES — in-process composition tests: no child process, no MCP
+// server boot, but composition across core/handlers/mastra/interface/storage
+// with temporary substrates allowed.
+const INTEGRATION_FILES = [
+  "tools/learning-loop-mastra/__tests__/agent-direct-parity.test.js",
+  "tools/learning-loop-mastra/__tests__/agent-prompt-content.test.cjs",
+  "tools/learning-loop-mastra/__tests__/cli-bash-gate-guard.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-self-footgun-guard.test.js",
+  "tools/learning-loop-mastra/__tests__/cli-write-tool-set-drift.test.js",
+  "tools/learning-loop-mastra/__tests__/create-loop-agent.test.js",
+  "tools/learning-loop-mastra/__tests__/create-loop-workflow.test.js",
+  "tools/learning-loop-mastra/__tests__/drop-idempotency-cache.test.cjs",
+  "tools/learning-loop-mastra/__tests__/factory-hook-single-source.test.cjs",
+  "tools/learning-loop-mastra/__tests__/field-glossary.test.js",
+  "tools/learning-loop-mastra/__tests__/hint-dedup-invariant.test.cjs",
+  "tools/learning-loop-mastra/__tests__/hint-registry.test.cjs",
+  "tools/learning-loop-mastra/__tests__/hint-renderer.test.cjs",
+  "tools/learning-loop-mastra/__tests__/integration/audit-log-hardening.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/bound-artifacts.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/build-inverse-indexes.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/build-stale-dispatch-hints.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/check-grounding.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/cold-session-churn-regression.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/cold-session-discoverability.test.cjs",
+  "tools/learning-loop-mastra/__tests__/integration/cold-tier-regression.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/collapse-latest-budget-state-by-id.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/command-classification-contract.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/compute-current-hashes-integration.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/derive-status.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/dual-source-read-seam.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/evaluate-bash-gate-runtime-state.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/evaluate-inbound-gate-staleness.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/file-index-o1-regression.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/file-index.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/file-readers-malformed-line.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/file-readers-unmapped-active-entry.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/gate-check-snapshot.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/gate-decision-log.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/gate-determinism-checklist.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/gate-override.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/gate-promoted-rules.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/gate-scope-predicate.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/gate-verb-observation.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/hash-cache.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/inbound-state-readlastoperatormessage.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/inbound-state-runtime-state.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/integration-promoted-rule.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/loop-describe-cold-cache.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/loop-describe-cold-tier-superseded.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/loop-describe-description-mode.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/loop-describe-get-instruction-wire-format.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/loop-describe-registry-stats.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/loop-describe-rule-and-loop-design.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/loop-describe-warm-tier.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/loop-describe.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-archive-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-batch-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-check-grounding-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-consistency-check-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-derive-status-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-dispatch-finding-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-dispatch-ttl-and-close-flow.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-integration.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-list-compact.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-list-entry-kind-extended.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-list-entry-kind.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-list-id-filter.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-list-include-all-versions.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-list-include-archived.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-list-ref-by-filter.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-log-change-codegen.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-log-change.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-lru-cache.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-patch-immutable-fields.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-patch-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-promote-rule-rule-entry.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-propose-design-codegen.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-propose-design-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-query-drift-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-re-verify-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-refresh-file-index-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-relationship-validate-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-relationships-dangling-refs.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-relationships-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-relationships.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-reopen-backfill-integration.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-reopen-e2e-cold-session.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-report-description.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-report-id-honoring.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-report-tool-extension.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-resolve-cascade-stale.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-resolve-cascade.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-resolve-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-schema-extension.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-schema.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-script-caller-passthrough.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-session-id-roundtrip.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-ship-loop-design-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-stale-flag.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-sweep-no-stale-ref-followup.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-sweep-stale-transition.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-sweep-summary.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-sweep.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-touch-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-unarchive-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/meta-state-write-validation.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/path-containment-audit-sites.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/projection-last-wins-by-max-version.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/query-drift.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/runtime-agnostic.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/runtime-state-write-gate.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/schemas-write-gate.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/scout-bucket-classifier.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/scout-budget-estimator.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/scout-dangling-detector.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/scout-run-scout.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/skills-manifest.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/skills-mirror-parity.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/stale-view.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/surfaces-append.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/surfaces-read-jsonl.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/surfaces-rmw.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/surfaces.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/validate-registry-refs.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/versioned-append-write-path.test.js",
+  "tools/learning-loop-mastra/__tests__/integration/wire-format-array-guard.test.js",
+  "tools/learning-loop-mastra/__tests__/notify-artifact-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/path-containment.test.js",
+  "tools/learning-loop-mastra/__tests__/per-worktree-loop-version.test.cjs",
+  "tools/learning-loop-mastra/__tests__/per-worktree-session-id.test.cjs",
+  "tools/learning-loop-mastra/__tests__/portable-six-probes.test.js",
+  "tools/learning-loop-mastra/__tests__/post-write-visibility-reread.test.cjs",
+  "tools/learning-loop-mastra/__tests__/rule-derived-process-hints.test.cjs",
+  "tools/learning-loop-mastra/__tests__/runtime-state-durability-split.test.js",
+  "tools/learning-loop-mastra/__tests__/runtime-state-fingerprint.test.js",
+  "tools/learning-loop-mastra/__tests__/runtime-state-metadata-validation.test.js",
+  "tools/learning-loop-mastra/__tests__/runtime-state-no-delete-to-clear-gate.test.js",
+  "tools/learning-loop-mastra/__tests__/runtime-tracking.test.js",
+  "tools/learning-loop-mastra/__tests__/schema-fingerprint.test.cjs",
+  "tools/learning-loop-mastra/__tests__/storage-factory-direct.test.js",
+  "tools/learning-loop-mastra/__tests__/test-output-contract-drift.test.cjs",
+  "tools/learning-loop-mastra/__tests__/trigger-workflow-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/workflow-generate-prompt-tool.test.js",
+  "tools/learning-loop-mastra/__tests__/workflow-unwrap-parity.test.js",
+  "tools/learning-loop-mastra/__tests__/write-gate-lineage-scan.test.js",
+];
+
+// UNIT_FILES — legacy files classified unit (pure, no IO, no shell import).
+// They are NOT excluded from unit (the BASE_INCLUDE glob picks them up); the
+// list documents the classification for the completeness guard.
+const UNIT_FILES = [
+  "tools/learning-loop-mastra/core/bash-gate-runtime-state-record.test.js",
+  "tools/learning-loop-mastra/core/boolean-semantic-guards.test.js",
+  "tools/learning-loop-mastra/core/build-change-log-gap-hints.test.js",
+  "tools/learning-loop-mastra/core/canonical-compare.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/change-log-bound-paths.test.js",
+  "tools/learning-loop-mastra/core/consult-checklist-process-hints-coverage.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/frontmatter-splitter.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-agent-checklist.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-budget.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-cli-argv-payload.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-consult-checklist-fallow-brief.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-consult-checklist-tool-integration.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-data-command-quotes.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-echo-prose-pipe-target.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-glob-whitelist.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-heredoc.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-inert-sink.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-no-budget.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-prefixed-echo.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-quoted-strings.test.js",
+  "tools/learning-loop-mastra/core/gate-logic-verb-layer.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/gate-self-verify-contract.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/hooks-lock-manifest.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/hooks-wiring-parity.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/identity-errors-canonical.test.js",
+  "tools/learning-loop-mastra/core/meta-state-evidence-coverage.test.js",
+  "tools/learning-loop-mastra/core/meta-state-loop-design-schema.test.js",
+  "tools/learning-loop-mastra/core/meta-state-rule-schema.test.js",
+  "tools/learning-loop-mastra/core/meta-state-schema-stale-only.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/observation-staleness.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/package-json-zod-pin.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/schema-deletion-coverage.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/session-start-inject-degraded-sources.test.cjs",
+  "tools/learning-loop-mastra/core/shell-parse-classify.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/shell-quote-guard.test.js",
+  "tools/learning-loop-mastra/core/strip-evidence-anchor.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/tool-deletion-coverage.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/workflow-shape.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/zod-coerce-boolean-string.test.js",
+  "tools/learning-loop-mastra/__tests__/unit/zod-optional-coerce.test.js",
+  "tools/learning-loop-mastra/core/zod-union-envelope.test.js",
 ];
 
 const BASE_INCLUDE = [
@@ -74,6 +301,23 @@ const BASE_INCLUDE = [
   ".claude/coordination/__tests__/*.test.cjs",
   ".factory/hooks/__tests__/*.test.cjs",
   "tools/scripts/__tests__/*.test.js",
+];
+
+// Scout test fixtures — intentionally failing test inputs that the scout
+// pipeline runs as fixed corpora. Not real tests; excluded everywhere.
+const SCOUT_FIXTURES = "tools/learning-loop-mastra/scout/pipeline/test-fixtures/**";
+
+// Integration-home directory globs — the existing composition homes that the
+// integration project owns by directory. The unit project must exclude these
+// so no file runs in two projects (disjointness invariant).
+const INTEGRATION_HOME_GLOBS = [
+  "tools/learning-loop-mastra/__tests__/core/**/*.test.*",
+  "tools/learning-loop-mastra/__tests__/interface/**/*.test.*",
+  "tools/learning-loop-mastra/__tests__/r2/**/*.test.*",
+  "tools/learning-loop-mastra/__tests__/freshness/**/*.test.*",
+  "tools/learning-loop-mastra/__tests__/phase-e-foundation/**/*.test.*",
+  "tools/learning-loop-mastra/__tests__/lib/**/*.test.*",
+  "tools/learning-loop-mastra/__tests__/integration/**/*.test.*",
 ];
 
 export default defineConfig({
@@ -89,20 +333,8 @@ export default defineConfig({
       "**/node_modules/**",
       "**/coverage/**",
       "**/dist/**",
-      // Scout test fixtures — intentionally failing test inputs that the scout
-      // pipeline runs as fixed corpora. They are not real tests and must not
-      // pollute vitest's pass/fail tally. The fallow ignore pattern keeps them
-      // out of dead-code analysis for the same reason.
-      "tools/learning-loop-mastra/scout/pipeline/test-fixtures/**",
+      SCOUT_FIXTURES,
     ],
-    // Coverage at the root so `pnpm test` (both projects, pre-push gate)
-    // instruments ALL source files — fallow:gate then sees full coverage and
-    // does not flag unit-exercised functions as 0%-tested. The fast pre-commit
-    // gate (`pnpm test:unit`) overrides this via the `--coverage.enabled=false`
-    // CLI flag (CLI flags DO override root config in vitest 4, unlike the
-    // per-project `coverage.enabled: false` quirk) so the unit project skips
-    // the ~19s istanbul transform tax. `clean: false` preserves coverage across
-    // the unit+e2e merge when `pnpm test` runs both projects.
     coverage: {
       provider: "istanbul",
       reporter: ["json"],
@@ -117,38 +349,32 @@ export default defineConfig({
         test: {
           name: "unit",
           include: BASE_INCLUDE,
-          // E2E files (MCP-server-spawning AND CLI-subprocess-spawning) are
-          // excluded from the unit project. The guard test
-          // (`test-tier-e2e-membership.test.js`) greps the marker set
-          // (`connectMcpServer`/`with-mcp-server`/`StdioClientTransport`/
-          // `@modelcontextprotocol/sdk/client`/`LOOP_BIN`/`cliPath`) and
-          // asserts the e2e project's include equals this exclude — drift
-          // becomes a loud failure, not a silent misclassification.
+          // Explicitly exclude e2e + integration files + integration-home globs
+          // so unit stays disjoint (no file runs in two projects).
           exclude: [
             ...E2E_FILES,
-            // Scout test fixtures — intentionally failing test inputs
-            // that the scout pipeline runs as fixed corpora. Must not
-            // pollute vitest's pass/fail tally. vitest 4's `projects`
-            // config does NOT inherit `exclude` from the root — repeat
-            // per project.
-            "tools/learning-loop-mastra/scout/pipeline/test-fixtures/**",
+            ...INTEGRATION_FILES,
+            ...INTEGRATION_HOME_GLOBS,
+            SCOUT_FIXTURES,
           ],
-          // Coverage is disabled for the pre-commit unit gate via the
-          // `--coverage.enabled=false` CLI flag in the `test:unit` script
-          // (CLI flags override root config; the per-project
-          // `coverage.enabled: false` quirk does not apply to CLI overrides).
-          // The full `pnpm test` (pre-push) runs both projects with root
-          // coverage on, so unit-exercised source files ARE instrumented and
-          // fallow:gate sees their coverage (no false 0%-tested CRAP inflation).
-          // CJS gate tests under `.claude/coordination/__tests__` and
-          // `.factory/hooks/__tests__` cannot `require("vitest")`; they
-          // rely on vitest globals. vitest 4's `projects` config does
-          // NOT inherit `globals: true` from the root — must repeat per project.
           globals: true,
-          // The 6 `before(fn,{timeout})` hooks that bootstrap a Mastra MCP
-          // server need >5s; default vitest 4 timeout is 5s. The root
-          // testTimeout/hookTimeout do NOT propagate to projects in
-          // vitest 4 — repeat per project.
+          testTimeout: 120000,
+          hookTimeout: 120000,
+        },
+      },
+      {
+        test: {
+          name: "integration",
+          include: [
+            // Existing composition homes + the Phase 3 integration home.
+            ...INTEGRATION_HOME_GLOBS,
+            ...INTEGRATION_FILES,
+          ],
+          exclude: [
+            ...E2E_FILES,
+            SCOUT_FIXTURES,
+          ],
+          globals: true,
           testTimeout: 120000,
           hookTimeout: 120000,
         },
@@ -157,9 +383,7 @@ export default defineConfig({
         test: {
           name: "e2e",
           include: E2E_FILES,
-          exclude: [
-            "tools/learning-loop-mastra/scout/pipeline/test-fixtures/**",
-          ],
+          exclude: [SCOUT_FIXTURES],
           globals: true,
           testTimeout: 120000,
           hookTimeout: 120000,

@@ -19,7 +19,7 @@ import { stripEnvelope } from "../../core/envelope-stripper.js";
 // schema. The MCP wire-format array-guard requires every array field to be
 // wrapped with z.preprocess(stripEnvelope, ...) so the SDK's wire-format
 // coercion (which can drop arrays wrapped in {item: [...]} envelopes) doesn't
-// silently strip the field. See tools/learning-loop-mastra/__tests__/legacy-mcp/
+// silently strip the field. See tools/learning-loop-mastra/__tests__/integration/
 // wire-format-array-guard.test.js for the regression test.
 //
 // NOTE: do NOT use `metaStateChangeEntrySchema.pick({consolidates: preprocess-wrapped})`

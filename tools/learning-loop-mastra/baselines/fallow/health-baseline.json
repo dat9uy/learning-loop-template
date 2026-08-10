@@ -1,6 +1,6 @@
 {
   "finding_counts": {
-    "__tests__/legacy-mcp/probe-helpers.cjs": {
+    "__tests__/helpers/probe-helpers.cjs": {
       "crap_moderate": {
         "count": 4
       }

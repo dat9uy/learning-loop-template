@@ -84,13 +84,18 @@ describe("gate layout (R13)", () => {
     );
   });
 
-  test("package.json scripts define test:unit and test:e2e for the projects", () => {
+  test("package.json scripts define the three tier projects", () => {
     const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
     assert.ok(pkg.scripts?.["test:unit"], "test:unit script must exist");
+    assert.ok(pkg.scripts?.["test:integration"], "test:integration script must exist");
     assert.ok(pkg.scripts?.["test:e2e"], "test:e2e script must exist");
     assert.ok(
       pkg.scripts["test:unit"].includes("--project unit"),
       "test:unit must run the unit project",
+    );
+    assert.ok(
+      pkg.scripts["test:integration"].includes("--project integration"),
+      "test:integration must run the integration project",
     );
     assert.ok(
       pkg.scripts["test:e2e"].includes("--project e2e"),

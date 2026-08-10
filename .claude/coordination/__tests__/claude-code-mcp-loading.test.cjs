@@ -19,7 +19,7 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
 
-const { probeL1 } = require("../../../tools/learning-loop-mastra/__tests__/legacy-mcp/probe-helpers.cjs");
+const { probeL1 } = require("../../../tools/learning-loop-mastra/__tests__/helpers/probe-helpers.cjs");
 
 describe("Claude Code MCP client-side loading acceptance", () => {
   const projectRoot = resolve(__dirname, "..", "..", "..");

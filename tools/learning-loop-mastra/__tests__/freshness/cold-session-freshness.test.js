@@ -16,8 +16,8 @@ import assert from "node:assert";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Written by cold-session-discoverability.test.cjs in legacy-mcp/.
-const SENTINEL = resolve(import.meta.dirname, "../legacy-mcp/.cold-session-sentinel.json");
+// Written by cold-session-discoverability.test.cjs in __tests__/integration/.
+const SENTINEL = resolve(import.meta.dirname, "../integration/.cold-session-sentinel.json");
 const FRESHNESS_DAYS = 3;
 
 describe("cold-session freshness sentinel", () => {

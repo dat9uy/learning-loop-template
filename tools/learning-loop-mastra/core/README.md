@@ -51,13 +51,16 @@ A module belongs in `core/` only if a non-test, non-fixture import site uses it.
 
 Rationale: `core/` accumulated helper modules during earlier CLI migrations
 (e.g., `core/list-probes.js` from the CLI-shim era) whose only consumer was
-`__tests__/legacy-mcp/`. The placement manifest (Mechanism A from the phase-E
-implicit-topology refactor) prevents *new* accumulation; the fallow CI guard
-prevents re-accumulation. Together they enforce this rule.
+the legacy test home (formerly `__tests__/legacy-mcp/`, now the explicit
+`__tests__/{unit,integration,e2e}` tier roots). The placement manifest
+(Mechanism A from the phase-E implicit-topology refactor) prevents *new*
+accumulation; the fallow CI guard prevents re-accumulation. Together they
+enforce this rule.
 
 Enforcement:
 - `.fallowrc.json` lists `mastra/server.js` and the `tools/handlers/**/*.js`
-  wrappers as entry points. `__tests__/legacy-mcp/**` is excluded.
+  wrappers as entry points. Test files are excluded via the `**/*.test.*`
+  ignore patterns.
 - `fallow audit --gate new-only` runs on every PR; introduced dead code
   fails the gate.
 - `fallow dead-code --save-regression-baseline` is regenerated on `main`

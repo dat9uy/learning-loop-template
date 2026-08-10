@@ -406,7 +406,7 @@ function checkSkillSpec(runtimeId, rootPath) {
   }
   // Empty enumeration is vacuously OK (a surface may have no skills yet —
   // mastra-code has no .mastracode/skills/ mirror yet; the
-  // cross-runtime parity test in legacy-mcp/skills-mirror-parity.test.js
+  // cross-runtime parity test in integration/skills-mirror-parity.test.js
   // is the backstop for "all 3 surfaces must agree").
   const allOk = evaluated.every((s) => s.ok);
   return {
