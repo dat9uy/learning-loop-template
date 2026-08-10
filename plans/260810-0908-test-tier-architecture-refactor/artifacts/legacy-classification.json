@@ -1,0 +1,2207 @@
+[
+  {
+    "file": "audit-log-hardening.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-decision-log.js",
+      "tools/learning-loop-mastra/core/r2/denial-log.js",
+      "tools/learning-loop-mastra/core/r2/ownership.js",
+      "tools/learning-loop-mastra/core/surfaces.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "backfill-versions.test.cjs",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "bash-gate-decision-visibility.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/hooks/universal/lib/protocol-adapter.js",
+      "tools/learning-loop-mastra/core/gate-decision-log.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "bash-gate-no-verify.test.js",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "bash-gate-runtime-state-record.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "boolean-semantic-guards.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/strict-boolean-guard.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "bound-artifacts.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/bound-artifacts.js",
+      "tools/learning-loop-mastra/core/evaluate-write-gate.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "budget-option-c-e2e.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/gate-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "build-change-log-gap-hints.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/loop-introspect.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "build-inverse-indexes.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/loop-introspect.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "#lib/resolve-root.js",
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "build-stale-dispatch-hints.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/loop-introspect.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-dispatch-finding-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "canonical-compare.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/canonical-compare.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "change-log-bound-paths.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/change-log-bound-paths.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "change-log-operation-envelope.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/__tests__/with-mcp-server.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "check-grounding.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/check-grounding.js",
+      "tools/learning-loop-mastra/core/path-containment.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "ci-registry-deltas.test.cjs",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "cold-session-churn-regression.test.js",
+    "tier": "integration",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": true
+  },
+  {
+    "file": "cold-session-discoverability.test.cjs",
+    "tier": "integration",
+    "imports": [
+      "./probe-helpers.cjs",
+      "tools/learning-loop-mastra/__tests__/helpers/manifest-constants.cjs"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": true
+  },
+  {
+    "file": "cold-tier-regression.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "#lib/resolve-root.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/check-grounding.js",
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/stale-view.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "collapse-latest-budget-state-by-id.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/runtime-state.js",
+      "tools/learning-loop-mastra/core/file-readers.js",
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "command-classification-contract.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/recurrence-tracker.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "compute-current-hashes-integration.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/stale-view.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "consult-checklist-process-hints-coverage.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/hint-registry.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "cross-surface.test.js",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "derive-status.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/derive-status.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "dual-source-read-seam.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/read-registry-cache.js",
+      "tools/learning-loop-mastra/core/loop-introspect-cache.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "evaluate-bash-gate-runtime-state.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/evaluate-bash-gate.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "evaluate-inbound-gate-staleness.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/evaluate-inbound-gate.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "file-index-o1-regression.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-refresh-file-index-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/check-grounding.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "file-index.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "file-readers-malformed-line.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/file-readers.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "file-readers-unmapped-active-entry.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/file-readers.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "frontmatter-splitter.test.js",
+    "tier": "unit",
+    "imports": [
+      "#lib/frontmatter-splitter.js"
+    ],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-check-snapshot.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/gate-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-decision-log.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-decision-log.js",
+      "tools/learning-loop-mastra/core/surfaces.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-determinism-checklist.test.js",
+    "tier": "integration",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-agent-checklist.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-budget.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-cli-argv-payload.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-consult-checklist-fallow-brief.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-consult-checklist-tool-integration.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-data-command-quotes.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-echo-prose-pipe-target.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-glob-whitelist.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-heredoc.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-inert-sink.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-no-budget.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-prefixed-echo.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-quoted-strings.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-logic-verb-layer.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-override.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-override.js",
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/tools/handlers/gate-override-tool.js",
+      "tools/learning-loop-mastra/core/surfaces.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-promoted-rules.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/shell-parse.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-recurrence.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/core/recurrence-tracker.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/tools/handlers/gate-check-recurrence-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-scope-predicate.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "#lib/resolve-root.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-self-verify-contract.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "gate-verb-observation.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/evaluate-bash-gate.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "git-diff.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/core/git-diff.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "hash-cache.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-check-grounding-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "hooks-lock-manifest.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "hooks-wiring-parity.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "identity-errors-canonical.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "inbound-state-readlastoperatormessage.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/inbound-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "inbound-state-runtime-state.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/inbound-state.js",
+      "tools/learning-loop-mastra/core/file-readers.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "integration-promoted-rule.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "#lib/resolve-root.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-describe-cold-cache.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/loop-introspect-cache.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-describe-cold-tier-superseded.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-describe-description-mode.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "tools/learning-loop-mastra/core/loop-introspect.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-describe-get-instruction-wire-format.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/loop-get-instruction-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-describe-registry-stats.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-describe-rule-and-loop-design.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-describe-warm-tier.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "tools/learning-loop-mastra/core/loop-introspect.js",
+      "tools/learning-loop-mastra/tools/handlers/loop-get-instruction-tool.js",
+      "tools/learning-loop-mastra/core/hint-registry.js",
+      "tools/learning-loop-mastra/core/hint-renderer.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-describe.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/loop-introspect.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "loop-get-instruction.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/loop-get-instruction-tool.js",
+      "tools/learning-loop-mastra/core/gate-logic.js",
+      "tools/learning-loop-mastra/core/hint-registry.js",
+      "tools/learning-loop-mastra/__tests__/with-mcp-server.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "mastra-code-smoke.test.cjs",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/__tests__/helpers/manifest-constants.cjs"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "mcp-protocol-e2e.test.cjs",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-archive-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-archive-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-batch-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-batch-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-check-grounding-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-check-grounding-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-consistency-check-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-consistency-check-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-derive-status-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-derive-status-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-dispatch-finding-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-dispatch-finding-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/surfaces.js",
+      "tools/learning-loop-mastra/core/runtime-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-dispatch-ttl-and-close-flow.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/read-registry-cache.js",
+      "tools/learning-loop-mastra/core/runtime-state.js",
+      "tools/learning-loop-mastra/core/check-grounding.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-dispatch-finding-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-sweep-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-re-verify-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-refresh-file-index-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-evidence-coverage.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/stale-view.js",
+      "#lib/resolve-root.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-integration.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-list-compact.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-list-entry-kind-extended.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-list-entry-kind.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-list-id-filter.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-list-id-stdio.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/__tests__/with-mcp-server.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-list-include-all-versions.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/core/read-registry-cache.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-list-include-archived.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-list-ref-by-filter.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-log-change-codegen.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-log-change.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-loop-design-schema.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-lru-cache.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/read-registry-cache.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-batch-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-patch-derived-schema.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/__tests__/with-mcp-server.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-patch-entry-kind-invariant.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/__tests__/with-mcp-server.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-patch-immutable-fields.test.js",
+    "tier": "integration",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-patch-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-promote-rule-rule-entry.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "#lib/resolve-root.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-propose-design-codegen.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-propose-design-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-propose-design-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-propose-design-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "#lib/resolve-root.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-query-drift-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-query-drift-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-re-verify-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-re-verify-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-refresh-file-index-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-refresh-file-index-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-relationship-validate-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-relationship-validate-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-relationships-dangling-refs.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-relationships-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-relationships-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-relationships-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-relationships.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-relationships-tool.js",
+      "#lib/resolve-root.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-reopen-backfill-integration.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-relationships-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-reopen-e2e-cold-session.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/read-registry-cache.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-relationship-validate-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-report-description.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-report-id-honoring.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-report-tool-extension.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-resolve-cascade-stale.test.js",
+    "tier": "integration",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-resolve-cascade.test.js",
+    "tier": "integration",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-resolve-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-rule-schema.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-schema-extension.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/read-registry-cache.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-schema-stale-only.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-schema.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-script-caller-passthrough.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-propose-design-tool.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-session-id-roundtrip.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "#lib/resolve-root.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-ship-loop-design-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-ship-loop-design-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-propose-design-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-stale-flag.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/loop-introspect.js",
+      "tools/learning-loop-mastra/core/derive-status.js",
+      "tools/learning-loop-mastra/core/verification-runner.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-re-verify-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-supersede-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-log-change-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-sweep-no-stale-ref-followup.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-sweep-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-sweep-stale-transition.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-sweep-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-sweep-summary.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-sweep-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-sweep.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-sweep-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-touch-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-touch-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/check-grounding.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-unarchive-tool.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/tools/handlers/meta-state-unarchive-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-archive-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-relationships-tool.js",
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "meta-state-write-validation.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "normalize-skills.test.js",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "observation-staleness.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/observation-staleness.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "package-json-zod-pin.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "path-containment-audit-sites.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/path-containment.js",
+      "tools/learning-loop-mastra/core/check-grounding.js",
+      "tools/learning-loop-mastra/core/derive-status.js",
+      "tools/learning-loop-mastra/core/verification-runner.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-refresh-file-index-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-check-grounding-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-derive-status-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-report-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "projection-last-wins-by-max-version.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/read-registry-cache.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "query-drift.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/query-drift.js",
+      "tools/learning-loop-mastra/core/check-grounding.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "runtime-agnostic.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/runtime-agnostic-checklist.js",
+      "tools/learning-loop-mastra/core/surfaces.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "runtime-state-write-gate.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/evaluate-write-gate.js",
+      "tools/learning-loop-mastra/tools/handlers/mark-preflight-complete-tool.js",
+      "tools/learning-loop-mastra/core/bound-artifacts.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "sarif-patch.test.js",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "schema-deletion-coverage.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "schemas-write-gate.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/evaluate-write-gate.js",
+      "tools/learning-loop-mastra/tools/handlers/mark-preflight-complete-tool.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "scout-bucket-classifier.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/scout/pipeline/bucket-classifier.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "scout-budget-estimator.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/scout/pipeline/budget-estimator.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "scout-dangling-detector.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/scout/pipeline/dangling-detector.js",
+      "tools/learning-loop-mastra/__tests__/removed-tool.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "scout-run-scout.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/scout/pipeline/run-scout.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "session-start-inject-degraded-sources.test.cjs",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "session-start-inject-discoverability.test.cjs",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "session-start-inject-process-hints.test.cjs",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "shell-parse-classify.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/shell-parse.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "shell-quote-guard.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/shell-parse.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "skills-manifest.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/../scripts/skills-lib.mjs",
+      "tools/learning-loop-mastra/core/evaluate-write-gate.js"
+    ],
+    "areas": [
+      "mastra",
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "skills-mirror-parity.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/interface/contract.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "stale-view.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/stale-view.js",
+      "tools/learning-loop-mastra/core/constants.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "strip-evidence-anchor.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/gate-logic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "surfaces-append.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/surfaces.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "surfaces-read-jsonl.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/surfaces.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "surfaces-rmw.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/surfaces.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "surfaces.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/surfaces.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "sync-skills.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/core/evaluate-write-gate.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "tool-deletion-coverage.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "validate-registry-refs.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/scripts/validate-registry-refs.js"
+    ],
+    "areas": [
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "versioned-append-write-path.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/core/read-registry-cache.js",
+      "tools/learning-loop-mastra/core/registry-append-atomic.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "wire-format-array-guard.test.js",
+    "tier": "integration",
+    "imports": [
+      "tools/learning-loop-mastra/core/envelope-stripper.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": true
+  },
+  {
+    "file": "workflow-shape.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "write-gate-decision-visibility.test.js",
+    "tier": "e2e",
+    "imports": [],
+    "areas": [],
+    "hasIO": true,
+    "dynamicImport": false
+  },
+  {
+    "file": "zod-coerce-boolean-string.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "zod-coerce-top-level.test.js",
+    "tier": "e2e",
+    "imports": [
+      "tools/learning-loop-mastra/core/meta-state.js",
+      "tools/learning-loop-mastra/__tests__/with-mcp-server.js"
+    ],
+    "areas": [
+      "core",
+      "mastra"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "zod-optional-coerce.test.js",
+    "tier": "unit",
+    "imports": [],
+    "areas": [],
+    "hasIO": false,
+    "dynamicImport": false
+  },
+  {
+    "file": "zod-union-envelope.test.js",
+    "tier": "unit",
+    "imports": [
+      "tools/learning-loop-mastra/core/envelope-stripper.js"
+    ],
+    "areas": [
+      "core"
+    ],
+    "hasIO": false,
+    "dynamicImport": false
+  }
+]

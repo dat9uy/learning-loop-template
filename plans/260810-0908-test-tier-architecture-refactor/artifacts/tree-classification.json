@@ -1,0 +1,1206 @@
+[
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/audit-log-hardening.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/backfill-versions.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/bash-gate-decision-visibility.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/bash-gate-no-verify.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/bash-gate-runtime-state-record.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/boolean-semantic-guards.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/bound-artifacts.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/budget-option-c-e2e.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/build-change-log-gap-hints.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/build-inverse-indexes.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/build-stale-dispatch-hints.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/canonical-compare.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/change-log-bound-paths.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/change-log-operation-envelope.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/check-grounding.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/ci-registry-deltas.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-churn-regression.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/cold-tier-regression.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/collapse-latest-budget-state-by-id.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/command-classification-contract.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/compute-current-hashes-integration.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/consult-checklist-process-hints-coverage.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/cross-surface.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/derive-status.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/dual-source-read-seam.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/evaluate-bash-gate-runtime-state.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/evaluate-inbound-gate-staleness.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/file-index-o1-regression.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/file-index.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/file-readers-malformed-line.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/file-readers-unmapped-active-entry.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/frontmatter-splitter.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-check-snapshot.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-decision-log.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-determinism-checklist.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-agent-checklist.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-budget.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-cli-argv-payload.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-consult-checklist-fallow-brief.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-consult-checklist-tool-integration.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-data-command-quotes.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-echo-prose-pipe-target.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-glob-whitelist.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-heredoc.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-inert-sink.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-no-budget.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-prefixed-echo.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-quoted-strings.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-logic-verb-layer.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-override.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-promoted-rules.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-recurrence.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-scope-predicate.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-self-verify-contract.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/gate-verb-observation.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/git-diff.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/hash-cache.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/hooks-lock-manifest.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/hooks-wiring-parity.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/identity-errors-canonical.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/inbound-state-readlastoperatormessage.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/inbound-state-runtime-state.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/integration-promoted-rule.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-cold-cache.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-cold-tier-superseded.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-description-mode.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-get-instruction-wire-format.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-registry-stats.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-rule-and-loop-design.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-warm-tier.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/loop-get-instruction.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/mastra-code-smoke.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/mcp-protocol-e2e.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-archive-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-batch-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-check-grounding-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-consistency-check-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-derive-status-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-finding-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-evidence-coverage.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-integration.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-compact.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-entry-kind-extended.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-entry-kind.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-id-filter.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-id-stdio.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-include-all-versions.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-include-archived.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-ref-by-filter.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-log-change-codegen.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-log-change.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-loop-design-schema.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-lru-cache.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-derived-schema.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-entry-kind-invariant.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-immutable-fields.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-promote-rule-rule-entry.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-propose-design-codegen.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-propose-design-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-query-drift-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-re-verify-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-refresh-file-index-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationship-validate-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationships-dangling-refs.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationships-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationships.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-reopen-backfill-integration.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-reopen-e2e-cold-session.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-report-description.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-report-id-honoring.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-report-tool-extension.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-resolve-cascade-stale.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-resolve-cascade.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-resolve-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-rule-schema.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-schema-extension.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-schema-stale-only.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-schema.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-script-caller-passthrough.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-session-id-roundtrip.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-ship-loop-design-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-stale-flag.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-no-stale-ref-followup.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-stale-transition.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-summary.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-touch-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-unarchive-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-write-validation.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/normalize-skills.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/observation-staleness.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/package-json-zod-pin.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/path-containment-audit-sites.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/projection-last-wins-by-max-version.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/query-drift.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-state-write-gate.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/sarif-patch.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/schema-deletion-coverage.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/schemas-write-gate.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/scout-bucket-classifier.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/scout-budget-estimator.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/scout-dangling-detector.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/scout-run-scout.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/session-start-inject-degraded-sources.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/session-start-inject-discoverability.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/session-start-inject-process-hints.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/shell-parse-classify.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/shell-quote-guard.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/skills-manifest.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/skills-mirror-parity.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/stale-view.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/strip-evidence-anchor.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/surfaces-append.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/surfaces-read-jsonl.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/surfaces-rmw.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/surfaces.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/sync-skills.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/tool-deletion-coverage.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/validate-registry-refs.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/versioned-append-write-path.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/wire-format-array-guard.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/workflow-shape.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/write-gate-decision-visibility.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/zod-coerce-boolean-string.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/zod-coerce-top-level.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/zod-optional-coerce.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/legacy-mcp/zod-union-envelope.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/agent-direct-parity.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/agent-parity.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/agent-prompt-content.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-args-file-dispatch.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-bare-key-json-hint.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-bash-gate-guard.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-context-savings-script.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-context-savings.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-mcp-subset-registration.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-optout-wiring.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-read-parity.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-schema-flag.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-self-footgun-guard.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-sessionstart-banner.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-stderr-format.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-workflow-dispatch.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-write-exit-codes.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-write-hint-sketch-drift.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-write-parity.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-write-tool-set-drift.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cli-write-tool-set.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/coerce-correctness.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cold-session-enumerate-mastra.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/commit-msg-stable-artifacts.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/connect-mcp-server-mutex.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/core/relationship-characterization.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/core/relationship-graph.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/core/reopens-symmetry.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/core/update-entry-immutable-field-audit.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/core/write-time-structural-ri.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/create-loop-agent.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/create-loop-workflow.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/cross-process-file-lock.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/delivery-classify.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/drop-idempotency-cache.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/factory-hook-single-source.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/field-glossary.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/fixtures-shape.test.cjs",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/freshness/cold-session-freshness.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/hint-dedup-invariant.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/hint-registry.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/hint-render-cli.test.cjs",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/hint-renderer.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/interface/contract-js-exports-validate.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/interface/contract-md-exists.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/interface/runtimes-pass-contract.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/interface/skill-md-references-tools.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/lib/gate-logging.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/lib/patch-hints.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/manifest-arithmetic.test.cjs",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/mcp-config.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/mcp-protocol-e2e.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/mcp-tools-list-parity.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/mcp-wire-budget.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/meta-state-patch-jit-payload.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/migrate-runtime-state-ephemeral-rows.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/mutex-scope.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/no-stale-portable-six-refs.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/notify-artifact-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/path-containment.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/per-worktree-loop-version.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/per-worktree-session-id.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/phase-e-foundation/fcis-invariant.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/phase-e-foundation/meta-state-relationships-snapshot.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/phase-e-foundation/placement-manifest.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/pin-runtime-id.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/portable-six-probes.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/post-write-visibility-reread.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/prune-coverage-parity.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/r2/allowlist-cache.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/r2/allowlist-shape.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/r2/fallow-test-tree-clean.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/r2/glob-match.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/r2/ownership.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/r2/path-field-detector.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/r2/precommit-hook.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/r2/workflow-coverage.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/rule-derived-process-hints.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/runtime-state-durability-split.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/runtime-state-fingerprint.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/runtime-state-local-substrate-protection.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/runtime-state-metadata-validation.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/runtime-state-no-delete-to-clear-gate.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/runtime-state-versioned-dedup.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/runtime-state-vnstock-collapse-e2e.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/runtime-tracking.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/schema-fingerprint.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/schema-normalize.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/server-runid.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/session-start-git-merge-driver-preflight.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/session-start-git-push-preflight.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/stable-artifacts-no-plan-ids.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/storage-factory-direct.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/storage-parity.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/test-output-contract-drift.test.cjs",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/test-tier-e2e-membership.test.js",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/toolchain-failure-capture.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/trigger-workflow-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/workflow-generate-prompt-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/workflow-input-schema.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs",
+    "tier": "e2e"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/workflow-unwrap-parity.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/__tests__/write-gate-lineage-scan.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/__tests__/citation-substrate.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/__tests__/consistency-check.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/__tests__/meta-state-accepted-status.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/__tests__/meta-state-g8-supersede.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/__tests__/meta-state-superseded.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/__tests__/registry-stats.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/command-classification.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/entry/change-log.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/entry/finding.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/entry/index.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/entry/loop-design.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/entry/rule.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/evaluate-bash-gate.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/evaluate-inbound-gate.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/evaluate-write-gate.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/loop-introspect.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/manifest-loader.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/meta-state.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/operation-envelope.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/operation-invariant-coverage.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/operation-invariant.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/restore-entry.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/core/workflow-registry.test.js",
+    "tier": "unit"
+  },
+  {
+    "file": "tools/learning-loop-mastra/tools/handlers/check-runtime-agnostic-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/tools/handlers/runtime-state-read-tool.test.js",
+    "tier": "integration"
+  },
+  {
+    "file": "tools/learning-loop-mastra/tools/handlers/runtime-state-record-tool.test.js",
+    "tier": "integration"
+  }
+]
