@@ -277,6 +277,12 @@ const DATA_COMMAND_VERBS = new Set(["grep", "egrep", "fgrep", "rg", "jq"]);
  * heredocs (bash/sh/python `<<'EOF'`) are never inert.
  */
 function collectHeredocInertSpans(command) {
+  // Kill-switch consistency: when GATE_HEREDOC_BLANKER=0 the gate's
+  // stripHeredocBodies returns the command unchanged (no body blanked), so no
+  // heredoc region is provably inert. Return no spans so the event view never
+  // reports heredoc bodies as inert under the kill-switch — matching the gate
+  // and the pre-filter/buildPromotedMatchResult kill-switch guards.
+  if (process.env.GATE_HEREDOC_BLANKER === "0") return [];
   const spans = [];
   let i = 0;
   const n = command.length;
@@ -335,13 +341,34 @@ function collectHeredocInertSpans(command) {
 }
 
 // Start of the shell segment that ends at `pos` (boundary chars: ; & | newline).
+// Quote-aware: a `;`/`&`/`|`/newline inside a quoted region is a literal body
+// char, NOT a segment boundary. Forward-scans from 0 with the same QN/QS/QD/QB
+// state machine used by collectQuotedInertSpans, recording the last boundary
+// seen in QN. This matches the gate's forward quote-aware stripHeredocBodies
+// `segmentStart` (which advances on `; & | \n` only in QUOTE_NORMAL), so the
+// classifier's heredoc verb attribution cannot drift from the gate's. A
+// backward scan cannot be made quote-aware without forward context, so this
+// replaces the prior backward scan.
 function segmentBoundary(command, pos) {
   let b = 0;
-  for (let p = pos - 1; p >= 0; p--) {
-    if (command[p] === ";" || command[p] === "&" || command[p] === "|" || command[p] === "\n") {
-      b = p + 1;
-      break;
+  let state = QN;
+  let i = 0;
+  const n = Math.min(pos, command.length);
+  while (i < n) {
+    const ch = command[i];
+    if (state === QN) {
+      if (ch === "\\") { state = QB; i++; continue; }
+      if (ch === "'") { state = QS; i++; continue; }
+      if (ch === '"') { state = QD; i++; continue; }
+      if (ch === ";" || ch === "&" || ch === "|" || ch === "\n") b = i + 1;
+      i++; continue;
     }
+    if (state === QB) { state = QN; i++; continue; }
+    if (state === QS) { if (ch === "'") state = QN; i++; continue; }
+    // QD
+    if (ch === "\\") { i += 2; continue; }
+    if (ch === '"') state = QN;
+    i++; continue;
   }
   return b;
 }
@@ -391,6 +418,15 @@ function collectDataCommandQuotedSpans(command) {
     const verb = segmentVerbOfPrefix(segText);
     if (verb !== null && DATA_COMMAND_VERBS.has(verb)) {
       for (const s of collectQuotedInertSpans(segText)) {
+        // A `$(...)` or backtick inside a double-quoted data-command arg is a
+        // command substitution — the shell EXECUTES it before the data command
+        // runs — so that region is NOT inert data. Exclude substitution-bearing
+        // spans so a raw match inside `$(...)` classifies executable (visible),
+        // never inert-data. Mirrors applyInertSinkBlanking's tokenHasCommandSubst
+        // withhold (gate-logic.js): command substitutions stay visible. A
+        // literal quoted pattern (no substitution) stays inert, matching the
+        // gate's data-command blanking for non-executing quoted args.
+        if (s.substitution) continue;
         spans.push({ start: start + s.start, end: start + s.end });
       }
     }

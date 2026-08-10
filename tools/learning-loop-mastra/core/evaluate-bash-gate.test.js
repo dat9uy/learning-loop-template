@@ -523,9 +523,9 @@ test("null command → ok", () => {
 
 // ── PATH_WRITE_PATTERNS array ──
 
-test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 2/surface decision-log + 8 state files)", () => {
+test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 4/surface decision-log + 8 state files)", () => {
   assert.ok(Array.isArray(PATH_WRITE_PATTERNS));
-  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 2 * SURFACES.length + 8);
+  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 4 * SURFACES.length + 8);
   // Every entry should be a RegExp
   for (const p of PATH_WRITE_PATTERNS) {
     assert.ok(p instanceof RegExp);
@@ -616,6 +616,61 @@ test("plain echo (no gated path) → ok, not blocked by the decision-log gate", 
   const root = makeRoot();
   const result = evaluateBashGate({ command: "echo 'x'", root });
   assert.strictEqual(result.decision, "ok");
+});
+
+// cp/mv/dd/install/rsync can overwrite or append the decision log without a
+// redirect operator, so the redirect/tee patterns alone do not close the seam.
+// Each must hard-block with the dedicated decision-log reason (forged rows
+// carrying the evaluator producer trio would be trusted by the tracker).
+test("cp into .claude decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "cp /tmp/forged.json .claude/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("mv into .factory decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "mv /tmp/evil .factory/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("dd of= into .claude decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "dd if=/tmp/forged.json of=.claude/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("install into .mastracode decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "install -m 644 /tmp/forged.json .mastracode/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("rsync into .claude decision log → block with dedicated reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "rsync /tmp/forged.json .claude/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
+});
+
+test("DECISION_LOG_WRITE_PATTERNS covers every surface's decision-log cp/mv/dd/install/rsync", () => {
+  SURFACES.forEach((surface) => {
+    const cp = `cp /tmp/x ${surface}/coordination/.gate-decision.log`;
+    const mv = `mv /tmp/x ${surface}/coordination/.gate-decision.log`;
+    const dd = `dd if=/tmp/x of=${surface}/coordination/.gate-decision.log`;
+    const install = `install -m 644 /tmp/x ${surface}/coordination/.gate-decision.log`;
+    const rsync = `rsync /tmp/x ${surface}/coordination/.gate-decision.log`;
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(cp)), `cp to ${surface} decision log should be detected`);
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(mv)), `mv to ${surface} decision log should be detected`);
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(dd)), `dd of= to ${surface} decision log should be detected`);
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(install)), `install to ${surface} decision log should be detected`);
+    assert.ok(DECISION_LOG_WRITE_PATTERNS.some((p) => p.test(rsync)), `rsync to ${surface} decision log should be detected`);
+  });
 });
 
 // ── decision combination ──

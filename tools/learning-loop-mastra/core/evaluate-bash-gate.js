@@ -41,11 +41,12 @@ function preflightMarkerPatterns() {
 }
 
 // Decision-log path-write patterns, derived from SURFACES so every runtime
-// surface's coordination/.gate-decision.log redirect (`>`/`>>`) and `tee`
-// append is detected. This is the trusted-producer boundary for the decision
-// log: the ONLY legitimate writer is the bash-gate evaluator hook's
-// `appendDecisionLog` node call (a spawned process, not a bash command), so an
-// agent bash command must never be able to append a forged JSONL row carrying
+// surface's coordination/.gate-decision.log redirect (`>`/`>>`), `tee` append,
+// AND non-redirect file-writing verbs (cp/mv/dd/install/rsync) are detected.
+// This is the trusted-producer boundary for the decision log: the ONLY
+// legitimate writer is the bash-gate evaluator hook's `appendDecisionLog` node
+// call (a spawned process, not a bash command), so an agent bash command must
+// never be able to append or overwrite a forged JSONL row carrying
 // `event_source:"bash-gate-evaluator"` + `candidate_kind:"unexpected-match"`.
 // Mirror the preflight-marker pattern shape (per-surface, redirect + tee).
 function decisionLogPathPatterns() {
@@ -62,9 +63,20 @@ function decisionLogPathPatterns() {
     // escaped for regex. Accepted limitation: a filename that merely BEGINS
     // with `.gate-decision.log` (e.g. `.gate-decision.log.backup`) also
     // matches — fail-closed over-match, no bypass.
+    //
+    // cp/mv/install/rsync take the destination as a trailing argument (no
+    // redirect operator), and `dd of=` writes without `>`/`tee`, so the
+    // redirect/tee patterns alone leave a forging seam. The verb patterns
+    // over-match on purpose (a log path appearing as a cp SOURCE also blocks)
+    // — fail-closed, matching the redirect/tee over-match philosophy above.
+    // The decision log is not operator-maintained, so blocking shell verbs
+    // that touch it at all is the safe direction.
+    const logTail = `${seg}\\/+coordination\\/+\\.gate-decision\\.log["']?`;
     return [
-      new RegExp(`>{1,2}\\s*["']?[^\\s"';&|]*${seg}\\/+coordination\\/+\\.gate-decision\\.log["']?`),
-      new RegExp(`\\btee\\b[^;&|]*["']?[^\\s"';&|]*${seg}\\/+coordination\\/+\\.gate-decision\\.log["']?`),
+      new RegExp(`>{1,2}\\s*["']?[^\\s"';&|]*${logTail}`),
+      new RegExp(`\\btee\\b[^;&|]*["']?[^\\s"';&|]*${logTail}`),
+      new RegExp(`\\b(?:cp|mv|install|rsync)\\b[^;&|]*["']?[^\\s"';&|]*${logTail}`),
+      new RegExp(`\\bdd\\b[^;&|]*\\bof=["']?[^\\s"';&|]*${logTail}`),
     ];
   });
 }

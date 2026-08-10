@@ -58,6 +58,20 @@ describe("event mode: quoted inert data proves unexpected-match", () => {
     assert.strictEqual(r.candidate_kind, "unexpected-match");
   });
 
+  test("quoted heredoc after a quoted segment delimiter (\"a;b\") → inert-data (verb resolution is quote-aware)", () => {
+    // `cat "a;b" <<'EOF'` — the `;` inside the quoted arg must NOT be treated as
+    // a shell segment boundary when resolving the heredoc's receiving verb. A
+    // non-quote-aware backward scan stops at the quoted `;`, misresolves the
+    // verb, and fails to collect the (genuinely inert) heredoc body — drifting
+    // from the gate's forward quote-aware stripHeredocBodies. The body is inert
+    // (quoted heredoc attached to blankable `cat`), so the match must be
+    // inert-data, matching the gate.
+    const cmd = 'cat "a;b" <<\'EOF\'\nvitest run foo.test.js | tail\nEOF\n';
+    const r = classifyCommand(cmd, { mode: "event", rulePattern: VITEST_RULE_PATTERN });
+    assert.strictEqual(r.match_origin, "inert-data");
+    assert.strictEqual(r.candidate_kind, "unexpected-match");
+  });
+
   test("node -e body containing a raw vitest pipe → inert-data + unexpected-match", () => {
     const cmd = 'node -e "vitest run foo | tail"';
     const r = classifyCommand(cmd, { mode: "event", rulePattern: VITEST_RULE_PATTERN });
@@ -173,6 +187,28 @@ describe("event mode: real executable content is never unexpected", () => {
     assert.strictEqual(r.candidate_kind, "ordinary-rule-fire");
   });
 
+  test("command substitution inside a data-command quoted arg executes → executable, never inert-data", () => {
+    // `grep "$(vitest run foo | tail)" file` — the shell runs the $(...) before
+    // grep, so the banned pattern is EXECUTED, not inert data. The classifier
+    // must NOT label it inert-data/unexpected-match (the `substitution` flag on
+    // quoted spans exists precisely to gate this). Mislabeling it would feed a
+    // false unexpected-match event into the recurrence tracker, auto-filing a
+    // recurring-false-positive finding for a real executable bypass.
+    const cmd = 'grep "$(vitest run foo | tail)" /tmp/x.log';
+    const r = classifyCommand(cmd, { mode: "event", rulePattern: VITEST_RULE_PATTERN });
+    assert.notStrictEqual(r.match_origin, "inert-data",
+      "$(...) inside a data-command quoted arg EXECUTES — must not be inert-data");
+    assert.notStrictEqual(r.candidate_kind, "unexpected-match",
+      "executable $(...) must not be labelled unexpected-match");
+  });
+
+  test("backtick command substitution inside a data-command quoted arg executes → executable, never inert-data", () => {
+    const cmd = 'grep "`vitest run foo | tail`" /tmp/x.log';
+    const r = classifyCommand(cmd, { mode: "event", rulePattern: VITEST_RULE_PATTERN });
+    assert.notStrictEqual(r.match_origin, "inert-data");
+    assert.notStrictEqual(r.candidate_kind, "unexpected-match");
+  });
+
   test("real vitest run on its own (no pipe) → unclassified, no false unexpected", () => {
     // The rule pattern requires a pipe; no match exists.
     const r = classifyCommand("vitest run foo.test.js", { mode: "event", rulePattern: VITEST_RULE_PATTERN });
@@ -219,6 +255,25 @@ describe("fail-closed: heredocs, herestrings, malformed syntax", () => {
     const r = classifyCommand(cmd, { mode: "event", rulePattern: VITEST_RULE_PATTERN });
     assert.notStrictEqual(r.candidate_kind, "unexpected-match");
     assert.strictEqual(r.candidate_kind, "unclassified");
+  });
+
+  test("kill-switch (GATE_HEREDOC_BLANKER=0): heredoc body is NOT inert (blanker off, body visible)", () => {
+    // Under the kill-switch the gate's stripHeredocBodies returns the command
+    // unchanged, so no heredoc body is provably inert. The classifier must not
+    // report heredoc spans as inert — match_origin must not be inert-data —
+    // matching the gate and the pre-filter/buildPromotedMatchResult kill-switch
+    // guards. Pins the collectHeredocInertSpans kill-switch guard.
+    const cmd = "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n";
+    const prev = process.env.GATE_HEREDOC_BLANKER;
+    process.env.GATE_HEREDOC_BLANKER = "0";
+    try {
+      const r = classifyCommand(cmd, { mode: "event", rulePattern: VITEST_RULE_PATTERN });
+      assert.notStrictEqual(r.match_origin, "inert-data",
+        "under the kill-switch the blanker is off, so the heredoc body is not proven inert");
+    } finally {
+      if (prev === undefined) delete process.env.GATE_HEREDOC_BLANKER;
+      else process.env.GATE_HEREDOC_BLANKER = prev;
+    }
   });
 });
 

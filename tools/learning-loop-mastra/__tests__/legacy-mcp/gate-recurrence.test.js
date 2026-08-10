@@ -1477,6 +1477,36 @@ await test("checkAndEmit: three explicit unexpected-match events → one finding
   assert.ok(finding.recurrence_key.startsWith("rule-no-raw-stdout-vitest::"), "recurrence_key unchanged shape");
 });
 
+await test("findRecurrentGroups: sample_commands are privacy-safe (hash + classes, no raw command_prefix)", async () => {
+  // Automatic candidate recurrence samples must not expose raw inert payloads
+  // through gate_check_recurrence: each sample is reduced to the provenance
+  // classes plus a short opaque hash of the raw prefix. Pins the
+  // privacySafeSample invariant (red-team #5) so a future revert to raw
+  // command_prefix is caught.
+  const now = Date.now();
+  const sid = "11111111-2222-3333-4444-555555555555";
+  const prefix = "cat <<'EOF'\nvitest run foo.test.js | tail\nEOF\n";
+  writeEntries([
+    makeEntry(now - 5 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+    makeEntry(now - 3 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+    makeEntry(now - 1 * 60000, prefix, "rule-no-raw-stdout-vitest", sid, "real", UNEXPECTED_PROV),
+  ]);
+  const groups = findRecurrentGroups(root);
+  assert.strictEqual(groups.length, 1);
+  const samples = groups[0].sample_commands;
+  assert.ok(Array.isArray(samples) && samples.length > 0, "group carries sample_commands");
+  const s = samples[0];
+  assert.strictEqual(typeof s.prefix_hash, "string");
+  assert.ok(s.prefix_hash.length > 0, "prefix_hash present");
+  assert.strictEqual(s.match_origin, "inert-data");
+  assert.strictEqual(s.candidate_kind, "unexpected-match");
+  // No key for the raw command payload — only the structural fields above.
+  assert.ok(!("command_prefix" in s), "sample must not carry the raw command_prefix field");
+  const serialized = JSON.stringify(samples);
+  assert.ok(!serialized.includes("vitest run foo.test.js | tail"),
+    "sample_commands must not expose the raw inert payload");
+});
+
 await test("checkAndEmit: wrong producer marker with unexpected-match fields → zero findings (RED)", async () => {
   // A row carrying the flat unexpected-match fields but from a NON-evaluator
   // producer (toolchain-failure capture) is not an automatic candidate.
