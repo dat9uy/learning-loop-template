@@ -129,18 +129,20 @@ parse — the `reopens` pattern, not schema deletion.
 
 ## Success Criteria
 
-- [ ] `meta_state_promote_rule` emits an `origin` citation; no `origin` written on
+- [x] `meta_state_promote_rule` emits an `origin` citation; no `origin` written on
       the rule; `promoted_to_rule` ghost-ref + fallback removed (field inert-historical).
-- [ ] `meta_state_log_change` emits a `supersedes` citation (change-log→change-log/rule);
+- [x] `meta_state_log_change` emits a `supersedes` citation (change-log→change-log/rule);
       `meta_state_patch` emits a rule→rule `supersedes` citation; no `supersedes`
       written on records; `rule.supersedes()` `citations_inverse`-sourced.
-- [ ] `origin`/`supersedes`/`promoted_to_rule` de-routed from CROSS_REFS (kept
+- [x] `origin`/`supersedes`/`promoted_to_rule` de-routed from CROSS_REFS (kept
       `.optional()` inert-historical); `origin_inverse`/`supersedes_inverse`/
       `promoted_to_rule_inverse` collapsed into `citations_inverse`.
-- [ ] All read sites (list-tool, relationships-tool, loop-introspect,
+- [x] All read sites (list-tool, relationships-tool, loop-introspect,
       loop-describe) source these edges from `citations_inverse` (`cited_by`).
-- [ ] Existing on-disk edges backfilled as citations; relationship/index/snapshot/
-      build-inverse-indexes tests green.
+- [x] Existing on-disk edges backfilled as citations; relationship/index/snapshot/
+      build-inverse-indexes tests green. *(no on-disk edges remained to backfill —
+      current projection shows 0 `origin`/`supersedes`/`promoted_to_rule`/
+      `consolidated_into` stamps; migration was a no-op.)*
 
 ## Risk Assessment
 

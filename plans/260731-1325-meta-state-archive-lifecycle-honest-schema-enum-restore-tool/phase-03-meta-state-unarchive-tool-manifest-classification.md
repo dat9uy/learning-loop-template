@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "meta_state_unarchive tool — manifest + classification + handler"
-status: pending
+status: completed
 priority: P0
 effort: "3h"
 dependencies: [2]
@@ -63,11 +63,11 @@ CLI-vs-MCP split (researcher #2): `server.js:64-73` drops `CLI_WRITE_TOOLS` memb
 
 ## Success Criteria
 
-- [ ] `meta_state_unarchive` roundtrip green (archive → relationships → unarchive → restored status → relationships again).
-- [ ] Invariant rejection test green (already-active → `not_archived`; change-log → `not_archived`; delete-tombstone → `delete_not_restorable`; no flag).
-- [ ] Classified in all 3 sites; `cli-write-tool-set-drift` + `runtime-agnostic.test.js` green; `check_runtime_agnostic` passes.
-- [ ] CLI `list` shows the tool; `--schema` works; CLI roundtrip exit 0.
-- [ ] `pnpm test:one` green on the new test, `meta-state-archive-tool.test.js`, `cli-write-tool-set-drift.test.js`, `runtime-agnostic.test.js`.
+- [x] `meta_state_unarchive` roundtrip green (archive → relationships → unarchive → restored status → relationships again).
+- [x] Invariant rejection test green (already-active → `not_archived`; change-log → `not_archived`; delete-tombstone → `delete_not_restorable`; no flag).
+- [x] Classified in all 3 sites; `cli-write-tool-set-drift` + `runtime-agnostic.test.js` green; `check_runtime_agnostic` passes.
+- [x] CLI `list` shows the tool; `--schema` works; CLI roundtrip exit 0.
+- [x] `pnpm test:one` green on the new test, `meta-state-archive-tool.test.js`, `cli-write-tool-set-drift.test.js`, `runtime-agnostic.test.js`.
 
 ## Risk Assessment
 

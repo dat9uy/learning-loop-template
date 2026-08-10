@@ -1,7 +1,7 @@
 ---
 title: "Meta-State Archive Lifecycle — honest schema enum + restore tool"
 description: "Promote `status:\"archived\"` into the per-kind write schemas (finding/rule/loop-design) so factory-built reads stop crashing on archived tombstones, delete the parseForRead read-tolerance shim, add a write-boundary guard preserving `archived` as append-only via archiveEntry/deleteEntry, and add a sanctioned `meta_state_unarchive` restore tool. Closes meta-260614T1236Z (write-side unarchive) and meta-260731T1102Z (read-side archive-status divergence)."
-status: pending
+status: completed
 priority: P1
 effort: "1.5d"
 branch: "main"

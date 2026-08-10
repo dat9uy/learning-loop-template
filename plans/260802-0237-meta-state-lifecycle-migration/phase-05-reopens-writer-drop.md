@@ -79,13 +79,13 @@ on the parent, not a side-effect).
 
 ## Success Criteria
 
-- [ ] `meta_state_report` rejects `reopens`; `meta_state_resolve` rejects
+- [x] `meta_state_report` rejects `reopens`; `meta_state_resolve` rejects
       `cascade_from`; no new `reopens`/cascade can be initiated.
-- [ ] The `reopens` field + `reopens_inverse` read path + orphan-claim remain;
+- [x] The `reopens` field + `reopens_inverse` read path + orphan-claim remain;
       the 17 historical edges still query; existing cascade resolves for
       already-seeded data.
-- [ ] `hint-registry` + `field-glossary` prose updated.
-- [ ] `reopens-symmetry` + `relationship-validate` tests stay green; the cascade
+- [x] `hint-registry` + `field-glossary` prose updated.
+- [x] `reopens-symmetry` + `relationship-validate` tests stay green; the cascade
       test rewritten green.
 
 ## Risk Assessment

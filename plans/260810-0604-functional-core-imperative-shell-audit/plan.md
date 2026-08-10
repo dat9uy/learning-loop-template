@@ -1,7 +1,7 @@
 ---
 title: "Functional Core / Imperative Shell Audit"
 description: "Read-only audit of the learning loop against the general Functional Core / Imperative Shell principle, including CLI classification and filesystem topology."
-status: pending
+status: completed
 priority: P1
 effort: "2-4h"
 tags: [audit, architecture, functional-core, imperative-shell, cli]
@@ -68,7 +68,7 @@ Determine whether the current learning loop follows the general Functional Core 
 
 | # | Phase | Status |
 |---|---|---|
-| 1 | [Phase 1: Evidence audit](./phase-01-start.md) | Pending |
+| 1 | [Phase 1: Evidence audit](./phase-01-start.md) | Complete |
 
 ## Research reference
 
@@ -76,13 +76,16 @@ Determine whether the current learning loop follows the general Functional Core 
 
 ## Success Criteria
 
-- [ ] Report cites concrete repository paths and line ranges for every material conclusion.
-- [ ] Framework/dependency purity and effect placement are reported as separate dimensions.
-- [ ] CLI is explicitly classified as an imperative shell with rationale from its actual I/O/orchestration path.
-- [ ] Mastra shell, handler substrate, universal hooks, and runtime interface are classified separately.
-- [ ] Tracked filesystem topology is compared with docs, manifests, configs, and tests; generated artifacts are called out separately.
-- [ ] Read-only checks are run where safe, with failures, warnings, missing guards, and limitations reported honestly.
-- [ ] Unresolved questions and design trade-offs are listed at the end.
+- [x] Report cites concrete repository paths and line ranges for every material conclusion.
+- [x] Framework/dependency purity and effect placement are reported as separate dimensions.
+- [x] CLI is explicitly classified as an imperative shell with rationale from its actual I/O/orchestration path.
+- [x] Mastra shell, handler substrate, universal hooks, and runtime interface are classified separately.
+- [x] Tracked filesystem topology is compared with docs, manifests, configs, and tests; generated artifacts are called out separately.
+- [x] Read-only checks are run where safe, with failures, warnings, missing guards, and limitations reported honestly.
+- [x] Unresolved questions and design trade-offs are listed at the end.
 - [ ] No files outside this plan directory and the research report are modified.
+      *(overridden by operator decision — remediation applied in PR #133:
+      schema-parity moved into core, pattern-config facade extracted, whole-core
+      FCIS guard restored. Documented in the audit report Post-Audit Status.)*
 
 <!-- slug: functional-core-imperative-shell-audit -->

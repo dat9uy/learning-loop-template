@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Docs + hints + records closeout + journal"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [3]
@@ -55,13 +55,13 @@ Records (via MCP/CLI tools — never direct file writes):
 
 ## Success Criteria
 
-- [ ] **C1:** finding `meta-260731T1102Z` `evidence_code_ref` repointed to `core/meta-state.js` + file-index refreshed BEFORE the first resolve; both findings resolve without the consult-gate blocking.
-- [ ] `docs/meta-state-lifecycle.md` reflects `archived` as schema-valid + write-guard + restore tool (Decision #1 inverted; Status Definitions, Terminal vs Non-Terminal collapsed to one set, Archive Mechanics + Restore subsection noting no persisted `restored_*` fields, Transitions, Tools table updated).
-- [ ] `hint-registry.js:84` warm hint updated.
-- [ ] Loop-design entry logged + shipped citing this plan; both findings resolved with the loop-design id in `source_refs`.
-- [ ] Write-side finding's stale `IMMUTABLE` premise + dead `evidence_test` path corrected.
-- [ ] `meta_state_refresh_file_index` re-grounds touched cited paths.
-- [ ] Journal entry written.
+- [x] **C1:** finding `meta-260731T1102Z` `evidence_code_ref` repointed to `core/meta-state.js` + file-index refreshed BEFORE the first resolve; both findings resolve without the consult-gate blocking.
+- [x] `docs/meta-state-lifecycle.md` reflects `archived` as schema-valid + write-guard + restore tool (Decision #1 inverted; Status Definitions, Terminal vs Non-Terminal collapsed to one set, Archive Mechanics + Restore subsection noting no persisted `restored_*` fields, Transitions, Tools table updated).
+- [x] `hint-registry.js:84` warm hint updated.
+- [x] Loop-design entry logged + shipped citing this plan; both findings resolved with the loop-design id in `source_refs`.
+- [x] Write-side finding's stale `IMMUTABLE` premise + dead `evidence_test` path corrected.
+- [x] `meta_state_refresh_file_index` re-grounds touched cited paths.
+- [x] Journal entry written.
 
 ## Risk Assessment
 
