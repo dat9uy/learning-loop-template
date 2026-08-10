@@ -24,7 +24,7 @@ const DECISION_LOG_FILE = ".gate-decision.log";
  * @param {object} entry
  * @returns {boolean}
  */
-export function isUnexpectedMatchCandidate(entry) {
+function isUnexpectedMatchCandidate(entry) {
   return (
     entry?.event_source === "bash-gate-evaluator"
     && entry?.candidate_kind === "unexpected-match"

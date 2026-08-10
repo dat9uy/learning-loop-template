@@ -31,6 +31,7 @@ import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
 import {
   safeStripHeredocBodies,
   BLANKABLE_HEREDOC_VERBS_PROMOTED,
+  findHeredocTerminator,
   splitSegments,
   stripMessageFlags,
   stripNodeEvalBody,
@@ -38,7 +39,7 @@ import {
   stripCliArgvPayload,
   stripEchoProse,
   applyInertSinkBlanking,
-} from "./gate-logic.js";
+} from "./blanking.js";
 import {
   blankDataPayloadsForKey,
   normalizePrefixForKey,
@@ -159,6 +160,25 @@ const QB = 3; // after backslash outside quotes
  * Fail-closed on malformed input: an unterminated quote yields NO span (we
  * never guess inert origin for syntax the parser cannot prove).
  */
+// Scan a `$(...)` substitution opening at `i` (the `$`), tracking paren depth,
+// and return the index just past the closing `)`.
+function scanDollarParen(source, i, n) {
+  let depth = 0;
+  let j = i + 1;
+  while (j < n) {
+    if (source[j] === "(") depth++;
+    else if (source[j] === ")") { depth--; if (depth === 0) break; }
+    j++;
+  }
+  return j + 1;
+}
+
+// Push a completed quoted span onto `spans` and reset the segment bookkeeping.
+function pushQuotedSpan(spans, segStart, segKind, hasSubst, end) {
+  if (segStart !== -1) spans.push({ start: segStart, end, kind: segKind, substitution: hasSubst });
+  return { segStart: -1, segKind: null, hasSubst: false };
+}
+
 function collectQuotedInertSpans(source) {
   const spans = [];
   let state = QN;
@@ -179,8 +199,7 @@ function collectQuotedInertSpans(source) {
     if (state === QB) { state = QN; i++; continue; }
     if (state === QS) {
       if (ch === "'") {
-        if (segStart !== -1) spans.push({ start: segStart, end: i + 1, kind: segKind, substitution: hasSubst });
-        segStart = -1; segKind = null;
+        ({ segStart, segKind, hasSubst } = pushQuotedSpan(spans, segStart, segKind, hasSubst, i + 1));
         state = QN;
       }
       i++;
@@ -188,20 +207,9 @@ function collectQuotedInertSpans(source) {
     }
     // QD
     if (ch === "\\") { i += 2; continue; }
-    if (ch === "$") {
-      if (source[i + 1] === "(") {
-        hasSubst = true;
-        let depth = 0;
-        let j = i + 1;
-        while (j < n) {
-          if (source[j] === "(") depth++;
-          else if (source[j] === ")") { depth--; if (depth === 0) break; }
-          j++;
-        }
-        i = j + 1;
-        continue;
-      }
-      i++;
+    if (ch === "$" && source[i + 1] === "(") {
+      hasSubst = true;
+      i = scanDollarParen(source, i, n);
       continue;
     }
     if (ch === "`") {
@@ -211,8 +219,7 @@ function collectQuotedInertSpans(source) {
       continue;
     }
     if (ch === '"') {
-      if (segStart !== -1) spans.push({ start: segStart, end: i + 1, kind: segKind, substitution: hasSubst });
-      segStart = -1; segKind = null;
+      ({ segStart, segKind, hasSubst } = pushQuotedSpan(spans, segStart, segKind, hasSubst, i + 1));
       state = QN;
     }
     i++;
@@ -228,6 +235,28 @@ function collectQuotedInertSpans(source) {
  * that region is, so any match overlapping it must be `unknown` — never
  * guessed inert or executable.
  */
+// Advance the quote-state machine one char. Returns the next state. Shared by
+// collectMalformedRegions and segmentBoundary so the QN/QS/QD/QB walker stays
+// in one place (mirrors blanking.js's walkQuoteState pattern).
+function stepQuoteState(state, ch) {
+  switch (state) {
+    case QN:
+      if (ch === "\\") return QB;
+      if (ch === "'") return QS;
+      if (ch === '"') return QD;
+      return QN;
+    case QB:
+      return QN;
+    case QS:
+      return ch === "'" ? QN : QS;
+    case QD:
+      if (ch === "\\") return QD; // backslash escapes the next char inside dquote
+      return ch === '"' ? QN : QD;
+    default:
+      return QN;
+  }
+}
+
 function collectMalformedRegions(command) {
   const regions = [];
   let state = QN;
@@ -236,28 +265,20 @@ function collectMalformedRegions(command) {
   const n = command.length;
   while (i < n) {
     const ch = command[i];
-    if (state === QN) {
-      if (ch === "\\") { state = QB; i++; continue; }
-      if (ch === "'") { state = QS; openStart = i; i++; continue; }
-      if (ch === '"') { state = QD; openStart = i; i++; continue; }
-      i++;
-      continue;
-    }
+    if (state === QN && (ch === "'" || ch === '"')) { openStart = i; state = stepQuoteState(state, ch); i++; continue; }
     if (state === QB) { state = QN; i++; continue; }
-    if (state === QS) {
-      if (ch === "'") { state = QN; openStart = -1; }
+    if (state === QS && ch === "'") { state = QN; openStart = -1; i++; continue; }
+    if (state === QD) {
+      if (ch === "\\") { i += 2; continue; }
+      if (ch === '"') { state = QN; openStart = -1; i++; continue; }
       i++;
       continue;
     }
-    // QD
-    if (ch === "\\") { i += 2; continue; }
-    if (ch === '"') { state = QN; openStart = -1; i++; continue; }
+    if (state === QN && ch === "\\") { state = QB; i++; continue; }
     i++;
   }
-  if (state === QS || state === QD) {
-    if (openStart !== -1) {
-      regions.push({ start: openStart, end: n, kind: state === QS ? "single" : "double" });
-    }
+  if ((state === QS || state === QD) && openStart !== -1) {
+    regions.push({ start: openStart, end: n, kind: state === QS ? "single" : "double" });
   }
   return regions;
 }
@@ -276,6 +297,34 @@ const DATA_COMMAND_VERBS = new Set(["grep", "egrep", "fgrep", "rg", "jq"]);
  * Herestrings (`<<<`) and unquoted heredocs are never inert. Executor-verb
  * heredocs (bash/sh/python `<<'EOF'`) are never inert.
  */
+// Parse one quoted-delimiter heredoc operator at `i` (the `<` of `<<`) and
+// return `{ span, next }` where `span` is the inert body span (or null) and
+// `next` is the index to resume scanning after the heredoc. Reused by
+// collectHeredocInertSpans so the operator/delimiter/terminator parsing stays
+// in one small helper.
+function collectHeredocBodySpan(command, i, n) {
+  let opEnd = i + 2;
+  let stripTabs = false;
+  if (command[opEnd] === "-") { stripTabs = true; opEnd++; }
+  if (command[opEnd] === "<") return { span: null, next: opEnd + 1 }; // herestring
+  let j = opEnd;
+  while (j < n && (command[j] === " " || command[j] === "\t")) j++;
+  let k = j;
+  while (k < n && !/\s/.test(command[k])) k++;
+  const delim = command.slice(j, k);
+  if (delim.length === 0) return { span: null, next: i + 1 };
+  const quoted = /['"\\]/.test(delim);
+  const termDelim = delim.replace(/['"\\]/g, "");
+  const verb = segmentVerbOfPrefix(command.slice(segmentBoundary(command, i), i));
+  const blankable = quoted && verb !== null && BLANKABLE_HEREDOC_VERBS_PROMOTED.has(verb);
+  const lineEnd = command.indexOf("\n", k);
+  const bodyStart = lineEnd === -1 ? n : lineEnd + 1;
+  const termStart = findHeredocTerminator(command, bodyStart, termDelim, stripTabs);
+  const spanEnd = termStart === -1 ? n : termStart;
+  const next = termStart === -1 ? n : (command.indexOf("\n", termStart) + 1 || n);
+  return { span: blankable ? { start: bodyStart, end: spanEnd } : null, next };
+}
+
 function collectHeredocInertSpans(command) {
   // Kill-switch consistency: when GATE_HEREDOC_BLANKER=0 the gate's
   // stripHeredocBodies returns the command unchanged (no body blanked), so no
@@ -301,38 +350,9 @@ function collectHeredocInertSpans(command) {
     }
     // quoteState === QN
     if (ch === "<" && command[i + 1] === "<") {
-      let opEnd = i + 2;
-      let stripTabs = false;
-      if (command[opEnd] === "-") { stripTabs = true; opEnd++; }
-      if (command[opEnd] === "<") { i = opEnd + 1; continue; } // herestring
-      let j = opEnd;
-      while (j < n && (command[j] === " " || command[j] === "\t")) j++;
-      let k = j;
-      while (k < n && !/\s/.test(command[k])) k++;
-      const delim = command.slice(j, k);
-      if (delim.length === 0) { i++; continue; }
-      const quoted = /['"\\]/.test(delim);
-      const termDelim = delim.replace(/['"\\]/g, "");
-      const verb = segmentVerbOfPrefix(command.slice(segmentBoundary(command, i), i));
-      const blankable = quoted && verb !== null && BLANKABLE_HEREDOC_VERBS_PROMOTED.has(verb);
-      const lineEnd = command.indexOf("\n", k);
-      const bodyStart = lineEnd === -1 ? n : lineEnd + 1;
-      let termStart = -1;
-      if (bodyStart < n) {
-        let scan = bodyStart;
-        while (scan <= n) {
-          const nl = command.indexOf("\n", scan);
-          const lineEndIdx = nl === -1 ? n : nl;
-          let content = command.slice(scan, lineEndIdx).replace(/\r$/, "");
-          if (stripTabs) content = content.replace(/^\t+/, "");
-          if (content === termDelim) { termStart = scan; break; }
-          if (nl === -1) break;
-          scan = nl + 1;
-        }
-      }
-      const spanEnd = termStart === -1 ? n : termStart;
-      if (blankable) spans.push({ start: bodyStart, end: spanEnd });
-      i = termStart === -1 ? n : (command.indexOf("\n", termStart) + 1 || n);
+      const { span, next } = collectHeredocBodySpan(command, i, n);
+      if (span) spans.push(span);
+      i = next;
       continue;
     }
     i++;
@@ -364,10 +384,9 @@ function segmentBoundary(command, pos) {
       i++; continue;
     }
     if (state === QB) { state = QN; i++; continue; }
-    if (state === QS) { if (ch === "'") state = QN; i++; continue; }
-    // QD
-    if (ch === "\\") { i += 2; continue; }
-    if (ch === '"') state = QN;
+    if (state === QD && ch === "\\") { i += 2; continue; }
+    if (ch === "'" && state === QS) { state = QN; i++; continue; }
+    if (ch === '"' && state === QD) { state = QN; i++; continue; }
     i++; continue;
   }
   return b;
@@ -471,20 +490,22 @@ function collectInertSinkProseSpans(command) {
   const spans = [];
   for (const [a, b] of runs) {
     const last = spans[spans.length - 1];
-    if (last) {
-      const gapStart = last.end;
-      const gapEnd = a;
-      const gap = command.slice(gapStart, gapEnd);
-      const gapIdentical = gap === blanked.slice(gapStart, gapEnd);
-      const gapIsWhitespace = /^\s*$/.test(gap);
-      if (gapIdentical && gapIsWhitespace) {
-        last.end = b; // merge into the previous span
-        continue;
-      }
+    if (last && shouldMergeGap(last, a, command, blanked)) {
+      last.end = b; // merge into the previous span
+      continue;
     }
     spans.push({ start: a, end: b });
   }
   return spans;
+}
+
+// True when the gap between the previous span's end and a run start is
+// all-whitespace AND identical in the raw command and its blanked form — i.e.
+// the gap is interior literal whitespace of one blanked quoted token, so the
+// two runs belong to the same span.
+function shouldMergeGap(prev, a, command, blanked) {
+  const gap = command.slice(prev.end, a);
+  return gap === blanked.slice(prev.end, a) && /^\s*$/.test(gap);
 }
 
 /**

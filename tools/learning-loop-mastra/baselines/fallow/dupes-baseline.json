@@ -1,14 +1,13 @@
 {
   "clone_groups": [
-    "core/gate-logic.js:337-342|core/gate-logic.js:574-579",
-    "core/gate-logic.js:1006-1029|core/gate-logic.js:902-927",
-    "core/gate-logic.js:931-953|core/shell-parse.js:268-290",
+    "core/blanking.js:830-855|core/blanking.js:934-957",
+    "core/blanking.js:859-881|core/shell-parse.js:284-306",
+    "core/blanking.js:994-1002|core/gate-logic.js:100-148",
     "core/hint-renderer.js:115-126|core/hint-renderer.js:142-151",
     "core/hint-renderer.js:160-175|core/hint-renderer.js:192-202",
-    "core/loop-introspect.js:173-182|core/loop-introspect.js:201-210",
     "core/meta-state.js:1658-1662|core/meta-state.js:1735-1739|core/meta-state.js:1900-1904",
     "core/meta-state.js:1734-1739|core/meta-state.js:1899-1904",
-    "core/runtime-state.js:189-194|core/runtime-state.js:318-323",
+    "hooks/universal/session-start-git-merge-driver-preflight.cjs:89-105|hooks/universal/session-start-git-push-preflight.cjs:185-219",
     "mastra/create-loop-workflow.js:50-62|mastra/handler-adapter.js:14-24",
     "tools/handlers/meta-state-check-grounding-tool.js:50-78|tools/handlers/meta-state-derive-status-tool.js:17-44",
     "tools/handlers/meta-state-consistency-check-tool.js:23-36|tools/handlers/meta-state-query-drift-tool.js:34-47",
@@ -20,5 +19,26 @@
     "tools/handlers/meta-state-resolve-tool.js:87-94|tools/handlers/meta-state-resolve-tool.js:98-115",
     "tools/handlers/runtime-state-pause-tool.js:41-92|tools/handlers/runtime-state-resume-tool.js:37-84",
     "tools/handlers/runtime-state-pause-tool.js:41-73|tools/handlers/runtime-state-resume-tool.js:37-65|tools/handlers/runtime-state-stop-tool.js:67-92"
+  ],
+  "clone_fingerprints": [
+    "dup:5a20b420:2",
+    "dup:965ca007:2",
+    "dup:ea7ae8e9:2",
+    "dup:4c201afd:2",
+    "dup:09109c60:2",
+    "dup:599ed65d:3",
+    "dup:09a927e0:2",
+    "dup:d642ac36:2",
+    "dup:86217bf2:2",
+    "dup:cdaa0082:2",
+    "dup:dd516b89:2",
+    "dup:52fdc8b5:2",
+    "dup:14ab9aea:2",
+    "dup:ce8e5593:3",
+    "dup:ce8ba1cc:2",
+    "dup:983ad8fb:2",
+    "dup:9bc64648:2",
+    "dup:025c26d7:2",
+    "dup:7a3ff355:3"
   ]
 }
