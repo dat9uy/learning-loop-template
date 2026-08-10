@@ -162,7 +162,7 @@ function existsSync(path) {
 // fixture. `gate_mark_preflight` cannot create this marker (its surface
 // enum is product/skills/schemas only); runtime_state_record reads it via
 // `hasPreflightMarker`. Mirrors the fixture pattern in
-// legacy-mcp/meta-state-dispatch-finding-tool.test.js:42.
+// integration/meta-state-dispatch-finding-tool.test.js:42.
 function writeRuntimeStatePreflightMarker(root) {
   const dir = join(root, ".claude", "coordination");
   mkdirSync(dir, { recursive: true });

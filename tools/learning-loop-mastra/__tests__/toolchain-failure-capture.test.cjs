@@ -11,7 +11,7 @@
  *      (the pattern set is the first redaction layer; combined with
  *      normalizePrefix + hashed id, no secret reaches the registry).
  *
- * Spawning pattern mirrors legacy-mcp/bash-gate-decision-visibility.test.js
+ * Spawning pattern mirrors e2e/bash-gate-decision-visibility.test.js
  * (execFileSync against the universal hook with stdin + temp GATE_ROOT).
  */
 
