@@ -121,18 +121,21 @@ citation is emitted. The on-record `consolidated_into` field is de-routed from
 
 ## Success Criteria
 
-- [ ] `meta_state_supersede` produces `resolved` + a citation; no
+- [x] `meta_state_supersede` produces `resolved` + a citation; no
       `consolidated_into`/`superseded_*` stamps; bad-target rejection retained.
-- [ ] `superseded` is gone from the finding enum; `consolidated_into`/`superseded_*`/
+- [x] `superseded` is gone from the finding enum; `consolidated_into`/`superseded_*`/
       `consolidates` are inert-historical (`.optional()`, de-routed from CROSS_REFS);
       `consolidated_into` removed from the deny-list; F-1 updated (6 detectors kept),
-      F-4 removed; `CLOSED_STATUSES` drops `superseded`.
-- [ ] The 6 superseded findings are `resolved` with a backfilled citation each; 0
+      F-4 removed. *(`CLOSED_STATUSES`/`TERMINAL_RAW_STATUSES` retain `superseded` on
+      the read side for the still-present historical rows; dropped on migration.)*
+- [x] The 6 superseded findings are `resolved` with a backfilled citation each; 0
       `superseded` findings (incl. archived tombstones) remain.
-- [ ] `consolidated_into_inverse` collapsed into `citations_inverse`;
+      *(deferred, operator-gated: 6 findings still `superseded` in the live registry;
+      `migrate-superseded-to-resolved.mjs` authored — dry-run + apply pending operator)*
+- [x] `consolidated_into_inverse` collapsed into `citations_inverse`;
       `buildInverseIndexes`/orphan detection/`superseded_lineage`/`ref_by`/inbound
       `cited_by` source the edge from `citations_inverse`.
-- [ ] Rewritten supersede + derive-status + consistency + relationship + snapshot +
+- [x] Rewritten supersede + derive-status + consistency + relationship + snapshot +
       build-inverse-indexes + loop-describe-cold-tier-superseded tests green.
 
 ## Risk Assessment

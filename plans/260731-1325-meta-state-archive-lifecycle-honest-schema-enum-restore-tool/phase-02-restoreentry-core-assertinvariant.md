@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "restoreEntry core function + assertinvariant wrapping"
-status: pending
+status: completed
 priority: P0
 effort: "3h"
 dependencies: [1]
@@ -105,11 +105,11 @@ export function restoreEntry(root, id, reason) {
 
 ## Success Criteria
 
-- [ ] `restoreEntry` restores pre-archive status + content via `readRegistryAllVersions` (filtering out prior tombstones); clears `archived_*` + `tombstone_kind`; bumps version past tombstone; tombstone line preserved.
-- [ ] D1 guard: recovery never picks a prior tombstone (`status:"archived"`) as the pre-tombstone line (red-team D1 test green).
-- [ ] Golden-fixture test: rejects already-active (`not_archived`), change-log (`not_archived` — no dead change_log_immutable branch), delete-tombstone (`delete_not_restorable`, no flag) — bucket `{restored:false, reason, id}` shape + mutation-did-not-run guard.
-- [ ] `restoreEntry` wrapped with `assertinvariant` (pre-state-only, inside `withRegistryLock`) for the `not_archived` pre-condition (gate-log audit); the single `assertArchivedTombstone` wrapper covers both already-active and change-log targets.
-- [ ] `pnpm test:one` green on `core/meta-state.test.js`, `core/operation-invariant.test.js`, new restore test.
+- [x] `restoreEntry` restores pre-archive status + content via `readRegistryAllVersions` (filtering out prior tombstones); clears `archived_*` + `tombstone_kind`; bumps version past tombstone; tombstone line preserved.
+- [x] D1 guard: recovery never picks a prior tombstone (`status:"archived"`) as the pre-tombstone line (red-team D1 test green).
+- [x] Golden-fixture test: rejects already-active (`not_archived`), change-log (`not_archived` — no dead change_log_immutable branch), delete-tombstone (`delete_not_restorable`, no flag) — bucket `{restored:false, reason, id}` shape + mutation-did-not-run guard.
+- [x] `restoreEntry` wrapped with `assertinvariant` (pre-state-only, inside `withRegistryLock`) for the `not_archived` pre-condition (gate-log audit); the single `assertArchivedTombstone` wrapper covers both already-active and change-log targets.
+- [x] `pnpm test:one` green on `core/meta-state.test.js`, `core/operation-invariant.test.js`, new restore test.
 
 ## Risk Assessment
 

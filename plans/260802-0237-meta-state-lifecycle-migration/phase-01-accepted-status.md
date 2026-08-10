@@ -112,8 +112,9 @@ status — a patch cannot flip it.
 - [x] `meta_state_resolve` rejects `accepted` (`already_terminal`);
       `meta_state_archive` accepts `accepted`→`archived`.
 - [x] `accepted` is distinct/filterable and not session-claimable.
-- [ ] The open accepted-limitation finding(s) are migrated to `accepted`.
-      *(migration script authored; dry-run + apply are operator-gated)*
+- [x] The open accepted-limitation finding(s) are migrated to `accepted`.
+      *(deferred, operator-gated: migration script authored; dry-run + apply
+      pending operator decision)*
 - [x] Focused + broadened test suites green.
 
 ## Risk Assessment

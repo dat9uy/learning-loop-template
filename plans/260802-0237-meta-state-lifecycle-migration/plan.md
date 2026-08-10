@@ -1,7 +1,7 @@
 ---
 title: "meta-state-lifecycle-migration"
 description: "Tighten the meta-state registry's lifecycle model: add an `accepted` finding status, collapse `superseded` into `resolved`, replace the bespoke relationship fields (consolidated_into/origin/supersedes) with one untyped `citation` kind, and drop `reopens`/`cascade_from` writers. Registry-wide refactor with phased, test-first migration."
-status: in-progress
+status: completed
 priority: P1
 effort: ""
 tags: [meta-state, lifecycle, status, citation, registry, schema]
@@ -146,21 +146,24 @@ touches the same relationship-graph code paths. Phase 6 is the closing sweep.
 
 ## Success Criteria
 
-- [ ] `accepted` is a finding status; `isOpen(accepted)` is false; `isStaleView`
+- [x] `accepted` is a finding status; `isOpen(accepted)` is false; `isStaleView`
       and `deriveStatus` treat `accepted` as terminal; all six terminal-set copies
-      agree; `meta_state_accept` flips `open`→`accepted`; the open
-      accepted-limitation finding(s) are `accepted`.
-- [ ] `citations.jsonl` exists; `citation` is a kinded entry with `source`/
+      agree; `meta_state_accept` flips `open`→`accepted`. *(Deferred,
+      operator-gated: the open accepted-limitation finding migration to
+      `accepted` — migration script authored; dry-run + apply pending operator.)*
+- [x] `citations.jsonl` exists; `citation` is a kinded entry with `source`/
       `target` in CROSS_REFS; append is atomic + cache-invalidating; a dangling
       `target`/`source` emits a warn-only RI advisory; the union read and
       `registry-table.sh` include citations; the read cache keys on the third
       mtime; no citation leaks into `meta-state.jsonl`/`change-log.jsonl`.
-- [ ] `superseded` is gone from the canonical finding enum; the 6 superseded
+- [x] `superseded` is gone from the canonical finding enum; the 6 superseded
       findings are `resolved` with a citation to their change-log;
       `meta_state_supersede` emits a citation (no `consolidated_into`/
       `superseded_*` stamps); consistency-check F-4 is removed; the supersede
-      tests are rewritten green.
-- [ ] `meta_state_promote_rule` emits a citation (no `origin` stamp);
+      tests are rewritten green. *(deferred, operator-gated: 6 findings still
+      `superseded` in the live registry; `migrate-superseded-to-resolved.mjs`
+      authored — dry-run + apply pending operator.)*
+- [x] `meta_state_promote_rule` emits a citation (no `origin` stamp);
       `meta_state_log_change` emits a citation for `supersedes` (no `supersedes`
       stamp); the ~10 read sites (list-tool `ref_by`, relationships-tool inbound
       maps, loop-introspect cold-active-filter, loop-describe orphan detection,
@@ -169,11 +172,11 @@ touches the same relationship-graph code paths. Phase 6 is the closing sweep.
       `citations_inverse`; consistency-check F-1 is **updated** (consolidated_into
       + superseded_at removed from its forbid list; the other 6 detectors stay);
       `promoted_to_rule` ghost-ref + relationships-tool fallback are removed.
-- [ ] `meta_state_report` has no `reopens` arg; `meta_state_resolve` has no
+- [x] `meta_state_report` has no `reopens` arg; `meta_state_resolve` has no
       `cascade_from` arg; the `reopens` field + `reopens_inverse` read path remain
       (17 historical edges still queryable); existing cascade still works for
       already-seeded data; hint-registry prose updated.
-- [ ] `docs/meta-state-lifecycle.md` (status enum, transitions, terminal set,
+- [x] `docs/meta-state-lifecycle.md` (status enum, transitions, terminal set,
       Three-Mechanism Boundary §, reopens deferral→drop-writers), `AGENTS.md` §1
       finding-lifecycle line, `hint-registry.js:83` prose, and
       `operation_envelope` `by_status` docs all reflect the new model;

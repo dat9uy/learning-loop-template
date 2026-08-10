@@ -145,13 +145,13 @@ owns the only live orphan detection. Decide in implementation; either way
 
 ## Success Criteria
 
-- [ ] `citation` kind parses; `rationale` is required; append writes to
+- [x] `citation` kind parses; `rationale` is required; append writes to
       `citations.jsonl` only; the read cache invalidates (stale-cache test green).
-- [ ] `resolveStructuralRI` validates `source`/`target` warn-only; `buildInverseIndexes`
+- [x] `resolveStructuralRI` validates `source`/`target` warn-only; `buildInverseIndexes`
       populates the new generic `citations_inverse` (target→source) from citations.
-- [ ] `kindForId` resolves `citation-` ids; `readRawLines` unions all three files.
-- [ ] `assertNoCitationLeak` prevents cross-file leakage both directions (three path checks).
-- [ ] Existing relationship/index/dangling-refs tests stay green (`citations_inverse`
+- [x] `kindForId` resolves `citation-` ids; `readRawLines` unions all three files.
+- [x] `assertNoCitationLeak` prevents cross-file leakage both directions (three path checks).
+- [x] Existing relationship/index/dangling-refs tests stay green (`citations_inverse`
       is additive; named maps untouched).
 
 ## Risk Assessment

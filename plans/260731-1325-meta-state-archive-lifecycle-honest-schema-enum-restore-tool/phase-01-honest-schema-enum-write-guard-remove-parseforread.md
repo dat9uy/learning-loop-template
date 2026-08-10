@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Honest schema enum + write-boundary guard + remove parseForRead"
-status: pending
+status: completed
 priority: P0
 effort: "4h"
 dependencies: []
@@ -46,11 +46,11 @@ After:
 
 ## Success Criteria
 
-- [ ] 3 factories accept `status:"archived"` via direct `schema.parse`; `parse-for-read.js` deleted, no importers.
-- [ ] `meta_state_relationships` over an archived finding/rule/loop-design does not throw (regression test).
-- [ ] `writeEntry` + batch-write reject caller `status:"archived"` (write-guard test).
-- [ ] `archiveEntry`/`deleteEntry` still archive/delete successfully (union bypass unchanged).
-- [ ] `pnpm test:one` green on: `core/entry/*.test.js`, `core/meta-state.test.js`, `core/operation-invariant.test.js`, `__tests__/legacy-mcp/meta-state-archive-tool.test.js`, `__tests__/legacy-mcp/meta-state-relationships-tool.test.js` (if present), `__tests__/cli-write-tool-set-drift.test.js`.
+- [x] 3 factories accept `status:"archived"` via direct `schema.parse`; `parse-for-read.js` deleted, no importers.
+- [x] `meta_state_relationships` over an archived finding/rule/loop-design does not throw (regression test).
+- [x] `writeEntry` + batch-write reject caller `status:"archived"` (write-guard test).
+- [x] `archiveEntry`/`deleteEntry` still archive/delete successfully (union bypass unchanged).
+- [x] `pnpm test:one` green on: `core/entry/*.test.js`, `core/meta-state.test.js`, `core/operation-invariant.test.js`, `__tests__/legacy-mcp/meta-state-archive-tool.test.js`, `__tests__/legacy-mcp/meta-state-relationships-tool.test.js` (if present), `__tests__/cli-write-tool-set-drift.test.js`.
 
 ## Risk Assessment
 

@@ -100,17 +100,17 @@ the operator's `tail -20` inspection sees the full registry.
 
 ## Success Criteria
 
-- [ ] `docs/meta-state-lifecycle.md` reflects the new status enum, transitions,
+- [x] `docs/meta-state-lifecycle.md` reflects the new status enum, transitions,
       terminal set, `meta_state_accept`, the citation kind (untyped verb in
       `rationale`; generic `cited_by` wire shape; `citations_inverse`), and the
       rewritten Three-Mechanism Boundary (file-index grounding-only; reopens writers
       dropped; migrated fields inert-historical).
-- [ ] `AGENTS.md` §1 finding-lifecycle line + the union-driver `git config`
+- [x] `AGENTS.md` §1 finding-lifecycle line + the union-driver `git config`
       recipe include `citations.jsonl`; `.gitattributes` marks it `merge=union`.
-- [ ] `registry-table.sh` unions all three files.
-- [ ] `hint-registry` + `operation_envelope` prose consistent with the new enum.
-- [ ] `check_runtime_agnostic` passes.
-- [ ] Full `pnpm test` suite green; consistency sweep reports zero unresolved
+- [x] `registry-table.sh` unions all three files.
+- [x] `hint-registry` + `operation_envelope` prose consistent with the new enum.
+- [x] `check_runtime_agnostic` passes.
+- [x] Full `pnpm test` suite green; consistency sweep reports zero unresolved
       contradictions.
 
 ## Risk Assessment

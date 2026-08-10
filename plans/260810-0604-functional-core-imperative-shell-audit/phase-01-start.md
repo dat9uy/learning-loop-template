@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Evidence audit"
-status: pending
+status: completed
 priority: P1
 effort: "2-4h"
 dependencies: []
@@ -70,14 +70,14 @@ Trace dependency direction from each shell toward core. Separately trace effects
 
 ## Success Criteria
 
-- [ ] Core framework/dependency independence is verified by source and surviving tests.
-- [ ] Core effect placement is classified separately, including I/O-owning facades.
-- [ ] CLI classification is explicit and supported by its I/O/delegation/serialization/exit path.
-- [ ] Mastra shell, handler substrate, universal hooks, and runtime interface are classified separately.
-- [ ] Filesystem topology is compared against docs, manifests, configs, and tests.
-- [ ] Historical missing guard and current narrow guards are both reported accurately.
-- [ ] Any test failure, warning, unavailable check, or contradictory evidence is reported without suppression.
-- [ ] Unresolved questions are listed; no implementation is started.
+- [x] Core framework/dependency independence is verified by source and surviving tests.
+- [x] Core effect placement is classified separately, including I/O-owning facades.
+- [x] CLI classification is explicit and supported by its I/O/delegation/serialization/exit path.
+- [x] Mastra shell, handler substrate, universal hooks, and runtime interface are classified separately.
+- [x] Filesystem topology is compared against docs, manifests, configs, and tests.
+- [x] Historical missing guard and current narrow guards are both reported accurately.
+- [x] Any test failure, warning, unavailable check, or contradictory evidence is reported without suppression.
+- [x] Unresolved questions are listed; no implementation is started.
 
 ## Risk Assessment
 

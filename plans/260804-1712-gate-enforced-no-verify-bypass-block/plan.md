@@ -1,7 +1,7 @@
 ---
 title: "Gate-Enforced No-Verify Bypass Block"
 description: "Promote a gate-enforced regex rule blocking `git commit --no-verify` / `core.hooksPath` hook bypasses in the universal bash-gate, plus an agent-checklist steering rule for pre-existing-flake claims. Resolves findings meta-260804T1600Z (escalate) and meta-260803T1836Z."
-status: pending
+status: completed
 priority: P1
 effort: "0.5d"
 tags: [gate-logic, loop-anti-pattern, verification-bypass, registry-data-only]
@@ -35,9 +35,9 @@ Research confirmed the delivery rides the existing promoted-rule path: the unive
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Gate-Enforced Bypass Rule](./phase-01-gate-enforced-bypass-rule.md) | Pending |
-| 2 | [Phase 2: Flake-Claim Steering Checklist](./phase-02-flake-claim-steering-checklist.md) | Pending |
-| 3 | [Phase 3: Resolution Docs and Ship](./phase-03-resolution-docs-and-ship.md) | Pending |
+| 1 | [Phase 1: Gate-Enforced Bypass Rule](./phase-01-gate-enforced-bypass-rule.md) | Complete |
+| 2 | [Phase 2: Flake-Claim Steering Checklist](./phase-02-flake-claim-steering-checklist.md) | Complete |
+| 3 | [Phase 3: Resolution Docs and Ship](./phase-03-resolution-docs-and-ship.md) | Complete |
 
 ## Key Evidence (research, 260804-17)
 
@@ -50,14 +50,14 @@ Research confirmed the delivery rides the existing promoted-rule path: the unive
 
 ## Success Criteria
 
-- [ ] Hook test: `git commit --no-verify`, `git commit -n`, `git -c core.hooksPath=/dev/null commit ...` (incl. mixed-case `Core.HooksPath`) → deny with rule_id; `git commit -m "msg"`, `git config --get/--unset core.hooksPath`, `git log --grep=...`, `pnpm test:one -u` → pass silently
-- [ ] Both rules promoted in live registry; `loop_describe({tier:"warm"})` shows the checklist hint; gate rule visible as active
-- [ ] Locked live-registry tests (`hint-registry.test.cjs`, `hint-renderer.test.cjs`) consciously updated and green after Phase 2 promotion
-- [ ] `gate_override` for the gate rule releases a blocked command, verified live via the real tool (write path), plus seeded expired-marker deny case in the hook test
-- [ ] Rollback path documented and rehearsed: `meta_state_batch` delete-tombstone deactivates the rule (patch/archive cannot)
-- [ ] `meta-260804T1600Z` and `meta-260803T1836Z` resolved with source_refs citing rule ids + change-log `meta-260804T1703Z`
-- [ ] `pnpm test:unit` green; commit-msg hook advice no longer instructs the denied flag
-- [ ] `check_runtime_agnostic` run (expect N/A-clean: no gate-mechanics code touched)
+- [x] Hook test: `git commit --no-verify`, `git commit -n`, `git -c core.hooksPath=/dev/null commit ...` (incl. mixed-case `Core.HooksPath`) → deny with rule_id; `git commit -m "msg"`, `git config --get/--unset core.hooksPath`, `git log --grep=...`, `pnpm test:one -u` → pass silently
+- [x] Both rules promoted in live registry; `loop_describe({tier:"warm"})` shows the checklist hint; gate rule visible as active
+- [x] Locked live-registry tests (`hint-registry.test.cjs`, `hint-renderer.test.cjs`) consciously updated and green after Phase 2 promotion
+- [x] `gate_override` for the gate rule releases a blocked command, verified live via the real tool (write path), plus seeded expired-marker deny case in the hook test
+- [x] Rollback path documented and rehearsed: `meta_state_batch` delete-tombstone deactivates the rule (patch/archive cannot)
+- [x] `meta-260804T1600Z` and `meta-260803T1836Z` resolved with source_refs citing rule ids + change-log `meta-260804T1703Z`
+- [x] `pnpm test:unit` green; commit-msg hook advice no longer instructs the denied flag
+- [x] `check_runtime_agnostic` run (expect N/A-clean: no gate-mechanics code touched)
 
 ## Risk Assessment
 

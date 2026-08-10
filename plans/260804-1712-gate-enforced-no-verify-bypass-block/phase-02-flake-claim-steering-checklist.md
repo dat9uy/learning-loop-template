@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Flake-Claim Steering Checklist"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: []
