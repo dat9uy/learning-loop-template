@@ -164,7 +164,7 @@ Both forms are fail-closed: malformed input falls through to the raw value.
 
 ## 5. Parity contract
 
-Source of truth: `schema-parity.js` (top-level, NOT under `core/`).
+Source of truth: `core/schema-parity.js`.
 
 The parity contract ensures MCP client schemas match Zod-derived schemas.
 When both schemas carry matching metadata, the output is byte-identical.
@@ -181,4 +181,4 @@ documents the migration history.
 - `core/meta-state.js` — runtime Zod schemas (the machine-checked layer)
 - `schemas/runtime-state.schema.json` — JSON Schema for runtime-state rows
 - `core/envelope-stripper.js` — wire envelope implementation
-- `schema-parity.js` — parity contract implementation
+- `core/schema-parity.js` — parity contract implementation

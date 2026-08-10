@@ -2,12 +2,12 @@
 
 **Audience:** Engineers and agents debugging or extending tool inputSchemas in the `learning-loop-mastra` MCP server. Replaces the need to read `node_modules/@mastra/{core,mcp,schema-compat}/dist/*.js` and `node_modules/zod/v4/core/*.js`.
 
-**Why this doc exists:** the coerce-layer zod-native migration introduced a 125-line `schema-parity.js` shim that has a non-obvious interaction with the Mastra SDK and zod 4.4.3 internal APIs. Without this doc, future agents have to re-discover the shim's behavior empirically. This file is the canonical reference.
+**Why this doc exists:** the coerce-layer zod-native migration introduced a 125-line `schema-parity.js` shim that has a non-obvious interaction with the Mastra SDK and zod 4.4.3 internal APIs. Without this doc, future agents have to re-discover the shim's behavior empirically. This file is the canonical reference. (The shim lives in `core/` — a pure zod transform, imported by the shell's tool/workflow factories and the CLI's context-savings path.)
 
 **Transport scope:** this doc describes the **MCP transport's** schema-conversion path (`tools/list` → JSON Schema). The stateless CLI (`tools/learning-loop-mastra/bin/loop.mjs`) calls handlers directly and **bypasses** `MCPServer.convertSchema` and the shim, so under `LOOP_RECORDS_VIA_CLI=1` (set by all three runtimes) the shim only affects the MCP residue surface; the full 41-tool surface on the CLI is unaffected.
 
 **Source of truth (read these to verify or extend):**
-- `tools/learning-loop-mastra/mastra/schema-parity.js` — the shim
+- `tools/learning-loop-mastra/core/schema-parity.js` — the shim
 - `tools/learning-loop-mastra/mastra/create-loop-tool.js` — the factory that applies the shim
 - `tools/learning-loop-mastra/mastra/server.js` — the canonical MCP server entry
 - `tools/learning-loop-mastra/__tests__/coerce-correctness.test.js` — regression net for the shim
@@ -75,7 +75,7 @@ The MCP server exposes tools to clients via `tools/list`. Each tool's `inputSche
 
 ## 2. The shim: `schema-parity.js`
 
-**File:** `tools/learning-loop-mastra/mastra/schema-parity.js` (125 lines)
+**File:** `tools/learning-loop-mastra/core/schema-parity.js` (125 lines)
 
 **Purpose:** Recursively unwrap zod wrappers that the migration introduced (`z.preprocess`, `z.union([bool, string]).transform(...)`) and rebuild them in a way that produces byte-identical JSON Schema to the pre-migration baseline.
 
@@ -277,7 +277,7 @@ A meta-state entry records a fingerprint on `create-loop-tool.js`. The shim file
 
 **Implication:** if zod renames a `_zod.def.type` string, `schema-parity.js` may silently change behavior (passthrough branch at line 110) without the grounding check detecting the drift. The 7 parity tests in `coerce-correctness.test.js` are the de facto regression net — they will fail loudly.
 
-**Recommendation:** add `schema-parity.js` to the grounding fingerprint registry (via `meta_state_log_change` with `evidence_code_ref: "tools/learning-loop-mastra/mastra/schema-parity.js"`).
+**Recommendation:** add `schema-parity.js` to the grounding fingerprint registry (via `meta_state_log_change` with `evidence_code_ref: "tools/learning-loop-mastra/core/schema-parity.js"`).
 
 ---
 
@@ -395,7 +395,7 @@ The shim handles: `pipe`, `optional`, `default`, `nullable`, `array`, `object`, 
 
 | File | What it does |
 |------|--------------|
-| `tools/learning-loop-mastra/mastra/schema-parity.js:15-125` | `buildParitySchema` — the shim |
+| `tools/learning-loop-mastra/core/schema-parity.js:15-125` | `buildParitySchema` — the shim |
 | `tools/learning-loop-mastra/core/schema-normalize.js:18` | `normalizeInputSchema` (moved out of create-loop-tool.js so transport-agnostic consumers — the read-only CLI — can reuse it without importing `@mastra/core`) |
 | `tools/learning-loop-mastra/mastra/create-loop-tool.js:23-62` | `attachParityJSONSchema` — parity view + `parityHints` deep-merge + clone-on-return override |
 | `tools/learning-loop-mastra/mastra/create-loop-tool.js:60` | The `_zod.toJSONSchema` override assignment (returns a clone) |

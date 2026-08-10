@@ -8,6 +8,12 @@ files:
   - path: gate-decision-log.js
     role: facade
     summary: Appends structured decision rows to .gate-decision.log.
+  - path: gate-logging.js
+    role: facade
+    summary: Rotates + appends gate-log.jsonl (appendGateLog / logToolCall) — the canonical I/O helper re-exported by tools/lib for the shell-side handlers.
+  - path: pattern-config.js
+    role: facade
+    summary: Single load of patterns.json + derived gate config (message_flags, inert-sinks, gate-verbs, constraint/gate-verb regex maps) shared by blanking.js and gate-logic.js.
   - path: gate-logic.js
     role: facade
     summary: Gate decision library — globMatch, applyPromotedRules, writePreflightMarker.
@@ -102,6 +108,9 @@ files:
   - path: schema-normalize.js
     role: primitive
     summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps.
+  - path: schema-parity.js
+    role: primitive
+    summary: Build a JSON-Schema-parity view of a Zod schema (buildParitySchema) — unwraps z.preprocess / guarded-boolean unions so MCP/CLI wire schemas stay identical to the pre-migration shape. Pure zod transform; consumed by create-loop-tool/create-loop-workflow and cli-context-savings.
   - path: workflow-input-schema.js
     role: primitive
     summary: wrapWorkflowInputSchema — the U-Q1 unwrap contract for plain handler modules re-homed out of createLoopWorkflow; bakes z.preprocess(stripMcpContentEnvelope, normalizeInputSchema(schema)) into each unwrapped handler's schema so MCP-path envelope stripping survives the unwrap. Composes envelope-stripper + schema-normalize only (transport-agnostic).
@@ -151,8 +160,8 @@ files:
     role: helper
     summary: Operation envelope construction (kind enum + content-hash + pre/post counts) and validation. Auto-emitted by meta_state_batch when callers pass an envelope; replaces ad-hoc `change_diff` arrays with a structural magnitude record.
   - path: operation-invariant.js
-    role: primitive
-    summary: Universal pre-state-only assertinvariant boundary helper. Wraps every core-logic operation that owns an invariant the agent depends on; reduces 4 ad-hoc mechanisms + 1 deny-list to 2 layers (wrapper + kept IMMUTABLE_PATCH_FIELDS deny-list).
+    role: helper
+    summary: Universal pre-state-only assertinvariant boundary helper. Wraps every core-logic operation that owns an invariant the agent depends on; reduces 4 ad-hoc mechanisms + 1 deny-list to 2 layers (wrapper + kept IMMUTABLE_PATCH_FIELDS deny-list). Mixed behavior — pure pre-state check that emits a gate-log violation on failure.
   - path: stable-artifacts-lineage.js
     role: primitive
     summary: Shared plan-ID/phase-number lineage matcher (PATTERNS + durable-id masking + findLineageMatches) for the stable-artifacts rule; single source of truth consumed by the file-scan test and the commit-msg hook.
@@ -202,8 +211,8 @@ files:
     role: helper
     summary: Tracks recurring patterns in gate decision log.
   - path: blanking.js
-    role: primitive
-    summary: Pure command blanking primitives (quote-state machine, strip family, heredoc/data/echo/cli-argv/inert-sink blankers) shared by gate-logic, the classifier, and the tracker — no gate state, no I/O.
+    role: helper
+    summary: Pure command blanking primitives (quote-state machine, strip family, heredoc/data/echo/cli-argv/inert-sink blankers) shared by gate-logic, the classifier, and the tracker — no gate state, no I/O. Mixed behavior — composes the pattern-config facade (patterns.json) with the pure transforms.
   - path: command-classification.js
     role: helper
     summary: Pure runtime-neutral command classifier — gate/recurrence/event modes over shell-parse + blanker primitives; dual-view inert-span provenance for unexpected-match events.

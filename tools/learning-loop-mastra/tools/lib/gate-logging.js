@@ -1,7 +1,12 @@
-// Re-exports the canonical gate-logging helpers from `#lib/gate-logging.js`
-// (which lives at `tools/lib/gate-logging.js`, OUTSIDE fallow's analysis root
-// of `tools/learning-loop-mastra/`) and adds the `replyWithLog` helper that
-// meta-state handlers use for early-return-with-log responses.
+// Re-exports the canonical gate-logging helpers and adds the `replyWithLog`
+// helper that meta-state handlers use for early-return-with-log responses.
+//
+// The canonical implementation lives at `core/gate-logging.js`. `#lib/gate-logging.js`
+// (which resolves to `tools/lib/gate-logging.js`, OUTSIDE fallow's analysis root
+// of `tools/learning-loop-mastra/`) is itself a 1-line re-export of that core
+// module, kept so the ~25 shell-side `#lib/`-aliased importers keep working
+// unchanged after the helpers moved into core (restoring the core one-way
+// dependency — core no longer imports `tools/lib`).
 //
 // Why this file lives inside `tools/learning-loop-mastra/tools/lib/`:
 // `fallow`'s `dupes-mode: mild` clone detector scopes analysis to its `root:`

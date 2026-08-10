@@ -9,7 +9,7 @@
     "mastra/handler-adapter.js",
     "mastra/agents/load-agents-manifest.js",
     "mastra/schemas.js",
-    "mastra/schema-parity.js",
+    "core/schema-parity.js",
     "storage.js",
     "scripts/**",
     "bin/loop.mjs",
@@ -127,6 +127,13 @@
     },
     {
       "file": "tools/lib/gate-logging.js",
+      "exports": [
+        "appendGateLog",
+        "logToolCall"
+      ]
+    },
+    {
+      "file": "core/gate-logging.js",
       "exports": [
         "appendGateLog",
         "logToolCall"

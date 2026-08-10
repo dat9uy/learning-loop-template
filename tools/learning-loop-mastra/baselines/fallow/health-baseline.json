@@ -382,7 +382,7 @@
         "count": 1
       }
     },
-    "mastra/schema-parity.js": {
+    "core/schema-parity.js": {
       "complexity_critical": {
         "count": 1
       },
@@ -638,7 +638,7 @@
     "core/meta-state.js:complexity",
     "core/loop-introspect.js:complexity",
     "tools/handlers/meta-state-re-verify-tool.js:complexity",
-    "mastra/schema-parity.js:complexity",
+    "core/schema-parity.js:complexity",
     "core/evaluate-bash-gate.js:complexity",
     "core/surfaces.js:complexity",
     "tools/handlers/loop-describe-tool.js:complexity",

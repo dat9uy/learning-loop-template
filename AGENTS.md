@@ -22,8 +22,10 @@ The meta-surface is implemented across 3 layers:
 - **Mastra shell (imperative).** Wraps core in Mastra framework primitives.
   Lives at `tools/learning-loop-mastra/mastra/`: `server.js`,
   `create-loop-{tool,workflow,agent}.js`, `handler-adapter.js`,
-  `schema-parity.js`, `schemas.js`, `workflows/`, `agents/`. May import
-  core; core may NOT import the shell.
+  `schemas.js`, `workflows/`, `agents/`. May import
+  core; core may NOT import the shell. Note: `core/schema-parity.js` (the
+  parity view) and `core/cli-context-savings.js` are core modules the CLI
+  and the shell's tool/workflow factories reuse.
 
   > **Path invariant:** shell files MUST live at
   > `tools/learning-loop-mastra/mastra/` and MUST NOT be at the top level of

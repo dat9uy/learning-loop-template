@@ -26,7 +26,7 @@
 // and per-tool case-by-case `delete cleanPatch.entry_kind` defenses) with one
 // primitive that fires BEFORE the mutation.
 
-import { appendGateLog } from "#lib/gate-logging.js";
+import { appendGateLog } from "./gate-logging.js";
 
 /**
  * Pre-state pre-condition failure shape. The wrapper emits this on rejection.

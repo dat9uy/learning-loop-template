@@ -28,9 +28,9 @@ Adding a role requires an ADR (see §4).
 
 | Role | I/O? | Imports | Examples |
 |---|---|---|---|
-| `primitive` | No | Only stdlib + sibling primitives | `slugify.js`, `strict-boolean-guard.js`, `envelope-stripper.js`, `file-readers.js`, `surfaces.js` |
+| `primitive` | No | Only stdlib + sibling primitives | `slugify.js`, `strict-boolean-guard.js`, `envelope-stripper.js`, `schema-parity.js`, `surfaces.js` |
 | `evaluator` | No | `primitive` + `facade` | Phase 3 evaluators (3 files) compose primitives from `gate-logic.js` and facade functions from `inbound-state.js` for state-reading. Import-allow-list refinement (not a new role); revisit if evaluator count > 5. |
-| `facade` | Yes | All | `meta-state.js`, `gate-logic.js`, `gate-decision-log.js`, `gate-override.js`, `loop-introspect.js`, `inbound-state.js` |
+| `facade` | Yes | All | `meta-state.js`, `gate-logic.js`, `gate-decision-log.js`, `gate-override.js`, `loop-introspect.js`, `inbound-state.js`, `file-readers.js`, `gate-logging.js`, `pattern-config.js` |
 | `verification` | Yes (on-demand) | `primitive` + `facade` | `check-grounding.js`, `consistency-check.js`, `query-drift.js`, `derive-status.js`, `runtime-agnostic-checklist.js`, `verification-runner.js` |
 | `validator` | No | `primitive` only | (none currently) |
 | `cache` | Yes | Wraps one sibling | `read-registry-cache.js`, `loop-introspect-cache.js` |
@@ -41,7 +41,7 @@ Adding a role requires an ADR (see §4).
 1. Drop the file in `core/`.
 2. Write a one-line summary.
 3. Add a row to `core/placement.yaml` with `path`, `role`, and `summary`.
-4. Run `node --test __tests__/phase-e-foundation/placement-manifest.test.js`.
+4. Run `pnpm test:one tools/learning-loop-mastra/__tests__/phase-e-foundation/placement-manifest.test.js`.
    If the test fails, the manifest update was missed.
 
 ## 4. Adding a new role
