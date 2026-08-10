@@ -85,6 +85,7 @@ export {
   safeStripHeredocBodies,
   stripCliArgvPayload,
   applyInertSinkBlanking,
+  normalizeQuoteConcatenation,
 } from "./blanking.js";
 
 // Local bindings for the constraint functions below (matchConstraintPattern /
@@ -101,6 +102,7 @@ import {
   stripCliArgvPayload,
   applyInertSinkBlanking,
   safeStripHeredocBodies,
+  normalizeQuoteConcatenation,
   BLANKABLE_HEREDOC_VERBS_PROMOTED,
   BLANKABLE_HEREDOC_VERBS_CONSTRAINT,
   BLANKABLE_HEREDOC_VERBS_GATEVERB,
@@ -137,8 +139,13 @@ export function matchConstraintPattern(command) {
   // Executor verbs (bash/sh/python3) and node-family are NOT in this allowlist
   // — their heredoc bodies execute, so they must stay visible.
   const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_CONSTRAINT);
+  // Quote-concatenation normalization: fold adjacent-quote splits (`s''udo` →
+  // `sudo`) so the first-class constraint regexes (docker/sudo/package-manager/
+  // vendor-api) see the joined form, not the raw split text. The verb layer is
+  // already immune; this closes the same gap for the raw-text regex surface.
+  const quoteSafe = normalizeQuoteConcatenation(heredocSafe);
 
-  for (const segment of splitSegments(heredocSafe)) {
+  for (const segment of splitSegments(quoteSafe)) {
     const stripped = stripMessageFlags(segment);
     const nodeStripped = stripNodeEvalBody(stripped);
     const dataStripped = stripDataCommandQuotes(nodeStripped);
@@ -883,6 +890,13 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // is called with command=null by evaluate-write-gate.js — the regex
         // branch already null-guards, and the pre-pass must too.
         const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_PROMOTED);
+        // Quote-concatenation normalization: fold adjacent-quote splits
+        // (`vitest r''un` → `vitest run`) so the promoted-rule regexes see the
+        // joined form. Same gap the first-class constraint surface closes in
+        // matchConstraintPattern. Applied once over the whole command so both
+        // the per-segment and full-command passes share the folded form. The
+        // verb layer (matchGateVerb) is already immune via the tokenizer.
+        const quoteSafe = normalizeQuoteConcatenation(heredocSafe);
         // Per-segment: a forbidden token in any leg of a compound command
         // (splitSegments splits on ; & |, honoring quotes). This remains the
         // primary match surface so substring rules behave exactly as before.
@@ -893,7 +907,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // the common case) or where the printed output routes to a configured
         // inert sink; a redirect, an exec segment, or a pipe to anything else
         // preserves the prose, so the bypass shapes still match here.
-        const echoSafe = applyInertSinkBlanking(heredocSafe);
+        const echoSafe = applyInertSinkBlanking(quoteSafe);
         for (const segment of splitSegments(echoSafe)) {
           const stripped = stripMessageFlags(segment);
           const nodeStripped = stripNodeEvalBody(stripped);
@@ -928,7 +942,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // preserve ; & | (quote-aware split) so spanning patterns still match
         // real violations.
         if (!matched) {
-          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripCliArgvPayload(stripNodeEvalBody(stripMessageFlags(heredocSafe)))));
+          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripCliArgvPayload(stripNodeEvalBody(stripMessageFlags(quoteSafe)))));
           if (re.test(fullStripped)) {
             matched = true;
           }

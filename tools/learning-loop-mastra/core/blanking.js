@@ -704,6 +704,96 @@ export function stripCliArgvPayload(command) {
   return blankQuotedArgsFor(command, isLoopCliSegment, blankInertQuoted);
 }
 
+// ─── normalizeQuoteConcatenation: adjacent-quote folding ─────────────────────
+//
+// Closes the quote-concatenation bypass (finding
+// meta-260807T1538Z-pre-existing-not-introduced-by-the-echo-prose-relaxation-pro):
+// POSIX folds adjacent quoted regions and unquoted word parts into ONE word
+// (`s''udo` → `sudo`, `'ab''cd'` → `abcd`, `w''idgetctl` → `widgetctl`), so a
+// banned token an author splits with empty quotes is invisible to a regex that
+// matches the raw text (`\bsudo\b` never sees the joined form). The verb layer
+// (classifyPolicyTokens) already folds quotes during tokenization and is immune;
+// this normalizer gives the two raw-text regex surfaces the same view.
+//
+// Transformation (mirrors the shell's concatenation rule):
+//   - A quoted region adjacent to a word part on either side (no whitespace or
+//     shell operator between) FUSES: the quote syntax is dropped and the region
+//     content joins the neighbor. `''` (empty) always drops, joining its sides.
+//   - `$'...'` / `$"..."` (ANSI-C / locale quoting) are treated as quote syntax:
+//     the `$` drops too, so `$'wid'getctl` → `widgetctl` (shell-correct).
+//   - A quoted region bounded by whitespace / operator / string edge on BOTH
+//     sides is a STANDALONE value and is preserved verbatim — the blankers
+//     (stripMessageFlags, stripEchoProse, blankInertQuoted, …) depend on the
+//     quoting to recognize prose, so it must not be stripped here.
+//   - A double-quoted region containing a command substitution (`$(...)` or
+//     backtick) EXECUTES before the surrounding command runs and is preserved
+//     verbatim (same preserve rule as emitDquoteRegion) — folding could not
+//     hide it, but preserving is the conservative direction.
+//   - Heredoc delimiter words (`<<'EOF'`) are preserved: the delimiter is
+//     bounded by the `<` operator and a newline, so it never fuses. This keeps
+//     stripHeredocBodies' quoted-delimiter data-eligibility intact.
+//   - Backslash escapes are emitted verbatim (a `\'` is a literal quote char,
+//     not a region opener), preserving escape semantics.
+//
+// Fail-safe direction: folding only ever makes tokens MORE contiguous (and thus
+// MORE visible to a regex). It never splits a token or drops content, so it
+// cannot hide a banned token that was visible before.
+export function normalizeQuoteConcatenation(command) {
+  if (typeof command !== "string" || !command) return command;
+  const BOUNDARY = new Set([";", "&", "|", "<", ">", "(", ")"]);
+  const isBoundary = (c) => c === null || c === undefined || /\s/.test(c) || BOUNDARY.has(c);
+
+  let out = "";
+  let i = 0;
+  while (i < command.length) {
+    const ch = command[i];
+    // Backslash escape: emit the pair verbatim (a `\'` is a literal quote char).
+    if (ch === "\\") {
+      out += command.slice(i, Math.min(i + 2, command.length));
+      i += 2;
+      continue;
+    }
+    // ANSI-C / locale quoted region: `$'...'` / `$"..."`. The `$` is quote
+    // syntax and drops when the region fuses.
+    const isAnsiQuote = ch === "$" && (command[i + 1] === "'" || command[i + 1] === '"');
+    const isPlainQuote = ch === "'" || ch === '"';
+    if (!isAnsiQuote && !isPlainQuote) {
+      out += ch;
+      i++;
+      continue;
+    }
+    const quoteIdx = isAnsiQuote ? i + 1 : i;
+    const quoteCh = command[quoteIdx];
+    const isDouble = quoteCh === '"';
+    // Scan to the matching close quote (honoring backslash escapes inside double
+    // quotes; single-quote regions are literal).
+    let j = quoteIdx + 1;
+    let closed = false;
+    while (j < command.length) {
+      if (isDouble && command[j] === "\\") { j += 2; continue; }
+      if (command[j] === quoteCh) { closed = true; j++; break; }
+      j++;
+    }
+    const regionContent = command.slice(quoteIdx + 1, closed ? j - 1 : command.length);
+    const closeIdx = closed ? j - 1 : command.length;
+    const charBefore = quoteIdx > 0 ? command[quoteIdx - 1] : null;
+    const charAfter = closeIdx + 1 < command.length ? command[closeIdx + 1] : null;
+    const isEmpty = regionContent.length === 0;
+    // A double-quoted command substitution executes and stays visible verbatim.
+    const hasCommandSubst = isDouble && (/\$\(/.test(regionContent) || regionContent.includes("`"));
+    const fuses = !hasCommandSubst && (isEmpty || !isBoundary(charBefore) || !isBoundary(charAfter));
+    if (fuses) {
+      out += regionContent;
+      i = closeIdx + 1;
+      continue;
+    }
+    // Standalone value: preserve verbatim (including the `$` for $'...').
+    out += command.slice(i, closeIdx + 1);
+    i = closeIdx + 1;
+  }
+  return out;
+}
+
 
 /**
  * Inert-sink blanking on the parse substrate. When a real pipe's target verb is a configured inert sink
