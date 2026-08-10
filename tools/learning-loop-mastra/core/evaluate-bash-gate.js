@@ -13,6 +13,7 @@ import {
   loadPromotedRules,
   applyPromotedRules,
   findProjectRoot,
+  normalizeQuoteConcatenation,
 } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 import { checkObservationStaleness } from "./inbound-state.js";
@@ -189,8 +190,15 @@ export function evaluateBashGate({ command, root }) {
   let constraintResult = null;
   let pathResult = null;
 
+  // Quote-concatenation normalization: fold adjacent-quote splits (`s''udo` →
+  // sudo, `rec''ords/` → records/) so the raw-text regex surfaces (constraint
+  // patterns, path-write patterns, promoted rules) see the joined form. The
+  // verb layer (matchGateVerb → classifyPolicyTokens) is a real tokenizer and
+  // already folds quotes, so it keeps the RAW command below.
+  const quoteSafe = normalizeQuoteConcatenation(command);
+
   // --- Constraint pattern check ---
-  const constraintMatch = matchConstraintPattern(command);
+  const constraintMatch = matchConstraintPattern(quoteSafe);
   if (constraintMatch) {
     const observations = readRuntimeObservations(resolvedRoot);
     const observationStatus = checkObservationExists(constraintMatch, observations);
@@ -280,7 +288,7 @@ export function evaluateBashGate({ command, root }) {
   // The two checks below are independent (NOT if/else-if): a compound
   // command matching both must still produce the records-class block even
   // when the runtime-state half is exempted by an active marker.
-  if (commandWritesToRuntimeState(command)) {
+  if (commandWritesToRuntimeState(quoteSafe)) {
     if (!hasSurfacePreflightMarker(resolvedRoot, ".loop-preflight-runtime-state-edit")) {
       pathResult = {
         decision: "block",
@@ -295,14 +303,14 @@ export function evaluateBashGate({ command, root }) {
   // forging rows, not maintaining records. Checked independently BEFORE the
   // generic gated-path check so a compound command matching both still reports
   // the decision-log seam.
-  if (!pathResult && commandWritesToDecisionLog(command)) {
+  if (!pathResult && commandWritesToDecisionLog(quoteSafe)) {
     pathResult = {
       decision: "block",
       reason: DECISION_LOG_WRITE_REASON,
       hard_block: true,
     };
   }
-  if (!pathResult && commandWritesToGatedPath(command)) {
+  if (!pathResult && commandWritesToGatedPath(quoteSafe)) {
     pathResult = {
       decision: "block",
       reason: "Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.",
