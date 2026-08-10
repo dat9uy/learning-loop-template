@@ -731,13 +731,16 @@ function computeTopReferences(entries) {
     .map(([id, count]) => ({ id, count }));
 }
 
-// Drift: 5 most-recent non-resolved mechanism_check findings. F12: display the
-// index-authoritative fingerprint (file-index.jsonl), falling back to the
-// vestigial per-record field. `fileIndex` is optional — callers with a root
-// pass readFileIndex(root); callers without it pass nothing (fallback).
+// Drift: 5 most-recent open mechanism_check findings. Terminal statuses
+// (resolved/superseded/accepted/archived) are excluded via `isOpen` — a
+// terminal finding is not drift, and an archived one must not surface as a
+// fresh drift candidate. F12: display the index-authoritative fingerprint
+// (file-index.jsonl), falling back to the vestigial per-record field.
+// `fileIndex` is optional — callers with a root pass readFileIndex(root);
+// callers without it pass nothing (fallback).
 function computeDriftEntries(entries, fileIndex) {
   return entries
-    .filter((e) => e.entry_kind === "finding" && e.mechanism_check === true && e.status !== "resolved")
+    .filter((e) => e.entry_kind === "finding" && e.mechanism_check === true && isOpen(e))
     .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
     .slice(0, 5)
     .map((e) => ({
