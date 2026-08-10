@@ -23,7 +23,7 @@ const VERIFY_ALLOWLIST = new Set(patterns["meta-state-verify-cmd-allowlist"] || 
  *   2. spawnSync with shell: false
  *   3. timeout: step.timeout_ms ?? 10_000
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- guard chain returning distinct signal codes (invalid_step/cmd_not_allowlisted/stdout_mismatch/exit_N/spawn_error); the fail-closed chain is the canonical shape
 export function runVerification(root, step) {
   if (!step || typeof step.cmd !== "string") {
     return { status: "error", signal: "invalid_step" };

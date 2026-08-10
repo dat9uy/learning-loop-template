@@ -35,7 +35,7 @@ function validateMarker(parsed) {
  * @param {string} root
  * @returns {object|null}
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- cache-freshness stat check + per-surface iteration with per-surface try/catch guards; the linear read path is the canonical shape
 export function readGateOverride(root) {
   const cached = overrideCache.get(root);
   if (cached) {
@@ -127,7 +127,7 @@ export function writeGateOverride(root, { rule_id, ttl_seconds, operator_note })
   readModifyWriteOnAllSurfaces(
     root,
     OVERRIDE_FILE,
-    // fallow-ignore-next-line complexity
+    // fallow-ignore-next-line complexity -- dedupe-merge closure (required modifier-function shape); trivial branching
     (current) => {
       const ruleIds = [];
       if (current && Array.isArray(current.rule_ids)) {

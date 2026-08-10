@@ -63,7 +63,7 @@ function walkProject(projectRoot, excludeGlobs) {
   const results = [];
   const exclude = excludeGlobs || DEFAULT_EXCLUDE_GLOBS;
 
-  // fallow-ignore-next-line complexity
+  // fallow-ignore-next-line complexity -- recursive filesystem walk with exclude pruning; recursion + filter chain is the canonical shape
 function walk(dir) {
     let entries;
     try {
@@ -151,7 +151,7 @@ const ERROR_PATHS = [
   "change-log-immutable",
 ];
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- Markdown serializer with per-bucket + summary sections; the flat emission chain is the canonical shape
 function projectToMarkdown(output) {
   const lines = [];
   lines.push(`# Test Codebase Scout Report`);
@@ -225,7 +225,7 @@ function validateOutput(output, schemaPath) {
  * @param {string[]} [options.excludeGlobs]
  * @returns {object} ScoutOutput
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- orchestrator chaining walk→classify→detect→estimate→markdown with per-step error capture; the sequential pipeline is the canonical shape
 export function runScout(options) {
   const projectRoot = options.projectRoot || process.cwd();
   const excludeGlobs = options.excludeGlobs || DEFAULT_EXCLUDE_GLOBS;

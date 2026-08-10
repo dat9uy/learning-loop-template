@@ -36,7 +36,6 @@
     "tools/handlers/references/**",
     "tools/handlers/fixtures/**",
     "tools/handlers/scripts/**",
-    "scout/pipeline/**",
     "plans/**",
     "docs/**",
     "**/*.test.js",
@@ -137,6 +136,181 @@
       "file": "tools/lib/patch-hints.js",
       "exports": [
         "listMutableFieldsCsv"
+      ]
+    },
+    {
+      "file": "core/canonical-compare.js",
+      "exports": [
+        "canonicalize"
+      ]
+    },
+    {
+      "file": "core/check-grounding.js",
+      "exports": [
+        "META_STATE_GROUNDING_STATUSES",
+        "META_STATE_GROUNDING_DRIFT_KINDS",
+        "FileNotFoundError"
+      ]
+    },
+    {
+      "file": "core/consistency-check.js",
+      "exports": [
+        "META_STATE_CONSISTENCY_INVARIANTS"
+      ]
+    },
+    {
+      "file": "core/derive-status.js",
+      "exports": [
+        "META_STATE_DERIVATION_KINDS",
+        "META_STATE_DERIVED_STATUSES",
+        "META_STATE_RECOMMENDATIONS"
+      ]
+    },
+    {
+      "file": "core/entry/index.js",
+      "exports": [
+        "createFinding",
+        "createRule",
+        "createChangeLog",
+        "createLoopDesign",
+        "deepFreeze"
+      ]
+    },
+    {
+      "file": "core/entry/relationship-graph.js",
+      "exports": [
+        "kindForId"
+      ]
+    },
+    {
+      "file": "core/evaluate-inbound-gate.js",
+      "exports": [
+        "STATE_CHANGE_PATTERNS"
+      ]
+    },
+    {
+      "file": "core/gate-logic.js",
+      "exports": [
+        "evaluateBudget"
+      ]
+    },
+    {
+      "file": "core/loop-introspect.js",
+      "exports": [
+        "TERMINAL_STATUSES_FOR_DISPATCH"
+      ]
+    },
+    {
+      "file": "core/manifest-loader.js",
+      "exports": [
+        "resolveToolFile"
+      ]
+    },
+    {
+      "file": "core/meta-state.js",
+      "exports": [
+        "TERMINAL_STATUSES",
+        "metaStateEntrySchema",
+        "metaStateEntryPatchSchema",
+        "InvalidEntryError",
+        "SchemaVersionSkewError",
+        "deleteEntry",
+        "isValidEntryIdRef",
+        "metaStateCitationEntrySchema"
+      ]
+    },
+    {
+      "file": "core/recurrence-tracker.js",
+      "exports": [
+        "findRecurrentGroups",
+        "hashRecurrenceKey"
+      ]
+    },
+    {
+      "file": "core/registry-append-atomic.js",
+      "exports": [
+        "assertNoChangeLogLeak",
+        "assertNoCitationLeak"
+      ]
+    },
+    {
+      "file": "core/runtime-state.js",
+      "exports": [
+        "readRuntimeStateRowsDetailed",
+        "computeFingerprint",
+        "assertKindConditionalStatus"
+      ]
+    },
+    {
+      "file": "core/shell-parse.js",
+      "exports": [
+        "parse"
+      ]
+    },
+    {
+      "file": "core/evaluate-write-gate.js",
+      "exports": [
+        "evaluatePreflight"
+      ]
+    },
+    {
+      "file": "core/evaluate-bash-gate.js",
+      "exports": [
+        "DECISION_LOG_WRITE_PATTERNS",
+        "PATH_WRITE_PATTERNS",
+        "DECISION_LOG_WRITE_REASON"
+      ]
+    },
+    {
+      "file": "core/identity-pin.js",
+      "exports": [
+        "__getPinStateForTests",
+        "__resetForTests"
+      ]
+    },
+    {
+      "file": "core/path-containment.js",
+      "exports": [
+        "clearRealpathCache",
+        "isHardlinked"
+      ]
+    },
+    {
+      "file": "core/surfaces.js",
+      "exports": [
+        "writeToAllSkills"
+      ]
+    },
+    {
+      "file": "core/r2/ownership.js",
+      "exports": [
+        "BOOTSTRAP_DENY_PATTERNS"
+      ]
+    },
+    {
+      "file": "core/r2/allowlist-cache.js",
+      "exports": [
+        "__clearCache"
+      ]
+    },
+    {
+      "file": "core/runtime-agnostic-checklist.js",
+      "exports": [
+        "stripCommentsAndStrings"
+      ]
+    },
+    {
+      "file": "core/operation-envelope.js",
+      "exports": [
+        "KIND_OP_COMPATIBILITY",
+        "normalizeLegacyStatus",
+        "validateEnvelope"
+      ]
+    },
+    {
+      "file": "core/registry-stats.js",
+      "exports": [
+        "findDuplicateVersionPerId"
       ]
     }
   ],

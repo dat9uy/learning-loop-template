@@ -33,7 +33,6 @@ import { globMatch } from "../gate-logic.js";
  * `.gate-override` are operator-controlled.
  */
 // Test-only fixture consumed by ownership.test.js (Fallow's ignorePatterns excludes __tests__ consumers).
-// fallow-ignore-next-line unused-export
 export const BOOTSTRAP_DENY_PATTERNS = Object.freeze([
   ".loop/r2-allowlist.json",
   "**/.loop/r2-allowlist.json",
@@ -60,7 +59,7 @@ const BOOTSTRAP_HINT =
 // branch count is inherent to the R1/R6 rules. r2/ownership.test.js covers it
 // (CRAP drops below threshold with coverage); cyclomatic/cognitive stay high by
 // design, so suppress the complexity finding rather than split the cascade.
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 5-step ordered cascade (bootstrap-deny → own → universal → deny → default-deny); splitting obscures the R1→default-deny priority
 export function checkR2Ownership({ runtime, path: userPath, allowlist, root }) {
   // 1. BOOTSTRAP_DENY first (R1).
   for (const pattern of BOOTSTRAP_DENY_PATTERNS) {

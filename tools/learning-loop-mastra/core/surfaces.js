@@ -69,8 +69,7 @@ export function getAllCoordinationPaths(subpath) {
 // acceptance review. Consumed internally by writeToAllSurfaces (back-compat,
 // has external callers) and writeToAllSkills; current skill edits use
 // gated-Edit-per-mirror (red-team #6), so no external import exists yet.
-// fallow-ignore-next-line unused-export
-export function writeToAllSurfacesSection(root, section, subpath, content, opts = {}) {
+function writeToAllSurfacesSection(root, section, subpath, content, opts = {}) {
   const results = [];
   for (const surface of SURFACES) {
     results.push(writeOneSurface(root, surface, section, subpath, content, opts));
@@ -133,7 +132,6 @@ export function writeToAllSurfaces(root, subpath, content) {
 // Consumed by tools/scripts/sync-skills.mjs — outside fallow's --root
 // (tools/learning-loop-mastra), so the import is invisible to the audit and
 // the export would otherwise be flagged unused. Not stale.
-// fallow-ignore-next-line unused-export
 export function writeToAllSkills(root, subpath, content) {
   return writeToAllSurfacesSection(root, "skills", subpath, content, { skipUnchanged: true });
 }
@@ -212,7 +210,7 @@ export function appendToAllSurfaces(root, subpath, line) {
 // since + sort options). Untouched by the skill-layer work; flagged because
 // surfaces.js is in the changed-since set. Logic is correct and covered by
 // surfaces-read-jsonl.test.js.
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- inherited fan-out (surface → line scan with parse/since/dedupe guards); per-line logic is small, covered by surfaces-read-jsonl.test.js
 export function readJsonlFromAllSurfaces(root, subpath, options = {}) {
   const { dedupe = true, since = 0, sort = "asc" } = options;
   const sinceMs = typeof since === "string" ? new Date(since).getTime() : since;
@@ -279,7 +277,7 @@ export function readJsonlFromAllSurfaces(root, subpath, options = {}) {
 // lock + read + modify + write + remove-on-null). Untouched by the skill-layer
 // work; flagged because surfaces.js is in the changed-since set. Covered by
 // surfaces-rmw.test.js.
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- inherited fan-out (read/modify/write/remove-on-null per surface); per-surface branches are guarded outcomes, covered by surfaces-rmw.test.js
 export function readModifyWriteOnAllSurfaces(root, subpath, modifier, options = {}) {
   const { removeOnNull = false } = options;
   const results = [];

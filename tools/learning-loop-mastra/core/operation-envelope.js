@@ -1,4 +1,6 @@
 // fallow-ignore-file complexity
+// File-wide: operation-envelope validation/magnitude logic is high-complexity by
+// design; verified NOT stale in the fallow workaround-refactor plan (P1).
 /**
  * Operation envelope — magnitude + content-hash metadata for batch mutations.
  *
@@ -49,7 +51,6 @@ export const OPERATION_ENVELOPE_KINDS = Object.freeze([
  * - requiredOps: at least one op of this type must be present
  * - disallowedOps: no op of this type may be present (reserved for future use)
  */
-// fallow-ignore-next-line unused-export -- public API for future callers + tests (consumed by buildEnvelope + tests)
 export const KIND_OP_COMPATIBILITY = Object.freeze({
   migration:         { requiredOps: [], disallowedOps: [] },
   sweep:             { requiredOps: ["delete"], disallowedOps: [] },
@@ -95,7 +96,6 @@ export const CANONICAL_KIND_KEYS = Object.freeze([
  * the boundary so its `by_status` output is canonical regardless of input
  * registry shape.
  */
-// fallow-ignore-next-line unused-export -- public API for future callers (consumed by countRegistry + tests)
 export function normalizeLegacyStatus(status) {
   if (status === "active" || status === "reported" || status === "stale") {
     return "open";
@@ -290,8 +290,7 @@ export function buildEnvelope({ kind, target, ops, preRegistry, postRegistry }) 
  *   { kind, target, pre_count: {total, by_status, by_kind},
  *     post_count: {total, by_status, by_kind}, content_hash: sha256:<64-hex> }
  */
-// fallow-ignore-next-line complexity
-// fallow-ignore-next-line unused-export
+// fallow-ignore-next-line complexity -- orchestrator already decomposed into validateKind/validateTarget/validateCounts/validateContentHash/validateRecord; extraction itself is the canonical reduction
 export function validateEnvelope(envelope) {
   if (!envelope || typeof envelope !== "object") {
     return { ok: false, reason: "envelope_not_object" };

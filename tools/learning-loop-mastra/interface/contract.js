@@ -126,7 +126,7 @@ function checkHookShimSet(runtimeId, rootPath) {
   // callback. Untouched by the skill-layer work; flagged because contract.js
   // is in the changed-since set. CRAP is high from low coverage of the
   // universal_target branch, not from a defect. Covered by contract.test.js Req #1.
-  // fallow-ignore-next-line complexity
+  // fallow-ignore-next-line complexity -- per-shim exists/capture guard chain with universal-hook path capture; inherited + test-covered
   const shims = SHIM_BASENAMES.map((basename) => {
     const shimPath = join(shimDir, basename);
     const exists = existsSync(shimPath);
@@ -323,7 +323,7 @@ function checkMirrorPresence(name, rootPath) {
 // per-skill validation loop; sub-steps are already extracted (extractSkillFrontmatter,
 // readSkillSafe, listLoopMaintainedSkills, checkMirrorPresence). Covered by
 // contract.test.js req-3 cases.
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- per-skill validation chain (manifest/read/frontmatter/maturity/mirror/tool-ref); sub-steps already extracted, remaining loop is orchestration
 function checkSkillSpec(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
   const surface = runtime.surface;
@@ -446,7 +446,7 @@ function addMastraShapeCommand(entry, commands) {
   if (typeof entry?.command === "string") commands.push(entry.command);
 }
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 3-line push loop; exists only because for-loop + typeof-check crosses the cyclomatic floor
 function addClaudeShapeCommands(entry, commands) {
   for (const h of entry?.hooks ?? []) {
     if (typeof h?.command === "string") commands.push(h.command);
@@ -457,7 +457,7 @@ function addClaudeShapeCommands(entry, commands) {
 //   Claude Code / Droid: { PreToolUse: [{ matcher, hooks: [{ command }] }] }
 //   Mastra Code declarative: { PreToolUse: [{ command, matcher: { tool_name } }] }
 // CC floor: nested iteration over hook config entries (for-event + for-entry).
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- nested iteration over hook-config blocks (for-event + for-entry); delegates to shape helpers
 function collectHookCommands(hooksObj) {
   const commands = [];
   for (const block of Object.values(hooksObj ?? {})) {

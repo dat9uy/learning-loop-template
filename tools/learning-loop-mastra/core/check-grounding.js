@@ -94,7 +94,7 @@ export function computeFileHash(absPath) {
  * @param {Object} codeContext - { root, run_tests?, test_passed?, now? }
  * @returns {Object} GroundingResult — the parent's locked shape
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- guard returns (skipped/unknown) then ~60-line flat signal-resolution block (path resolve → hash with read-race fallback → baseline vs fingerprint); pure linear logic with an extraction candidate left as-is for readability
 export function checkGrounding(entry, codeContext) {
   const root = codeContext.root;
   const now = codeContext.now ?? (() => Date.now());
@@ -237,7 +237,7 @@ export function checkGrounding(entry, codeContext) {
   };
 }
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 3-branch drift guard chain (code-missing/hash-mismatch/test-failed); each maps to a distinct signal
 function computeStatus(grounding) {
   if (grounding.code_ref_exists === false) return "drifted";
   if (grounding.hash_match === false) return "drifted";
@@ -245,7 +245,7 @@ function computeStatus(grounding) {
   return "grounded";
 }
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 3-branch drift-kind map mirroring computeStatus; each branch maps a signal to a named kind
 function computeDriftKind(status, grounding) {
   if (status !== "drifted") return null;
   if (grounding.code_ref_exists === false) return "code_missing";

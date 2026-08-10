@@ -52,7 +52,6 @@ function loadText(root, relPath) {
  *   remains best-effort; the rule's `enforcement: "agent"` (the agent
  *   itself) is the canonical check.
  */
-// fallow-ignore-next-line unused-export
 export function stripCommentsAndStrings(text) {
   return text
     .replace(/\/\*[\s\S]*?\*\//g, "") // block comments /* ... */
@@ -278,7 +277,7 @@ export const CHECKLIST = [
   {
     id: "shims-in-sync",
     description: "Every runtime surface wired as kind:\"shim\" in hooks-lock.json carries that hook's .cjs shim byte-identical across those surfaces; kind:\"direct\"/\"adapter\"/\"none\" surfaces are filtered out of the parity set.",
-    // fallow-ignore-next-line complexity
+    // fallow-ignore-next-line complexity -- shim-parity verify closure (scan surfaces → resolve parity set → compare bytes); parity-set resolution branches are distinct fallback cases
     verify(featurePath, root) {
       // Enumerate the actual .cjs shims in each surface's hooks dir. Shim
       // filenames use a separate convention from the universal hook files
@@ -363,7 +362,7 @@ export const CHECKLIST = [
   {
     id: "protocol-adapter-i-o",
     description: "Hook I/O is normalized through hooks/lib/protocol-adapter.js (use `parseInput` / `formatOutput` / `normalizeToolName`).",
-    // fallow-ignore-next-line complexity
+    // fallow-ignore-next-line complexity -- protocol-adapter verify closure (collect hook files → scan I/O usage → fail/pass); linear scan with guard branches
     verify(featurePath, root) {
       const hookFiles = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -397,7 +396,7 @@ export const CHECKLIST = [
   {
     id: "manifest-registered",
     description: "New MCP tools are listed in tools/learning-loop-mastra/agent-manifest.json (add to a group; `runtime_agnostic`, `gate`, `workflow`, `meta_state`, or `introspection`).",
-    // fallow-ignore-next-line complexity
+    // fallow-ignore-next-line complexity -- manifest-registered verify closure (collect tool files → load manifest → reconcile); linear scan with guard branches
     verify(featurePath, root) {
       const tools = [];
       for (const file of walkFiles(root, featurePath)) {

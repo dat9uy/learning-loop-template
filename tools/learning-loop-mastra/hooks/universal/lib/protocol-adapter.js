@@ -22,7 +22,7 @@ export function parseInput(stdin) {
 /**
  * Normalize tool names between Claude Code and Droid CLI.
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 3-branch tool-name lookup mapping (bash/write/passthrough); trivial branching
 export function normalizeToolName(toolName) {
   if (!toolName || typeof toolName !== "string") return null;
   const lower = toolName.toLowerCase();
@@ -50,7 +50,7 @@ export function extractFilePath(toolInput) {
 /**
  * Extract prompt from user message (handles both Claude and Droid formats).
  */
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- 2-branch fallback read (prompt/user_prompt); trivial
 export function extractPrompt(payload) {
   if (!payload || typeof payload !== "object") return null;
   return payload.prompt || payload.user_prompt || null;

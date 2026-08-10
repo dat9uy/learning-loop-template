@@ -139,7 +139,6 @@ export function isIdentityPinError(err) {
  *
  * @returns {Readonly<{runtime: string}>|null}
  */
-// fallow-ignore-next-line unused-export
 export function __getPinStateForTests() {
   return pinState;
 }
@@ -150,7 +149,6 @@ export function __getPinStateForTests() {
  * module's internal state so the next `pinRuntimeIdAtBoot()` re-reads the env.
  * NOT for production use.
  */
-// fallow-ignore-next-line unused-export
 export function __resetForTests() {
   pinState = null;
 }

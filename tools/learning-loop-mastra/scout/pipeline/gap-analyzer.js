@@ -8,7 +8,7 @@
  * @returns {{ surface, total, covered, percent, missing }}
  */
 
-// fallow-ignore-next-line complexity
+// fallow-ignore-next-line complexity -- per-surface coverage accumulator with term-matching against every test file; the nested scan is the canonical shape
 export function analyzeGaps(surface, testFiles) {
   if (!surface || !Array.isArray(surface.items)) {
     return { surface: surface?.name || "unknown", total: 0, covered: 0, percent: 100, missing: [] };

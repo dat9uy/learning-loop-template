@@ -67,23 +67,3 @@ export function getSessionId(root) {
   _cache.set(root, { id, at: now });
   return id;
 }
-
-/** Test-only: invalidate the cache (used between tests to avoid stale sessions). */
-export function _clearSessionIdCacheForTests() {
-  _cache.clear();
-}
-
-/**
- * Resolve the marker path for `(root, surface, sessionId)`. The session id
- * defaults to `getSessionId(root)` if omitted. The marker filename now
- * embeds the session id (and optional surface scope for cross-surface
- * isolation per Finding 11).
- */
-export function getMarkerPath(root, surface, sessionId = getSessionId(root)) {
-  return join(root, surface, "coordination", `.last-operator-message-${sessionId}`);
-}
-
-/** Legacy marker path (session-id migration consideration). */
-export function getLegacyMarkerPath(root, surface) {
-  return join(root, surface, "coordination", ".last-operator-message");
-}

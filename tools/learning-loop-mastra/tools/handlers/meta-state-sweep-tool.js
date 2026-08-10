@@ -30,7 +30,7 @@ export const metaStateSweepTool = {
     // legacy apply:true mode. Now read-only — same shape, no writes.
     const findings = staleSet
       .filter((e) => (e.entry_kind ?? "finding") === "finding")
-      // fallow-ignore-next-line complexity
+      // fallow-ignore-next-line complexity -- pure field-selection projection with ?? defaults; no branching logic to extract
       .map((e) => ({
         id: e.id,
         status: e.status ?? "open",
