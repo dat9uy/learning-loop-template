@@ -8,6 +8,8 @@
     "completeness": "complete"
   },
   "unused_files": [
+    "__tests__/helpers/cli-spawn.cjs",
+    "__tests__/helpers/measure-residue.mjs",
     "__tests__/helpers/probe-helpers.cjs"
   ],
   "unused_exports": [],

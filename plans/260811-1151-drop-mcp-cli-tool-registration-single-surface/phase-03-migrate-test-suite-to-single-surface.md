@@ -127,15 +127,15 @@ user decision: CLI vs direct-handler]
 
 ## Success Criteria
 
-- [ ] `grep -rn "mcp.callTool.*mastra_" __tests__/` only hits residue tool names
+- [x] `grep -rn "mcp.callTool.*mastra_" __tests__/` only hits residue tool names
       (`workflow_generate_prompt`, `check_runtime_agnostic`) or is gone.
-- [ ] No test asserts a `CLI_TOOLS` member is in MCP `listTools`.
-- [ ] `cli-read-parity` + `cli-write-parity` compare CLI stdout vs normalized direct-handler imports with isolated roots; no flag=0 env.
-- [ ] Bounded MCP schema/transport tests remain green, including the `meta_state_patch` schema-hint assertion.
-- [ ] CLI list asserts 42; handler introspection asserts 44; agent-manifest tests assert 50; live MCP list asserts exactly 8.
-- [ ] `integration/cold-session-discoverability` and `manifest-arithmetic` are updated alongside `cold-session-enumerate-mastra`.
-- [ ] All CLI subprocess migrations pass `LOOP_SURFACE`, isolated `GATE_ROOT`, and `MASTRA_STORAGE_DRIVER`.
-- [ ] `pnpm vitest run __tests__` green (full suite, post-Phase 1+2).
+- [x] No test asserts a `CLI_TOOLS` member is in MCP `listTools`.
+- [x] `cli-read-parity` + `cli-write-parity` compare CLI stdout vs normalized direct-handler imports with isolated roots; no flag=0 env.
+- [x] Bounded MCP schema/transport tests remain green, including the `meta_state_patch` schema-hint assertion.
+- [x] CLI list asserts 42; handler introspection asserts 44; agent-manifest tests assert 50; live MCP list asserts exactly 8.
+- [x] `integration/cold-session-discoverability` and `manifest-arithmetic` are updated alongside `cold-session-enumerate-mastra`.
+- [x] All CLI subprocess migrations pass `LOOP_SURFACE`, isolated `GATE_ROOT`, and `MASTRA_STORAGE_DRIVER`.
+- [x] `pnpm vitest run __tests__` green (full suite, post-Phase 1+2).
 
 ## Risk Assessment
 

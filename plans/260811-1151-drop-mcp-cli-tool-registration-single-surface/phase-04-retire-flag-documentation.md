@@ -86,11 +86,11 @@ against). The whole-repo grep is widened beyond `docs/ AGENTS.md CLAUDE.md` to i
 
 ## Success Criteria
 
-- [ ] `.mcp.json`, `.factory/mcp.json`, `.mastracode/mcp.json` carry no `LOOP_*_VIA_CLI` key.
-- [ ] `docs/runtime-contract.md` describes the CLI as the single record surface with no opt-out flags.
-- [ ] `CLAUDE.md` "Tool surface" bullet distinguishes 42 CLI, 44 handler-manifest, 8 live MCP, and 50 agent-declaration tools.
-- [ ] `docs/architecture.md`, `philosophy.md`, `mcp-tool-schema-architecture.md`, `RUNTIME_ONBOARDING.md` carry no active-flag prose.
-- [ ] Whole-repo grep returns zero evergreen hits (historical journals excepted).
+- [x] `.mcp.json`, `.factory/mcp.json`, `.mastracode/mcp.json` carry no `LOOP_*_VIA_CLI` key.
+- [x] `docs/runtime-contract.md` describes the CLI as the single record surface with no opt-out flags.
+- [x] `CLAUDE.md` "Tool surface" bullet distinguishes 42 CLI, 44 handler-manifest, 8 live MCP, and 50 agent-declaration tools.
+- [x] `docs/architecture.md`, `philosophy.md`, `mcp-tool-schema-architecture.md`, `RUNTIME_ONBOARDING.md` carry no active-flag prose.
+- [x] Whole-repo grep returns zero evergreen hits (historical journals excepted).
 
 ## Risk Assessment
 

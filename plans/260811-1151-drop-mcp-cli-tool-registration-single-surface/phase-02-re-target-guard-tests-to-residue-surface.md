@@ -109,15 +109,15 @@ cover `createLoopTool` conversion, registration, and representative protocol beh
 
 ## Success Criteria
 
-- [ ] `mcp-wire-budget.test.js` asserts `<= 6_000` all-tools on the residue; comment anchors it.
-- [ ] `cli-optout-wiring.test.js` asserts the 8-tool residue + the two salvaged CLI-contract tests; no flag assertions.
-- [ ] `mcp-config.test.js` drops the flag from `EXPECTED_ENV`; keeps `LOOP_SURFACE`.
-- [ ] `cli-sessionstart-banner.test.js` asserts the unconditional banner + sketch rendering; no flag-param assertions.
-- [ ] `cli-write-tool-set-drift.test.js` boots `withMcpServer` and asserts the manifest residue; 5-vs-8 model documented.
-- [ ] `vitest.config.mjs` `E2E_FILES` no longer lists the deleted file; `cli-optout-wiring` tier-correct.
-- [ ] `__tests__/helpers/measure-residue.mjs` committed.
-- [ ] `cli-mcp-subset-registration.test.js` deleted.
-- [ ] `grep -rn "LOOP_RECORDS_VIA_CLI\|LOOP_READS_VIA_CLI" tools/learning-loop-mastra/__tests__` returns no opt-out assertions.
+- [x] `mcp-wire-budget.test.js` asserts `<= 6_000` all-tools on the residue; comment anchors it.
+- [x] `cli-optout-wiring.test.js` asserts the 8-tool residue + the two salvaged CLI-contract tests; no flag assertions.
+- [x] `mcp-config.test.js` drops the flag from `EXPECTED_ENV`; keeps `LOOP_SURFACE`.
+- [x] `cli-sessionstart-banner.test.js` asserts the unconditional banner + sketch rendering; no flag-param assertions.
+- [x] `cli-write-tool-set-drift.test.js` boots `withMcpServer` and asserts the manifest residue; 5-vs-8 model documented.
+- [x] `vitest.config.mjs` `E2E_FILES` no longer lists the deleted file; `cli-optout-wiring` tier-correct.
+- [x] `__tests__/helpers/measure-residue.mjs` committed.
+- [x] `cli-mcp-subset-registration.test.js` deleted.
+- [x] `grep -rn "LOOP_RECORDS_VIA_CLI\|LOOP_READS_VIA_CLI" tools/learning-loop-mastra/__tests__` returns no opt-out assertions.
 
 ## Risk Assessment
 

@@ -95,11 +95,11 @@ stale text. Rewrite to the single-surface invariant (MCP registers only the resi
 
 ## Success Criteria
 
-- [ ] `server.js` has no `READS_VIA_CLI`/`RECORDS_VIA_CLI` reference and no `CLI_READ_TOOLS` import; one unconditional `CLI_TOOLS.has` skip.
-- [ ] Claude session-start hook emits the banner with no flag read; valid-config sketches + `--args-file` + `LOOP_SURFACE` render; missing/malformed config follows the degraded path.
-- [ ] `cli-tools.js`, `bin/loop.mjs`, `placement.yaml` carry no stale flag-as-active-opt-out prose; the "Rollback: flag=0" sentence is gone.
-- [ ] `listTools` (no env flags) returns exactly the 8 residue names, ~4,563 all-tools bytes.
-- [ ] `grep -rn "LOOP_RECORDS_VIA_CLI\|LOOP_READS_VIA_CLI" tools/learning-loop-mastra/ --exclude-dir=__tests__` returns zero.
+- [x] `server.js` has no `READS_VIA_CLI`/`RECORDS_VIA_CLI` reference and no `CLI_READ_TOOLS` import; one unconditional `CLI_TOOLS.has` skip.
+- [x] Claude session-start hook emits the banner with no flag read; valid-config sketches + `--args-file` + `LOOP_SURFACE` render; missing/malformed config follows the degraded path.
+- [x] `cli-tools.js`, `bin/loop.mjs`, `placement.yaml` carry no stale flag-as-active-opt-out prose; the "Rollback: flag=0" sentence is gone.
+- [x] `listTools` (no env flags) returns exactly the 8 residue names, ~4,563 all-tools bytes.
+- [x] `grep -rn "LOOP_RECORDS_VIA_CLI\|LOOP_READS_VIA_CLI" tools/learning-loop-mastra/ --exclude-dir=__tests__` returns zero.
 
 ## Risk Assessment
 
