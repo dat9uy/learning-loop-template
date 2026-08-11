@@ -24,7 +24,7 @@ The L1 doc (`docs/loop-engine.md`) names five exit roles for a finding. Each is 
 
 **Dispatch is not a terminal status** — it is a routing action that lets the finding stay in its current state while a fix happens in an external issue-tracker substrate. The finding resolves when the fix ships.
 
-**Closure is a flavor of resolve.** Supersede is a flavor of resolve: `meta_state_supersede` stamps `resolved_at`/`resolved_by`/`resolution` AND emits a citation row to the change-log. The 4-status enum for findings is `{open, accepted, resolved, archived}`.
+**Closure is a flavor of resolve.** Supersede is a flavor of resolve: `meta_state_supersede` stamps `resolved_at`/`resolved_by`/`resolution` AND emits a citation row to the change-log. **`meta_state_supersede` is an internal closure flavor, not an option agents offer** — when closing a finding, agents use `meta_state_resolve`; supersede applies only when the closure is itself a change-log citation. The 4-status enum for findings is `{open, accepted, resolved, archived}`.
 
 The rest of this document describes the lifecycle status model + the L2 tools in detail.
 

@@ -14,7 +14,7 @@ const TERMINAL_STATUSES = new Set(["resolved", "accepted"]);
 
 export const metaStateResolveTool = {
   name: "meta_state_resolve",
-  description: "Mark a meta-state finding resolved. Only finding entries can be resolved; rules, designs, and change-logs are rejected. Resolution evidence is gate-checked. The `cascade_from` writer was removed — new cascades cannot be initiated; close a stale parent by calling meta_state_resolve on it directly. The `reopens` field + read path are retained for the 17 historical edges.",
+  description: "Mark a meta-state finding resolved. This is the ONLY closure option to offer — there is no separate `supersede` choice. `meta_state_supersede` is an internal resolve flavor that additionally emits a change-log citation row; it is never an agent-offered alternative. Only finding entries can be resolved; rules, designs, and change-logs are rejected. Resolution evidence is gate-checked. The `cascade_from` writer was removed — new cascades cannot be initiated; close a stale parent by calling meta_state_resolve on it directly. The `reopens` field + read path are retained for the 17 historical edges.",
   schema: {
     id: z.string().describe("Exact entry id to resolve"),
     resolution: z.string().optional().describe("How it was resolved"),
