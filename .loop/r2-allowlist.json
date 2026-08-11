@@ -7,6 +7,7 @@
       ".claude/.loop/r2-allowlist.json",
       ".factory/**",
       ".mastracode/**",
+      ".hermes/**",
       ".loop/r2-allowlist.json",
       "runtime-state.jsonl",
       ".gate-override"
@@ -18,6 +19,7 @@
       ".factory/.loop/r2-allowlist.json",
       ".claude/**",
       ".mastracode/**",
+      ".hermes/**",
       ".loop/r2-allowlist.json",
       "runtime-state.jsonl",
       ".gate-override"
@@ -29,6 +31,19 @@
       ".mastracode/.loop/r2-allowlist.json",
       ".claude/**",
       ".factory/**",
+      ".hermes/**",
+      ".loop/r2-allowlist.json",
+      "runtime-state.jsonl",
+      ".gate-override"
+    ]
+  },
+  "hermes": {
+    "own": [".hermes/**"],
+    "deny": [
+      ".hermes/.loop/r2-allowlist.json",
+      ".claude/**",
+      ".factory/**",
+      ".mastracode/**",
       ".loop/r2-allowlist.json",
       "runtime-state.jsonl",
       ".gate-override"
