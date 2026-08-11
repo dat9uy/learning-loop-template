@@ -37,7 +37,7 @@ test("readSurfaceMcpJson returns a runtime env block and fails open", () => {
     JSON.stringify({
       mcpServers: {
         "learning-loop": {
-          env: { LOOP_SURFACE: ".claude", LOOP_READS_VIA_CLI: "1" },
+          env: { LOOP_SURFACE: ".claude" },
         },
       },
     }),
@@ -45,18 +45,15 @@ test("readSurfaceMcpJson returns a runtime env block and fails open", () => {
 
   assert.deepStrictEqual(readSurfaceMcpJson(root), {
     LOOP_SURFACE: ".claude",
-    LOOP_READS_VIA_CLI: "1",
   });
   assert.deepStrictEqual(readSurfaceMcpJson(join(root, "missing")), {});
 });
 
-test("transport banner names the CLI contract only for opted runtimes", () => {
-  assert.strictEqual(buildTransportBanner({ readsViaCli: false }), "");
-
-  const banner = buildTransportBanner({ readsViaCli: true });
+test("transport banner always names the CLI contract (single record surface)", () => {
+  const banner = buildTransportBanner();
   assert.ok(banner.includes("tools/learning-loop-mastra/bin/loop.mjs <tool> '<json-args>'"));
   assert.ok(banner.includes("mastra_<read> MCP tools are NOT registered"));
-  assert.ok(banner.includes("Writes still use mastra_<write> MCP tools"));
+  assert.ok(banner.includes("Writes also ride the CLI"));
   assert.ok(banner.includes("LOOP_SURFACE"));
   assert.ok(banner.includes("GATE_ROOT"));
   for (const toolName of CLI_READ_TOOLS) {
@@ -64,8 +61,8 @@ test("transport banner names the CLI contract only for opted runtimes", () => {
   }
 });
 
-test("transport banner with recordsViaCli adds write-tool sketches (one-liner per write tool)", () => {
-  const banner = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
+test("transport banner adds write-tool sketches (one-liner per write tool)", () => {
+  const banner = buildTransportBanner();
   // Recovery policy + write-tool sketches are surfaced.
   assert.ok(banner.includes("InternalError"), "banner must name the InternalError shape");
   assert.ok(banner.includes("Write-tool arg sketches"), "banner must label the sketches section");
@@ -73,7 +70,7 @@ test("transport banner with recordsViaCli adds write-tool sketches (one-liner pe
   // gate-sensitive or shell-risky payloads know the alternate shape.
   assert.ok(
     banner.includes("--args-file <path>"),
-    "records-via-cli banner must advertise the --args-file form",
+    "banner must advertise the --args-file form",
   );
   // Spot-check a few write tools are present in the sketches section.
   for (const writeTool of [
@@ -83,7 +80,7 @@ test("transport banner with recordsViaCli adds write-tool sketches (one-liner pe
   ]) {
     assert.ok(
       banner.includes(`loop.mjs ${writeTool}`),
-      `records-via-cli banner must include a sketch for ${writeTool}`,
+      `banner must include a sketch for ${writeTool}`,
     );
   }
   // No full schema re-injection: the banner must not embed a JSON
@@ -92,16 +89,16 @@ test("transport banner with recordsViaCli adds write-tool sketches (one-liner pe
 });
 
 test("--args-file dispatch form is covered in the banner footer", () => {
-  const banner = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
+  const banner = buildTransportBanner();
   assert.match(
     banner,
     /loop\.mjs <tool> --args-file <path>/,
-    "records-via-cli banner must show the inline JSON + file-form invocation guidance",
+    "banner must show the inline JSON + file-form invocation guidance",
   );
 });
 
 test("meta_state_report sketch inlines the required category enum values", () => {
-  const banner = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
+  const banner = buildTransportBanner();
   // The sketch is built from the same constants the zod schema enforces
   // (core/constants.js), so this test locks banner ≡ schema rather than a
   // hand-copied literal list.
@@ -123,27 +120,21 @@ test("transport banner interpolates the pinned LOOP_SURFACE value so the agent n
   // invoking" prompt, forcing the agent to guess the surface and burn a
   // rejected first call (e.g. LOOP_SURFACE=loop). When a concrete surface
   // is threaded in, the banner must state the exact value to set.
-  const readsOnly = buildTransportBanner({ readsViaCli: true, surface: ".claude" });
+  const withSurface = buildTransportBanner({ surface: ".claude" });
   assert.ok(
-    readsOnly.includes("Set LOOP_SURFACE=.claude before invoking"),
-    `reads-only banner must name the concrete surface; got: ${readsOnly}`,
+    withSurface.includes("Set LOOP_SURFACE=.claude before invoking"),
+    `banner must name the concrete surface; got: ${withSurface}`,
   );
   assert.ok(
-    !readsOnly.includes("Set LOOP_SURFACE before invoking\n"),
-    "reads-only banner must not emit the bare generic footer when a surface is given",
-  );
-
-  const recordsViaCli = buildTransportBanner({ readsViaCli: true, recordsViaCli: true, surface: ".claude" });
-  assert.ok(
-    recordsViaCli.includes("Set LOOP_SURFACE=.claude before invoking"),
-    `records-via-cli banner must name the concrete surface; got: ${recordsViaCli}`,
+    !withSurface.includes("Set LOOP_SURFACE before invoking\n"),
+    "banner must not emit the bare generic footer when a surface is given",
   );
 });
 
 test("transport banner fails open to the generic footer when no surface is configured", () => {
   // No surface threaded -> the original generic prompt must be preserved so
   // the banner never goes empty or malformed on a config without LOOP_SURFACE.
-  const banner = buildTransportBanner({ readsViaCli: true });
+  const banner = buildTransportBanner();
   assert.ok(
     banner.includes("Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo."),
     `fail-open banner must keep the generic footer; got: ${banner}`,
@@ -159,7 +150,7 @@ test("buildConfiguredTransportBanner reads the pinned surface from .mcp.json int
     JSON.stringify({
       mcpServers: {
         "learning-loop": {
-          env: { LOOP_SURFACE: ".claude", LOOP_RECORDS_VIA_CLI: "1" },
+          env: { LOOP_SURFACE: ".claude" },
         },
       },
     }),
@@ -172,7 +163,7 @@ test("buildConfiguredTransportBanner reads the pinned surface from .mcp.json int
   mkdirSync(join(bareRoot, ".claude"), { recursive: true });
   writeFileSync(
     join(bareRoot, ".mcp.json"),
-    JSON.stringify({ mcpServers: { "learning-loop": { env: { LOOP_RECORDS_VIA_CLI: "1" } } } }),
+    JSON.stringify({ mcpServers: { "learning-loop": { env: {} } } }),
   );
   const bareBanner = buildConfiguredTransportBanner(bareRoot);
   assert.ok(
@@ -182,31 +173,27 @@ test("buildConfiguredTransportBanner reads the pinned surface from .mcp.json int
   assert.ok(!bareBanner.includes("Set LOOP_SURFACE=."), "must not interpolate an absent surface");
 });
 
-test("reads-only banner stays under the records-via-cli byte budget (no schema re-injection)", () => {
+test("transport banner stays under the byte budget (no schema re-injection)", () => {
   // Lock the "no schema re-injection" invariant so a future banner edit
-  // cannot silently erode the context-size win. A reads-only banner
-  // must be smaller than a records-via-cli banner (which adds the
-  // sketches); both stay well under a 2 KiB cap.
-  const readsOnly = buildTransportBanner({ readsViaCli: true, recordsViaCli: false });
-  const recordsViaCli = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
-  assert.ok(recordsViaCli.length > readsOnly.length, "records banner should be larger (carries sketches)");
-  assert.ok(recordsViaCli.length < BANNER_BYTES_BUDGET, `records banner must stay under the 4 KiB budget; got: ${recordsViaCli.length}`);
+  // cannot silently erode the context-size win. The single-surface banner
+  // carries the sketches, so it must stay well under the cap.
+  const banner = buildTransportBanner();
+  assert.ok(banner.length < BANNER_BYTES_BUDGET, `banner must stay under the ${BANNER_BYTES_BUDGET}-byte budget; got: ${banner.length}`);
 });
 
-test("non-opted additionalContext stays byte-identical", () => {
+test("additionalContext with banner is prefixed by the transport banner", () => {
   const actual = buildAdditionalContext(
     ["first hint", "second hint"],
     "core",
     "discoverability",
-    buildTransportBanner({ readsViaCli: false }),
+    buildTransportBanner({ surface: ".claude" }),
   );
-  assert.strictEqual(
-    actual,
-    "Loop steering (pull): loop_describe({tier:'warm'}) | hints: .claude/session-context.json | one: loop_get_instruction({key})\n1. first hint\n2. second hint",
-  );
+  assert.ok(actual.startsWith("Loop read transport: this runtime reads the loop's"));
+  assert.ok(actual.includes("Set LOOP_SURFACE=.claude before invoking"));
+  assert.ok(actual.endsWith("2. second hint"));
 });
 
-test("opted SessionStart output includes the transport banner", { timeout: 20000 }, () => {
+test("SessionStart output includes the unconditional transport banner", { timeout: 20000 }, () => {
   const proc = spawnSync("node", [HOOK_PATH], {
     cwd: PROJECT_ROOT,
     env: { ...process.env, MASTRA_STORAGE_DRIVER: "memory" },
@@ -216,16 +203,13 @@ test("opted SessionStart output includes the transport banner", { timeout: 20000
   assert.strictEqual(proc.status, 0, `hook exited ${proc.status}; stderr=${proc.stderr}`);
   const output = JSON.parse(proc.stdout);
   const context = output.hookSpecificOutput.additionalContext;
-  // Plan 260722-1343 Phase 4: .claude migrated to LOOP_RECORDS_VIA_CLI=1
-  // (combined flag), so the banner reflects the records-via-cli state:
-  // mastra_<read> AND mastra_<write> MCP tools are not registered.
   assert.ok(context.includes("Loop read transport:"));
   assert.ok(context.includes("mastra_<read> MCP tools are NOT registered"));
   assert.ok(context.includes("Writes also ride the CLI"));
   assert.ok(context.includes("Write-tool arg sketches"));
 });
 
-test("opted SessionStart fatal output preserves the transport banner", { timeout: 20000 }, () => {
+test("SessionStart fatal output preserves the transport banner", { timeout: 20000 }, () => {
   const proc = spawnSync("node", [HOOK_PATH], {
     cwd: PROJECT_ROOT,
     env: {
@@ -242,6 +226,5 @@ test("opted SessionStart fatal output preserves the transport banner", { timeout
   assert.ok(context.includes("Loop read transport:"));
   assert.ok(context.includes("tools/learning-loop-mastra/bin/loop.mjs"));
   assert.ok(context.includes("mastra_<read> MCP tools are NOT registered"));
-  // Records-via-cli state: writes also ride the CLI.
   assert.ok(context.includes("Writes also ride the CLI"));
 });

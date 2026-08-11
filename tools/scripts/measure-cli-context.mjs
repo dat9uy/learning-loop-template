@@ -63,16 +63,12 @@ const FINDING_ID = "meta-260722T1546Z-the-write-capable-cli-transport-s-context-
 const recordMode = process.argv.includes("--record");
 
 function parseBannerBytes(requireFn) {
-  // The hook exports `buildTransportBanner({ readsViaCli, recordsViaCli })`.
-  // Two variants feed the measurement: reads-only (LOOP_READS_VIA_CLI=1)
-  // and records-via-cli (LOOP_RECORDS_VIA_CLI=1 implies reads-via-cli +
-  // write-tool sketches). We compute both and take the max — a runtime
-  // moving from the lighter reads-only banner to the heavier records-via-cli
-  // would otherwise silently erode the savings.
+  // The hook exports `buildTransportBanner({ surface })`. The banner is
+  // unconditional (single-surface contract): it always carries the write-tool
+  // sketches. One measurement feeds the savings calc.
   const hook = requireFn(hookPath);
-  const readsOnly = Buffer.byteLength(hook.buildTransportBanner({ readsViaCli: true, recordsViaCli: false }), "utf8");
-  const recordsViaCli = Buffer.byteLength(hook.buildTransportBanner({ readsViaCli: true, recordsViaCli: true }), "utf8");
-  return { readsOnly, recordsViaCli };
+  const bannerBytes = Buffer.byteLength(hook.buildTransportBanner({ surface: ".claude" }), "utf8");
+  return { readsOnly: bannerBytes, recordsViaCli: bannerBytes };
 }
 
 async function main() {

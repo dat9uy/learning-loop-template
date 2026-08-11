@@ -4,14 +4,14 @@
 // @modelcontextprotocol/sdk Client. This replaces the flaky hand-rolled
 // JSON-RPC test that was eliminated in the 260614 rewrite.
 //
+// Single-surface contract: MCP registers only the 8-tool residue. The protocol
+// shape assertions below exercise residue tools only (check_runtime_agnostic).
+//
 // Test inventory:
 //   1. Server starts and responds to initialize — spawn server as child process,
 //      connect via StdioClientTransport, assert successful handshake.
-//   2. tools/list returns all manifest tools — verify count matches manifest.json,
-//      each tool has name, description, inputSchema.
-//   3. tools/call loop_describe returns expected shape — call with tier=warm,
-//      assert response contains tools and discoverability_hints.
-//   4. tools/call meta_state_list with compact returns valid response.
+//   2. tools/list returns the residue with valid name/description/inputSchema.
+//   3. tools/call check_runtime_agnostic returns expected shape.
 
 const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
@@ -72,12 +72,12 @@ describe("mcp protocol e2e", () => {
     assert.ok(server.client, "client must be defined after connect");
   });
 
-  test("tools/list returns all manifest tools", { timeout: 10000 }, async () => {
+  test("tools/list returns the 8-tool residue with valid metadata", { timeout: 10000 }, async () => {
     const result = await server.client.listTools();
 
     assert.ok(Array.isArray(result.tools), "result.tools must be an array");
-    assert.ok(result.tools.length >= TOOL_COUNT,
-      `expected >= ${TOOL_COUNT} tools, got ${result.tools.length} (workflow + agent additions OK)`);
+    // Exact 8-name residue asserted by cli-optout-wiring / cli-write-tool-set-drift.
+    assert.ok(result.tools.length > 0, "tools/list must return at least the residue");
 
     for (const tool of result.tools) {
       assert.strictEqual(typeof tool.name, "string", `tool must have string name`);
@@ -89,37 +89,22 @@ describe("mcp protocol e2e", () => {
     }
   });
 
-  test("tools/call loop_describe returns expected shape", { timeout: 10000 }, async () => {
+  test("tools/call check_runtime_agnostic returns expected shape", { timeout: 10000 }, async () => {
+    // Residue tool: exercises the MCP protocol envelope (JSON-RPC over stdio)
+    // for a registered tool. check_runtime_agnostic takes a feature_path
+    // relative to the project root.
     const result = await server.client.callTool({
-      name: "mastra_loop_describe",
-      arguments: { tier: "warm" },
+      name: "mastra_check_runtime_agnostic",
+      arguments: { feature_path: "tools/learning-loop-mastra/mastra/server.js" },
     });
 
     assert.ok(Array.isArray(result.content), "response must have content array");
     assert.ok(result.content.length > 0, "content array must not be empty");
 
-    // The first content item should be text containing key fields.
+    // The first content item should be text containing valid JSON.
     const textItem = result.content.find((c) => c.type === "text");
     assert.ok(textItem, "content must contain a text item");
-    assert.ok(textItem.text.includes("tools"), 'response must mention "tools"');
-    assert.ok(textItem.text.includes("discoverability_hints"),
-      'response must mention "discoverability_hints"');
-  });
-
-  test("tools/call meta_state_list with compact returns valid response", { timeout: 10000 }, async () => {
-    const result = await server.client.callTool({
-      name: "mastra_meta_state_list",
-      arguments: { compact: true },
-    });
-
-    assert.ok(Array.isArray(result.content), "response must have content array");
-    // meta_state_list returns JSON in a text item.
-    const textItem = result.content.find((c) => c.type === "text");
-    assert.ok(textItem, "content must contain a text item");
-    // Should be valid JSON with entries array.
     const parsed = JSON.parse(textItem.text);
     assert.ok(typeof parsed === "object" && parsed !== null, "response must be a JSON object");
-    assert.ok(Array.isArray(parsed.entries), "response must have entries array");
-    assert.ok(typeof parsed.count === "number", "response must have numeric count");
   });
 });

@@ -3,7 +3,6 @@
 // For each of the 7 read-only tools:
 //   - direct side: import the handler module, adaptLegacyHandler, run against tmpdirA.
 //   - CLI side: spawnSync node bin/loop.mjs <tool> '<json>' against tmpdirB.
-//   - MCP side: call the production MCP server against an independent tmpdir.
 //
 // The two tmpdirs are INDEPENDENT (each freshly seeded from the same fixture
 // bytes). Two reasons a shared tmpdir breaks parity:
@@ -31,9 +30,11 @@
 // both sides and the field is false on both — the strip keeps the test
 // robust to fixture edits that flip the record branch on.
 //
-// The first comparison checks CLI stdout against a DIRECT handler call with NO
-// Mastra context. The second comparison calls the production MCP server, so a
-// future read handler that consumes Mastra context cannot drift silently.
+// The oracle is the DIRECT handler call with NO Mastra context (the CLI and
+// direct handler share the same code path — bin/loop.mjs + adaptLegacyHandler).
+// The MCP leg was dropped: MCP no longer registers read tools (single-surface
+// contract), so it cannot serve as a state oracle. MCP schema/transport
+// coverage lives in mcp-tools-list-parity.test.js + mcp-protocol-e2e.test.cjs.
 //
 // Exit-code contract tests lock 0/1/2 (success/handler-error/usage).
 
@@ -47,13 +48,11 @@ import { fileURLToPath } from "node:url";
 
 import { adaptLegacyHandler } from "../mastra/handler-adapter.js";
 import { resolveToolImportUrl } from "../core/manifest-loader.js";
-import { connectMcpServer } from "./with-mcp-server.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
 const PROJECT_ROOT = resolve(PKG_ROOT, "..", "..");
 const LOOP_BIN = join(PKG_ROOT, "bin", "loop.mjs");
-const SERVER_ENTRY = join(PKG_ROOT, "mastra", "server.js");
 
 const READ_ONLY_TOOLS = [
   "loop_describe",
@@ -286,53 +285,6 @@ describe("cli-read parity", () => {
         else process.env.LOOP_SURFACE = origLoopSurface;
         if (origStorage === undefined) delete process.env.MASTRA_STORAGE_DRIVER;
         else process.env.MASTRA_STORAGE_DRIVER = origStorage;
-      }
-    }, 60000);
-  }
-});
-
-describe("cli-to-mcp read parity", () => {
-  for (const { tool, args } of TOOL_CASES) {
-    test(`${tool}: CLI stdout matches MCP response (normalized deep-equal)`, async () => {
-      const mcpRoot = makeTempRoot();
-      const cliRoot = makeTempRoot();
-      copySchemas(PROJECT_ROOT, mcpRoot);
-      copySchemas(PROJECT_ROOT, cliRoot);
-
-      const mcp = await connectMcpServer(SERVER_ENTRY, mcpRoot, {
-        LOOP_READS_VIA_CLI: "0",
-      });
-      try {
-        const mcpRaw = await mcp.callTool(`mastra_${tool}`, { ...args });
-        const mcpNormalized = stripNonDeterministic(mcpRaw, mcpRoot);
-
-        const cliEnv = {
-          ...process.env,
-          LOOP_SURFACE: ".claude",
-          GATE_ROOT: cliRoot,
-          MASTRA_STORAGE_DRIVER: "memory",
-        };
-        const proc = spawnSync("node", [LOOP_BIN, tool, JSON.stringify(args)], {
-          env: cliEnv,
-          encoding: "utf8",
-          timeout: 30000,
-        });
-        assert.strictEqual(proc.status, 0, `cli must exit 0; stderr=${proc.stderr}`);
-        const cliRaw = JSON.parse((proc.stdout ?? "").trim());
-        const cliNormalized = stripNonDeterministic(cliRaw, cliRoot);
-
-        assert.deepStrictEqual(
-          cliNormalized,
-          mcpNormalized,
-          `MCP parity mismatch for ${tool}\nCLI: ${JSON.stringify(cliNormalized)}\nMCP: ${JSON.stringify(mcpNormalized)}`,
-        );
-        assert.deepStrictEqual(
-          [...collectKeySet(cliNormalized)].sort(),
-          [...collectKeySet(mcpNormalized)].sort(),
-          `MCP field-set mismatch for ${tool}`,
-        );
-      } finally {
-        await mcp.cleanup();
       }
     }, 60000);
   }

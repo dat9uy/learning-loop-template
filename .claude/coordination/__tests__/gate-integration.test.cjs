@@ -202,29 +202,6 @@ function runWriteGate(filePath, envOverrides = {}) {
   };
 }
 
-async function startMcpServer(root) {
-  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
-  const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
-  const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'mastra', 'server.js');
-  const transport = new StdioClientTransport({
-    command: "node",
-    args: [serverPath],
-    // mastra/server.js calls pinRuntimeIdAtBoot() at the first executable
-    // statement; without LOOP_SURFACE the server throws MISSING_LOOP_SURFACE
-    // and the StdioClientTransport sees a closed connection. Pin to .claude
-    // for the gate-integration surface (this file lives under .claude/
-    // coordination; .factory/hooks/__tests__ pins to .factory).
-    env: {
-      ...process.env,
-      GATE_ROOT: root,
-      LOOP_SURFACE: process.env.LOOP_SURFACE || '.claude',
-    },
-  });
-  const client = new Client({ name: "integration-test-client", version: "0.0.1" });
-  await client.connect(transport);
-  return { client, transport };
-}
-
 // --- Integration: Inbound Gate with Real Observations ---
 test('gate-integration: inbound gate with real observations', () => {
   console.log('\n=== Integration: Inbound Gate with Real Observations ===');
@@ -372,44 +349,52 @@ test('gate-integration: inbound gate with real observations', () => {
   }
 });
 
-// --- Integration: MCP Server with Real Budget + Observations ---
-test('gate-integration: MCP server with real budget + observations', async () => {
-  console.log('\n=== Integration: MCP Server with Real Budget + Observations ===');
+// --- Integration: CLI gate_check with Real Budget + Observations ---
+// gate_check rides the CLI (single record surface); the MCP server no longer
+// registers it. The gate-tool behavior (inbound_gate flag, decision) is
+// identical via bin/loop.mjs + adaptLegacyHandler.
+function runCliGateCheck(root, command) {
+  const loopBin = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'bin', 'loop.mjs');
+  const result = spawnSync('node', [loopBin, 'gate_check', JSON.stringify({ command })], {
+    encoding: 'utf8',
+    timeout: 10000,
+    env: {
+      ...process.env,
+      GATE_ROOT: root,
+      LOOP_SURFACE: process.env.LOOP_SURFACE || '.claude',
+      MASTRA_STORAGE_DRIVER: 'memory',
+    },
+  });
+  assert(result.status === 0, `gate_check must exit 0; stderr=${result.stderr}`);
+  return JSON.parse((result.stdout || '').trim());
+}
+
+test('gate-integration: CLI gate_check with real budget + observations', () => {
+  console.log('\n=== Integration: CLI gate_check with Real Budget + Observations ===');
   const tmpDir = createTempProject();
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const files = copyRealObservations(tmpDir);
 
   updateStatus(tmpDir, 'runtime-state.jsonl', 'active');
 
-  const { client, transport } = await startMcpServer(tmpDir);
   try {
     fs.writeFileSync(
       path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
       JSON.stringify({ timestamp: new Date().toISOString(), prompt_snippet: 'I cleared the device' }, null, 2)
     );
-    const r1 = await client.callTool({
-      name: "mastra_gate_check",
-      arguments: { command: "docker run ubuntu" },
-    });
-    const parsed1 = JSON.parse(r1.content[0].text);
-    assert(parsed1.decision === 'block', 'MCP: no docker observation + stale marker → block');
+    const parsed1 = runCliGateCheck(tmpDir, 'docker run ubuntu');
+    assert(parsed1.decision === 'block', 'CLI: no docker observation + stale marker → block');
 
     fs.writeFileSync(
       path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
       JSON.stringify({ timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), prompt_snippet: 'old' }, null, 2)
     );
-    const r2 = await client.callTool({
-      name: "mastra_gate_check",
-      arguments: { command: "docker run ubuntu" },
-    });
-    const parsed2 = JSON.parse(r2.content[0].text);
-    assert(parsed2.decision === 'block', 'MCP: no docker observation + fresh marker → block');
-    assert(parsed2.inbound_gate === true, 'MCP: inbound_gate true with stale obs (gate-tool behavior)');
+    const parsed2 = runCliGateCheck(tmpDir, 'docker run ubuntu');
+    assert(parsed2.decision === 'block', 'CLI: no docker observation + fresh marker → block');
+    assert(parsed2.inbound_gate === true, 'CLI: inbound_gate true with stale obs (gate-tool behavior)');
   } finally {
-    await transport.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
 
   console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
 

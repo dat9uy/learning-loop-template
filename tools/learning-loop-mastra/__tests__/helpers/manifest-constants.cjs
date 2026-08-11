@@ -17,15 +17,19 @@
  * constant here AND verify the comments in each consumer file remain accurate.
  */
 module.exports = {
+  // Full agent declaration (agent-manifest.json) — a separate surface from the
+  // CLI allowlist (42), the handler manifest (44), the classified residue (5),
+  // and the live MCP residue (8). Do not relabel this as a CLI count.
   AGENT_MANIFEST_TOTAL_TOOLS: 50,
   AGENT_MANIFEST_GROUPS: 6,
   TOOLS_MANIFEST_ENTRIES: 44,
   WORKFLOW_GROUP_TOOLS: 11,
-  // MCP residue when a runtime sets LOOP_RECORDS_VIA_CLI=1 (all three wired
-  // runtimes do): the full record surface rides the stateless CLI, so MCP
-  // keeps only workflow/storage/allowlist/audit + agent wrappers:
-  //   mastra_workflow_generate_prompt, mastra_check_runtime_agnostic,
-  //   mastra_update_r2_allowlist, ask_{intake,scout,self_improvement}_agent,
-  //   run_workflow_storage_{round_trip,read}
+  // Live MCP residue — the exact 8 tools registered by the production server
+  // (no flag changes it): 3 ask_* agents + 2 run_workflow_storage_* +
+  // update_r2_allowlist + check_runtime_agnostic + workflow_generate_prompt.
+  // Asserted by cli-optout-wiring.test.js and cli-write-tool-set-drift.test.js.
   MCP_RESIDUE_TOTAL_TOOLS: 8,
+  // CLI allowlist (core/cli-tools.js) — the single record surface. 12 reads +
+  // 30 writes. Asserted by cli-optout-wiring.test.js (loop.mjs list).
+  CLI_TOTAL_TOOLS: 42,
 };

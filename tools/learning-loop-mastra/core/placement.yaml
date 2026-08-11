@@ -98,7 +98,7 @@ files:
     summary: trueAppendAtomic — O_APPEND + fsync'd writes + assertNoChangeLogLeak guard. Replaces the read-all → full-rewrite pattern (RT H1 + H4).
   - path: cli-tools.js
     role: primitive
-    summary: Shared CLI read+write tool set used by the CLI allowlist and opted-in MCP exclusion (LOOP_READS_VIA_CLI / LOOP_RECORDS_VIA_CLI).
+    summary: Shared CLI read+write tool set; the CLI allowlist. MCP registers only the irreducible residue — this set never rides MCP.
   - path: cli-self-match.js
     role: primitive
     summary: canonicalCliInvocationShapes plus matchesCliTransport — the activation-branch guard for meta_state_promote_rule that rejects regex rules matching the CLI's own invocation shape.

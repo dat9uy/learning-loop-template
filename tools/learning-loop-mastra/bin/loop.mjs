@@ -1,15 +1,14 @@
 #!/usr/bin/env node
-// Stateless CLI transport for the learning loop.
+// Stateless CLI transport for the learning loop — the single record surface.
 //
 // Wraps tools/manifest.json + handler modules and reuses
 // `pinRuntimeIdAtBoot()` + `normalizeInputSchema()` + `adaptLegacyHandler()`
 // + `withR2Gate()` so the CLI executes the SAME code path as the MCP server
 // for every CLI-portable tool — the CLI_READ_TOOLS set plus the mutation
-// handlers in CLI_WRITE_TOOLS (pathFields: [] → R2 passthrough). When a
-// runtime sets `LOOP_RECORDS_VIA_CLI=1` in its mcp.json env, the MCP server
-// drops the same set from its surface; the CLI becomes the full record
-// transport (reads + portable mutation tools). MCP remains wired for the
-// irreducible residue (see core/cli-tools.js + cli-write-tool-set-drift.test.js).
+// handlers in CLI_WRITE_TOOLS (pathFields: [] → R2 passthrough). The CLI is
+// the full record transport (reads + portable mutation tools) in every
+// runtime; MCP carries only the irreducible residue (see core/cli-tools.js +
+// cli-write-tool-set-drift.test.js).
 //
 // Usage:
 //   node bin/loop.mjs list

@@ -1,22 +1,14 @@
 // MCP protocol-level E2E test for the Mastra peer server.
 //
 // Mirrors tools/learning-loop-mcp/__tests__/mcp-protocol-e2e.test.cjs but points
-// at the learning-loop server and its 29 deterministic tools.
+// at the learning-loop server and its residue surface.
 //
-// Note (2026-06-22, Plan 2 PR #8): two test relaxations from the original
-// strict-`===` / `mastra_`-prefixed shape, both forced by Phase D Plan 1+2
-// shipping the workflow tool surface alongside the deterministic tools:
-//
-//   1. `assert.ok(result.tools.length >= TOOL_COUNT)` (was `===`): the server
-//      now registers 31 `mastra_*` + 10 `run_workflow_*` = 41 tools, but this
-//      file's `TOOL_COUNT` is read from the 31-entry deterministic
-//      `tools/manifest.json` (it does not include workflows). The exact 41-tool
-//      count is enforced by `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:159`.
-//   2. The `startsWith("mastra_")` prefix check was removed: `run_workflow_*`
-//      and `run_workflow_storage_*` tools don't have that prefix.
-//
-// These relaxations are scope-locked to the protocol-level shape test. The
-// per-tool count and prefix invariants are checked by `workflow-parity.test.cjs`.
+// Single-surface contract: MCP registers only the 8-tool residue
+// (3 ask_* agents + 2 run_workflow_storage_* + update_r2_allowlist +
+// check_runtime_agnostic + workflow_generate_prompt). The CLI is the record
+// surface. This file's protocol-shape assertions therefore exercise residue
+// tools only; the 42-tool CLI allowlist, 44-entry handler manifest, and
+// 50-entry agent declaration are separate contracts asserted elsewhere.
 
 const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
@@ -81,14 +73,14 @@ describe("mastra mcp protocol e2e", () => {
     assert.ok(server.client, "client must be defined after connect");
   });
 
-  test("tools/list returns all manifest tools", { timeout: 10000 }, async () => {
+  test("tools/list returns the 8-tool residue with valid metadata", { timeout: 10000 }, async () => {
     const result = await server.client.listTools();
 
     assert.ok(Array.isArray(result.tools), "result.tools must be an array");
-    assert.ok(
-      result.tools.length >= TOOL_COUNT,
-      `expected at least ${TOOL_COUNT} tools, got ${result.tools.length}`,
-    );
+    // The 8-tool residue is asserted exactly by cli-optout-wiring.test.js and
+    // cli-write-tool-set-drift.test.js. Here we assert the protocol shape for
+    // every registered tool (name/description/inputSchema) regardless of count.
+    assert.ok(result.tools.length > 0, "tools/list must return at least the residue");
 
     for (const tool of result.tools) {
       assert.strictEqual(
@@ -123,10 +115,13 @@ describe("mastra mcp protocol e2e", () => {
     );
   });
 
-  test("tools/call loop_describe returns expected shape", { timeout: 10000 }, async () => {
+  test("tools/call check_runtime_agnostic returns expected protocol shape", { timeout: 10000 }, async () => {
+    // check_runtime_agnostic is a residue tool; it exercises the MCP protocol
+    // envelope (JSON-RPC over stdio) for a registered tool. Its schema takes a
+    // feature_path relative to the project root.
     const result = await server.client.callTool({
-      name: "mastra_loop_describe",
-      arguments: { tier: "warm" },
+      name: "mastra_check_runtime_agnostic",
+      arguments: { feature_path: "tools/learning-loop-mastra/mastra/server.js" },
     });
 
     assert.ok(Array.isArray(result.content), "response must have content array");
@@ -134,28 +129,10 @@ describe("mastra mcp protocol e2e", () => {
 
     const textItem = result.content.find((c) => c.type === "text");
     assert.ok(textItem, "content must contain a text item");
-    assert.ok(textItem.text.includes("tools"), 'response must mention "tools"');
-    assert.ok(
-      textItem.text.includes("discoverability_hints"),
-      'response must mention "discoverability_hints"',
-    );
-  });
-
-  test("tools/call meta_state_list with compact returns valid response", { timeout: 10000 }, async () => {
-    const result = await server.client.callTool({
-      name: "mastra_meta_state_list",
-      arguments: { compact: true },
-    });
-
-    assert.ok(Array.isArray(result.content), "response must have content array");
-    const textItem = result.content.find((c) => c.type === "text");
-    assert.ok(textItem, "content must contain a text item");
     const parsed = JSON.parse(textItem.text);
     assert.ok(
       typeof parsed === "object" && parsed !== null,
       "response must be a JSON object",
     );
-    assert.ok(Array.isArray(parsed.entries), "response must have entries array");
-    assert.ok(typeof parsed.count === "number", "response must have numeric count");
   });
 });

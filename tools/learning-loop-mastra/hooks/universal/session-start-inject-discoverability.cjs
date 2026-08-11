@@ -134,45 +134,27 @@ function buildRecordsViaCliLines(surface) {
   return lines;
 }
 
-function buildReadsOnlyFooterLines(surface) {
-  return [
-    "  Writes still use mastra_<write> MCP tools.",
-    loopSurfaceFooterLine(surface),
-  ];
-}
-
-function buildTransportBanner({ readsViaCli = false, recordsViaCli = false, surface = null } = {}) {
-  if (!readsViaCli) return "";
+function buildTransportBanner({ surface = null } = {}) {
   const toolNames = [...CLI_READ_TOOLS].join(", ");
   const lines = [
     `Loop read transport: this runtime reads the loop's ${CLI_READ_TOOLS.size} read tools via CLI, not MCP.`,
     "  Read: node tools/learning-loop-mastra/bin/loop.mjs <tool> '<json-args>'",
     `  Tools: ${toolNames} (loop.mjs list prints them).`,
     "  The mastra_<read> MCP tools are NOT registered for this runtime.",
+    ...buildRecordsViaCliLines(surface),
   ];
-  if (recordsViaCli) {
-    lines.push(...buildRecordsViaCliLines(surface));
-  } else {
-    lines.push(...buildReadsOnlyFooterLines(surface));
-  }
   return lines.join("\n");
 }
 
 function buildConfiguredTransportBanner(projectRoot) {
   const mcpEnv = readSurfaceMcpJson(projectRoot);
-  // The combined flag (LOOP_RECORDS_VIA_CLI) drops reads + writes from MCP,
-  // so it implies reads-via-cli as well. A runtime that sets only
-  // LOOP_READS_VIA_CLI=1 keeps writes on MCP. Either flag is enough to
-  // surface the banner; the banner text adapts to which flag fired.
-  const recordsViaCli = /^(1|true)$/i.test(String(mcpEnv.LOOP_RECORDS_VIA_CLI ?? ""));
-  const readsViaCli = recordsViaCli || /^(1|true)$/i.test(String(mcpEnv.LOOP_READS_VIA_CLI ?? ""));
-  // Echo the pinned surface verbatim so the agent sets the exact value on
-  // CLI invocations rather than guessing. The MCP server already validated
-  // this value at boot (pinRuntimeIdAtBoot), so a running config's value is
-  // by construction one of the allowed surfaces. loopSurfaceFooterLine
-  // treats undefined/empty as "fail open", so the raw value is passed through
-  // without an extra coalesce here.
-  return buildTransportBanner({ readsViaCli, recordsViaCli, surface: mcpEnv.LOOP_SURFACE });
+  // Single-surface invariant: the stateless CLI is the only record transport
+  // (reads + portable writes); MCP carries only the residue. The banner always
+  // describes records-via-CLI — no flag read. Only the pinned LOOP_SURFACE
+  // value is threaded from config. A missing/malformed config returns {} and
+  // falls back to the generic footer (fail-open), never advertising a concrete
+  // surface that pinRuntimeIdAtBoot could not validate.
+  return buildTransportBanner({ surface: mcpEnv.LOOP_SURFACE });
 }
 
 /**

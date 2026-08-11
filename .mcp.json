@@ -4,8 +4,7 @@
       "command": "node",
       "args": ["tools/learning-loop-mastra/mastra/server.js"],
       "env": {
-        "LOOP_SURFACE": ".claude",
-        "LOOP_RECORDS_VIA_CLI": "1"
+        "LOOP_SURFACE": ".claude"
       }
     }
   }

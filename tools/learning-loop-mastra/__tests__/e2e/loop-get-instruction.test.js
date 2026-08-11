@@ -3,12 +3,13 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 import { loopGetInstructionTool } from "../../tools/handlers/loop-get-instruction-tool.js";
 import { loadPromotedRules } from "../../core/gate-logic.js";
 import { buildProcessView, listHints } from "../../core/hint-registry.js";
-import { withMcpServer } from "../with-mcp-server.js";
 
 const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
+const LOOP_BIN = join(PROJECT_ROOT, "tools", "learning-loop-mastra", "bin", "loop.mjs");
 
 describe("loop_get_instruction", () => {
   test("returns hint by named slug 'reopens-script'", async () => {
@@ -247,24 +248,32 @@ describe("loop_get_instruction (rule-skip stability)", () => {
   });
 });
 
-// Stdio transport regression test: top-level array input over MCP stdio
-// must round-trip without being wrapped to {item: [...]} by the
-// wire-format coercion helper. Pairs with the meta-260610T1458Z fix.
-describe("loop_get_instruction (stdio transport)", () => {
-  test("accepts top-level array key input over stdio", async () => {
-    await withMcpServer(async ({ callTool }) => {
-      const result = await callTool("mastra_loop_get_instruction", {
-        key: ["reopens-script", "internalization-rule"],
-      });
+// CLI transport regression test: top-level array key input over the CLI
+// (bin/loop.mjs + adaptLegacyHandler) must round-trip without being wrapped
+// to {item: [...]} by the wire-format coercion helper. Pairs with the
+// meta-260610T1458Z fix. loop_get_instruction is a CLI read tool; the stdio
+// MCP path is no longer registered (single-surface contract).
+describe("loop_get_instruction (CLI stdio transport)", () => {
+  test("accepts top-level array key input over CLI", () => {
+    const proc = spawnSync(
+      "node",
+      [LOOP_BIN, "loop_get_instruction", JSON.stringify({ key: ["reopens-script", "internalization-rule"] })],
+      {
+        env: { ...process.env, LOOP_SURFACE: ".claude", MASTRA_STORAGE_DRIVER: "memory" },
+        encoding: "utf8",
+        timeout: 30000,
+      },
+    );
+    assert.strictEqual(proc.status, 0, `cli must exit 0; stderr=${proc.stderr}`);
+    const result = JSON.parse((proc.stdout ?? "").trim());
 
-      assert.strictEqual(result.count, 2, "array of 2 keys should return count=2");
-      assert.strictEqual(result.results.length, 2);
-      const reopens = result.results.find((r) => r.index === 10);
-      const internalization = result.results.find((r) => r.index === 0);
-      assert.ok(reopens, "results should contain the reopens-script hint (index 10)");
-      assert.ok(internalization, "results should contain the internalization-rule hint (index 0)");
-      assert.ok(reopens.hint.includes("meta_state_relationship_validate"));
-      assert.ok(internalization.hint.includes("evidence_code_ref"));
-    });
+    assert.strictEqual(result.count, 2, "array of 2 keys should return count=2");
+    assert.strictEqual(result.results.length, 2);
+    const reopens = result.results.find((r) => r.index === 10);
+    const internalization = result.results.find((r) => r.index === 0);
+    assert.ok(reopens, "results should contain the reopens-script hint (index 10)");
+    assert.ok(internalization, "results should contain the internalization-rule hint (index 0)");
+    assert.ok(reopens.hint.includes("meta_state_relationship_validate"));
+    assert.ok(internalization.hint.includes("evidence_code_ref"));
   });
 });

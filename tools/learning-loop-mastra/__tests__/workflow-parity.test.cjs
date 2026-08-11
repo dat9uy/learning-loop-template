@@ -2,7 +2,9 @@
 // Spawns the mastra server and asserts the tools/list surface composition.
 // The 6 portable workflows were unwrapped to manifest handlers (their
 // behavior coverage lives in workflow-unwrap-parity.test.js); only the 2
-// storage workflows remain on the run_workflow_* surface.
+// storage workflows remain on the run_workflow_* surface. Live MCP carries
+// the 8-tool residue: 2 run_workflow_storage_* + 3 ask_* + 3 mastra residue
+// (update_r2_allowlist, check_runtime_agnostic, workflow_generate_prompt).
 
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, writeFileSync } = require("node:fs");
@@ -52,13 +54,21 @@ describe("workflow parity harness", () => {
     }
   });
 
-  test("tools/list enumerates 45 mastra_* + 2 run_workflow_* = 47 mastra-and-workflow total (6 portable run_workflow_* unwrapped to mastra_workflow_* manifest handlers; storage stays Mastra; +1 for meta_state_unarchive; +1 for meta_state_accept)", { timeout: 10000 }, async () => {
+  test("tools/list exposes the 8-tool residue (3 mastra residue + 2 run_workflow_storage_* + 3 ask_*)", { timeout: 10000 }, async () => {
     const tools = await handles.listTools();
     const mastra = tools.filter((t) => t.name.startsWith("mastra_"));
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));
-    assert.equal(mastra.length, 45, `must have 45 mastra_* tools (37 prior + 6 unwrapped portable-six + 1 meta_state_unarchive + 1 meta_state_accept), got ${mastra.length}`);
-    assert.equal(runWorkflows.length, 2, `must have 2 run_workflow_* tools (storage only), got ${runWorkflows.length}`);
-    assert.equal(tools.length, 50, `total must be 50 (45 mastra_* + 2 run_workflow_* + 3 ask_*), got ${tools.length}`);
+    const askAgents = tools.filter((t) => t.name.startsWith("ask_"));
+    // Live MCP residue: 3 mastra residue (update_r2_allowlist,
+    // check_runtime_agnostic, workflow_generate_prompt) + 2 storage workflows
+    // + 3 ask_* agents = 8. The 42-tool CLI allowlist is asserted by
+    // cli-optout-wiring.test.js (loop.mjs list); the 44-entry handler manifest
+    // and 50-entry agent declaration are asserted by manifest-arithmetic and
+    // cold-session-enumerate-mastra respectively.
+    assert.equal(mastra.length, 3, `must have 3 mastra_* residue tools, got ${mastra.length}`);
+    assert.equal(runWorkflows.length, 2, `must have 2 run_workflow_storage_* tools, got ${runWorkflows.length}`);
+    assert.equal(askAgents.length, 3, `must have 3 ask_* agent tools, got ${askAgents.length}`);
+    assert.equal(tools.length, 8, `total must be 8, got ${tools.length}`);
 
     for (const wf of runWorkflows) {
       assert.ok(wf.description && wf.description.length > 0, `${wf.name} must have non-empty description`);

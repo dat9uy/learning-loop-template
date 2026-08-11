@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 
 import { CLI_TOOLS } from "../core/cli-tools.js";
 import { resolveToolImportUrl } from "../core/manifest-loader.js";
+import { withMcpServer } from "./with-mcp-server.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, "..");
@@ -39,16 +40,21 @@ const WORKFLOW_MANIFEST_PATH = join(PKG_ROOT, "mastra", "workflows-manifest.json
 //   - "operator-policy"     tool applies an operator-only effect that
 //                           agents must not invoke transitively
 //   - "agent-facing"        stateless but retained on MCP so Mastra
-//                           internal-agent tool resolution sees it under
-//                           LOOP_RECORDS_VIA_CLI=1
+//                           internal-agent tool resolution sees it
 //   - "deferred-rehoming"   CLI-capable in principle; re-homing is gated
 //                           on a separate evidence-driven plan (see
 //                           portable-six finding recorded in plan-260722-2147
 //                           Phase 4)
 //
-// The 5 residue entries below are exactly the irreducible MCP surface under
-// LOOP_RECORDS_VIA_CLI=1 (the portable six were re-homed to CLI_TOOLS via the
-// Option A unwrap — plain handlers in tools/manifest.json).
+// The 5 residue entries below are exactly the irreducible MCP surface (the
+// portable six were re-homed to CLI_TOOLS via the Option A unwrap — plain
+// handlers in tools/manifest.json). 5-vs-8 model: MCP_RESIDUE classifies the
+// manifest + workflow tools that stay MCP (5). The live MCP surface is 8 —
+// the 5 classified tools prefixed `mastra_`/`run_` PLUS the 3 `ask_*` agent
+// tools, which register outside the manifest loop (see server.js). The exact
+// 8 live names are asserted by cli-optout-wiring.test.js and the live-residue
+// test below; the 3 agents are covered by the agents-manifest, not this
+// manifest drift guard.
 const MCP_RESIDUE = new Map([
   // server-state: storage substrate uses initStorage() singleton DB handle.
   ["run_workflow_storage_round_trip", "server-state"],
@@ -66,9 +72,9 @@ const MCP_RESIDUE = new Map([
   // the loop package's references/ dir. The blueprint paths were fixed (they
   // pointed at the folded learning-loop-mcp subtree), so the tool now works
   // under the loop's own repo root. Re-homing to CLI is still deferred: a
-  // non-loop runtime root (LOOP_READS_VIA_CLI=1) would not contain the
-  // blueprints, so cross-root resolution (U-Q2) must be handled by the
-  // dedicated re-homing plan before this leaves MCP.
+  // non-loop runtime root would not contain the blueprints, so cross-root
+  // resolution (U-Q2) must be handled by the dedicated re-homing plan before
+  // this leaves MCP.
   ["workflow_generate_prompt", "deferred-rehoming"],
 ]);
 
@@ -160,4 +166,51 @@ test("every MCP_RESIDUE entry declares a known reason tag", () => {
       `MCP_RESIDUE entry ${name} uses undeclared reason tag ${JSON.stringify(reason)}; declared tags: ${[...MCP_RESIDUE_REASONS].join(", ")}`,
     );
   }
+});
+
+// Arithmetic guard (computed, not literal): 44 handler-manifest entries
+// partition into 42 CLI_TOOLS + the 2 manifest-only residue handlers
+// (check_runtime_agnostic, workflow_generate_prompt). update_r2_allowlist is
+// NOT in the manifest — it registers inline in server.js, so it is part of the
+// live 8-tool residue but not of the 44-entry manifest. This crosswalk keeps
+// the 42/44/8 surface counts from drifting independently.
+test("handler-manifest entries partition into 42 CLI_TOOLS + 2 manifest-only residue (44 total)", async () => {
+  const manifestNames = await readManifestToolNames();
+  assert.strictEqual(manifestNames.length, 44, `handler manifest must have 44 entries, got ${manifestNames.length}`);
+  const manifestResidue = manifestNames.filter((n) => MCP_RESIDUE.has(n));
+  assert.deepStrictEqual(
+    manifestResidue.sort(),
+    ["check_runtime_agnostic", "workflow_generate_prompt"],
+    "exactly the 2 manifest-only residue handlers (agent-facing + deferred-rehoming) may be outside CLI_TOOLS",
+  );
+  assert.strictEqual(manifestNames.length, CLI_TOOLS.size + manifestResidue.length,
+    `44 manifest entries must equal 42 CLI_TOOLS + 2 manifest residue, got ${manifestNames.length} vs ${CLI_TOOLS.size} + ${manifestResidue.length}`);
+});
+
+// Live-residue contract: withMcpServer boots the production server with no
+// flag, so listTools MUST expose exactly the 8 live names — the 2 manifest
+// residue handlers prefixed mastra_ + the 2 run_workflow_storage_* + 3
+// ask_* agents + workflow_generate_prompt. Any CLI_TOOLS member here is a
+// regression (it means a CLI tool leaked back onto MCP).
+test("live MCP listTools exposes exactly the 8-tool residue (5 classified + 3 agents)", { timeout: 30000 }, async () => {
+  await withMcpServer(async ({ listTools }) => {
+    const names = (await listTools()).map((t) => t.name).sort();
+    assert.deepStrictEqual(
+      names,
+      [
+        "ask_intake_agent",
+        "ask_scout_agent",
+        "ask_self_improvement_agent",
+        "mastra_check_runtime_agnostic",
+        "mastra_update_r2_allowlist",
+        "mastra_workflow_generate_prompt",
+        "run_workflow_storage_read",
+        "run_workflow_storage_round_trip",
+      ],
+      "live MCP surface must be exactly the 8-tool residue",
+    );
+    for (const name of names) {
+      assert.ok(!CLI_TOOLS.has(name.replace(/^mastra_/, "")), `CLI tool leaked onto MCP: ${name}`);
+    }
+  });
 });

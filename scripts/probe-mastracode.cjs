@@ -34,9 +34,9 @@ const RESEARCH_DEFAULTS = Object.freeze({
   //   "tools are auto-namespaced as serverName_toolName."
   tool_namespacing_format: '<serverName>_<toolName>',
   tool_namespacing_examples: [
-    'learning-loop_loop_describe',
-    'learning-loop_meta_state_list',
-    'learning-loop_meta_state_report',
+    'learning-loop_mastra_check_runtime_agnostic',
+    'learning-loop_ask_intake_agent',
+    'learning-loop_run_workflow_storage_read',
   ],
   // research-260626-2314-phase-e-plan-4-mastracode-prep-report.md §4:
   //   Built-in tool names referenced in the documented .mastracode/hooks.json
@@ -143,10 +143,9 @@ async function liveProbe() {
   }
 
   // Actual tool round-trip (Phase 4 smoke): invoke one MCP tool via tool.execute().
-  // The wired .mastracode/mcp.json sets LOOP_RECORDS_VIA_CLI=1, so the record
-  // surface (incl. loop_describe) rides the stateless CLI and MCP keeps only
-  // the residue. check_runtime_agnostic is the residue's read-only,
-  // deterministic audit tool — a safe round-trip target.
+  // MCP keeps only the residue (the record surface rides the stateless CLI).
+  // check_runtime_agnostic is the residue's read-only, deterministic audit
+  // tool — a safe round-trip target.
   let roundtrip = null;
   const roundtripToolName = 'learning-loop_mastra_check_runtime_agnostic';
   try {

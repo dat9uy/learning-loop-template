@@ -1,6 +1,6 @@
 // CLI dispatch smoke for the 6 portable-six tools re-homed to plain manifest
-// handlers: each must dispatch via `bin/loop.mjs workflow_<x> '<json>'` under
-// LOOP_RECORDS_VIA_CLI=1 and return the Phase-1 oracle-fixture output.
+// handlers: each must dispatch via `bin/loop.mjs workflow_<x> '<json>'` (the
+// CLI is the single record surface) and return the Phase-1 oracle-fixture output.
 import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync, mkdtempSync } from "node:fs";
