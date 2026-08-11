@@ -71,12 +71,12 @@ green (the finding's acceptance is the shipped single-surface contract + green t
 
 ## Success Criteria
 
-- [ ] `pnpm test` green (full suite).
-- [ ] `check_runtime_agnostic` passes for the changed surface.
-- [ ] PR opened with the debt-paid summary + re-anchored ceiling + banner/parity/cold-session notes + accepted-risk.
-- [ ] All required CI checks green; `mergeStateStatus` == `CLEAN`.
-- [ ] Finding `meta-260811T1106Z-...` resolved in the registry with a pointer to the PR.
-- [ ] No plan IDs / phase numbers / finding codes in commits or code comments.
+- [x] `pnpm test` green (full suite).
+- [x] `check_runtime_agnostic` passes for the changed surface.
+- [x] PR opened with the debt-paid summary + re-anchored ceiling + banner/parity/cold-session notes + accepted-risk.
+- [x] All required CI checks green; `mergeStateStatus` == `CLEAN`.
+- [x] Finding `meta-260811T1106Z-...` resolved in the registry with a pointer to the PR.
+- [x] No plan IDs / phase numbers / finding codes in commits or code comments.
 
 ## Risk Assessment
 
