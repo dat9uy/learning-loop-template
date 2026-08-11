@@ -31,7 +31,7 @@ The runtime MUST register the loop's MCP server in its MCP config:
 - `mcpServers.learning-loop.command === "node"`
 - `mcpServers.learning-loop.args` contains a string ending in `tools/learning-loop-mastra/mastra/server.js`.
 
-**Pass:** entry present AND target matches. **Fail:** entry missing, wrong command, or wrong args. **Note:** Claude Code stores MCP config at the root `.mcp.json`; Droid CLI stores it at `.factory/mcp.json`; Mastra Code stores it at `.mastracode/mcp.json` (NOT `.mastracode/config.json`). The validator resolves the path per runtime.
+**Pass:** entry present AND target matches. **Fail:** entry missing, wrong command, or wrong args. **Note:** Claude Code stores MCP config at the root `.mcp.json`; Droid CLI stores it at `.factory/mcp.json`; Mastra Code stores it at `.mastracode/mcp.json` (NOT `.mastracode/config.json`); Hermes Agent stores it at `.hermes/mcp.json` (the committed project-local mirror of the live `mcp_servers.learning-loop` entry in `~/.hermes/config.yaml` — Hermes has no per-project config file, so the validator checks the in-repo mirror). The validator resolves the path per runtime.
 
 ### 3. `skill-spec`
 
@@ -51,6 +51,7 @@ The runtime MUST host loop-maintained skills at `<surface>/skills/<name>/SKILL.m
 - Claude Code: `.claude/skills/learning-loop/SKILL.md`
 - Droid CLI: `.factory/skills/learning-loop/SKILL.md`
 - Mastra Code: `.mastracode/skills/learning-loop/SKILL.md` OR (via Claude-compatible auto-discovery) `.claude/skills/learning-loop/SKILL.md`
+- Hermes Agent: `.hermes/skills/learning-loop/SKILL.md` (Hermes' own skill store is global at `~/.hermes/skills/`; the in-repo mirror satisfies the contract and is the fan-out target for `sync-skills`)
 
 ### 4. `identity-marker` (PROPOSED, non-blocking)
 

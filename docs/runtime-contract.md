@@ -85,7 +85,7 @@ The contract says *what a runtime must be*; the storage fan-out says *which dire
 
 ## Current transports
 
-The MCP+hooks transport is wired today for three runtimes. Their identities, surface directories, and hook wiring are L3 mechanism detail — see `docs/architecture.md` for the gate-event flow and the per-runtime wiring. The CLI (`bin/loop.mjs`) is the single record surface in every runtime: the write-capable CLI carries the full `CLI_TOOLS` set (reads + portable mutation tools in `core/cli-tools.js`), and MCP keeps only the irreducible 8-tool residue (workflow / storage / allowlist / audit + agent wrappers). All three wired runtimes (`.claude`, `.factory`, `.mastracode`) share this single-surface contract; no flag changes it. The library-import and shell-hook-only transports are forward options, not wired in this codebase.
+The MCP+hooks transport is wired today for four runtimes. Their identities, surface directories, and hook wiring are L3 mechanism detail — see `docs/architecture.md` for the gate-event flow and the per-runtime wiring. The CLI (`bin/loop.mjs`) is the single record surface in every runtime: the write-capable CLI carries the full `CLI_TOOLS` set (reads + portable mutation tools in `core/cli-tools.js`), and MCP keeps only the irreducible 8-tool residue (workflow / storage / allowlist / audit + agent wrappers). All four wired runtimes (`.claude`, `.factory`, `.mastracode`, `.hermes`) share this single-surface contract; no flag changes it. The library-import and shell-hook-only transports are forward options, not wired in this codebase.
 
 ## Relationship to the engine
 

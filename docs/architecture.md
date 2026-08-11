@@ -163,19 +163,19 @@ The loop ships six universal hook implementations under `tools/learning-loop-mas
 |---|---|
 | `shim` | Runtime config wires a `<surface>/coordination/hooks/*.cjs` shim that `execFileSync`'s the universal hook. |
 | `direct` | Runtime config wires `node tools/learning-loop-mastra/hooks/universal/<file>` directly. |
-| `adapter` | Runtime config wires a runtime-local adapter (`.factory/hooks/loop-surface-inject.cjs`); single-source, no byte-parity mirror. |
+| `adapter` | Runtime config wires a runtime-local adapter (`.factory/hooks/loop-surface-inject.cjs`, `.hermes/coordination/hooks/*.cjs` + `.hermes/hooks/loop-surface-inject.cjs`); single-source, no byte-parity mirror. |
 | `none` | Runtime does not wire this hook (pull-only or not applicable). |
 
 **Per-runtime matrix** — see `hooks-lock.json` for the source of truth (every entry carries its wiring map inline). Examples:
 
-- `bash-gate` (PreToolUse): `.claude`=shim, `.factory`=shim, `.mastracode`=direct
-- `write-gate` (PreToolUse): `.claude`=shim, `.factory`=shim, `.mastracode`=direct (triple-wired for `write_file`/`string_replace_lsp`/`delete_file`)
-- `inbound-gate` (UserPromptSubmit): `.claude`=shim, `.factory`=shim, `.mastracode`=direct
-- `recurrence-check-on-start` (SessionStart): `.claude`=shim, `.factory`=shim, `.mastracode`=direct
-- `session-start-inject-discoverability` (SessionStart): `.claude`=direct, `.factory`=adapter (`matcher:"startup"`), `.mastracode`=none
-- `session-start-inject-process-hints` (SessionStart): `.claude`=direct, `.factory`=adapter (`matcher:"startup"`), `.mastracode`=none
+- `bash-gate` (PreToolUse): `.claude`=shim, `.factory`=shim, `.mastracode`=direct, `.hermes`=adapter (`matcher:"terminal"`)
+- `write-gate` (PreToolUse): `.claude`=shim, `.factory`=shim, `.mastracode`=direct (triple-wired for `write_file`/`string_replace_lsp`/`delete_file`), `.hermes`=adapter (`matcher:"write_file|patch"`)
+- `inbound-gate` (UserPromptSubmit): `.claude`=shim, `.factory`=shim, `.mastracode`=direct, `.hermes`=adapter
+- `recurrence-check-on-start` (SessionStart): `.claude`=shim, `.factory`=shim, `.mastracode`=direct, `.hermes`=adapter
+- `session-start-inject-discoverability` (SessionStart): `.claude`=direct, `.factory`=adapter (`matcher:"startup"`), `.mastracode`=none, `.hermes`=adapter (`matcher:"first_turn"`)
+- `session-start-inject-process-hints` (SessionStart): `.claude`=direct, `.factory`=adapter (`matcher:"startup"`), `.mastracode`=none, `.hermes`=adapter (`matcher:"first_turn"`)
 
-**Why multiple patterns exist:** Claude Code and Droid's PreToolUse surfaces only match a string command; the shim provides a stable `.cjs` wrapper that the universal hook can `execFileSync`. `.mastracode`'s config is rich enough to call the universal hook directly. The SessionStart adapter exists because context-injection is runtime-specific (Droid needs a different startup shape than Claude's universal hooks emit) — see [Context-Injection Division of Labor](#context-injection-division-of-labor).
+**Why multiple patterns exist:** Claude Code and Droid's PreToolUse surfaces only match a string command; the shim provides a stable `.cjs` wrapper that the universal hook can `execFileSync`. `.mastracode`'s config is rich enough to call the universal hook directly. The SessionStart adapter exists because context-injection is runtime-specific (Droid needs a different startup shape than Claude's universal hooks emit; Hermes has no SessionStart injection channel, so its adapter rides `pre_llm_call` gated to `is_first_turn` and carries a project-scope guard because Hermes shell hooks are global) — see [Context-Injection Division of Labor](#context-injection-division-of-labor).
 
 **Adoption path for a new hook:**
 
