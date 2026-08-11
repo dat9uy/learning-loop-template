@@ -1,7 +1,7 @@
 ---
 title: "Drop MCP CLI tool registration — single surface"
 description: "Pay down the MCP/CLI dual-registration debt (finding meta-260811T1106Z-...): drop MCP registration of CLI_TOOLS entirely, retire the LOOP_RECORDS_VIA_CLI + LOOP_READS_VIA_CLI flags, make the stateless CLI the single CLI tool surface, re-target the MCP wire-budget guard to the production residue, make the Claude session-start transport banner unconditional, and re-base parity/discoverability tests without conflating CLI, manifest, agent, or live-MCP surfaces."
-status: pending
+status: completed
 priority: P1
 effort: "2-3d"
 tags: [meta-state-tools, mcp, cli, wire-budget, contract-change, session-start-hook]
