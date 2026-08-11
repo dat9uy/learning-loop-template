@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Post-B budget re-anchor"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: [2]
@@ -68,11 +68,11 @@ meaningfully below 55,000 with room for 1-2 additions.
 
 ## Success Criteria
 
-- [ ] Budget test asserts the new `measured_wire + headroom` ceiling and passes.
-- [ ] STOPGAP comment removed; structurally-anchored rationale written.
-- [ ] `cli-context-savings` passes (re-snapshotted if needed).
-- [ ] Full loop suite green.
-- [ ] Finding `meta-260811T0805Z-...` resolved with citation.
+- [x] Budget test asserts the new `measured_wire + headroom` ceiling and passes.
+- [x] STOPGAP comment removed; structurally-anchored rationale written.
+- [x] `cli-context-savings` passes (re-snapshotted if needed).
+- [x] Full loop suite green.
+- [x] Finding `meta-260811T0805Z-...` resolved with citation.
 
 ## Risk Assessment
 

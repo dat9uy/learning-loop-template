@@ -1,7 +1,7 @@
 ---
 title: "MCP wire budget restore and glossary-extend"
 description: "Restore the 55,000-byte MCP manifest wire ceiling (Option A, 247-byte trim), then structurally shrink the wire by extending the field-glossary ref pattern across handler schemas (Option B), then re-anchor the budget test to the post-B steady-state. Resolves finding meta-260811T0805Z-manifest-context-budget-raised-a-second-consecutive-time-mcp."
-status: pending
+status: completed
 priority: P1
 effort: "1-2d"
 tags: [meta-state-tools, mcp-wire-budget, field-glossary, tdd]
@@ -41,9 +41,9 @@ manual drift that caused the bumps.
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Restore the 55,000 ceiling](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: Structural glossary-extend](./phase-02-structural-glossary-extend.md) | Pending |
-| 3 | [Phase 3: Post-B budget re-anchor](./phase-03-post-b-budget-re-anchor.md) | Pending |
+| 1 | [Phase 1: Restore the 55,000 ceiling](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: Structural glossary-extend](./phase-02-structural-glossary-extend.md) | Completed |
+| 3 | [Phase 3: Post-B budget re-anchor](./phase-03-post-b-budget-re-anchor.md) | Completed |
 
 ## Non-goals
 
@@ -60,24 +60,24 @@ manual drift that caused the bumps.
 
 ## Acceptance criteria
 
-- [ ] `mcp-wire-budget` test asserts `<= 55,000` and passes (Phase 1).
-- [ ] `cli-context-savings` test still passes after the Phase 1 trim (no snapshot break).
-- [ ] A shared glossary-ref helper replaces the per-handler `describeChangeField` pattern
+- [x] `mcp-wire-budget` test asserts `<= 55,000` and passes (Phase 1).
+- [x] `cli-context-savings` test still passes after the Phase 1 trim (no snapshot break).
+- [x] A shared glossary-ref helper replaces the per-handler `describeChangeField` pattern
       and is used by the **allowlisted, semantically-aligned** handler+field pairs (Phase 2).
-- [ ] `field-glossary.test.js` covers the helper + ref-coverage **for the allowlist only**,
+- [x] `field-glossary.test.js` covers the helper + ref-coverage **for the allowlist only**,
       and asserts `meta_state_list` filter fields are NOT refs (Phase 2).
-- [ ] Phase 2 audit produced the allowlist + audited convertible bytes; the gate is
+- [x] Phase 2 audit produced the allowlist + audited convertible bytes; the gate is
       "wire drops by ≥ the audited convertible bytes."
-- [ ] **No new `FIELD_GLOSSARY` entries added** — only the existing 19 used; cold-tier
+- [x] **No new `FIELD_GLOSSARY` entries added** — only the existing 19 used; cold-tier
       glossary output unchanged (validation decision).
-- [ ] Measured wire after Phase 2 is below 55,000 and dropped by ≥ the audited bytes. The
+- [x] Measured wire after Phase 2 is below 55,000 and dropped by ≥ the audited bytes. The
       exact number is recorded for Phase 3.
-- [ ] No handler's `inputSchema` shape changed (only `description` strings) — verified by
+- [x] No handler's `inputSchema` shape changed (only `description` strings) — verified by
       the existing wire-format / parity tests passing.
-- [ ] All three phases ship as a **single PR** (validation decision).
-- [ ] Budget test ceiling re-anchored to `measured_wire + headroom` with rationale in the
-      test comment; STOPGAP note removed (Phase 3).
-- [ ] Finding `meta-260811T0805Z-...` resolved once the ceiling is restored/re-anchored.
+- [x] All three phases ship as a **single PR** (validation decision).
+- [x] Budget test ceiling re-anchored (kept at 55,000 per user decision; wire 54,883) with
+      rationale in the test comment; STOPGAP note removed (Phase 3).
+- [x] Finding `meta-260811T0805Z-...` resolved once the ceiling is restored/re-anchored.
 
 ## Context
 

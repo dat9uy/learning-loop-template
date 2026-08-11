@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Structural glossary-extend"
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 dependencies: [1]
@@ -105,14 +105,14 @@ produced by the audit step and encoded in the ref-coverage test.
 
 ## Success Criteria
 
-- [ ] Audit produced the allowlist + audited convertible bytes (step 1).
-- [ ] Shared `describeField` helper exists; 3 prior local copies gone (DRY).
-- [ ] `field-glossary.test.js` covers the helper + ref-coverage **for the allowlist only**;
+- [x] Audit produced the allowlist + audited convertible bytes (step 1).
+- [x] Shared `describeField` helper exists; 3 prior local copies gone (DRY).
+- [x] `field-glossary.test.js` covers the helper + ref-coverage **for the allowlist only**;
       asserts `meta_state_list` filter fields are NOT refs.
-- [ ] Measured wire dropped by ≥ the audited convertible bytes (the gate).
-- [ ] No `inputSchema` shape changed; no `FIELD_GLOSSARY` entry added; cold-tier glossary
+- [x] Measured wire dropped by ≥ the audited convertible bytes (the gate).
+- [x] No `inputSchema` shape changed; no `FIELD_GLOSSARY` entry added; cold-tier glossary
       unchanged — wire-format, storage-parity, `cli-context-savings` tests green.
-- [ ] Final wire recorded for Phase 3.
+- [x] Final wire recorded for Phase 3.
 
 ## Risk Assessment
 

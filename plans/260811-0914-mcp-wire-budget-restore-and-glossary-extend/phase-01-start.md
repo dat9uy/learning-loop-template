@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Restore the 55,000 ceiling"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: []
@@ -80,11 +80,11 @@ Trim targets (tool `description` prose, descending by available rephrasable pros
 
 ## Success Criteria
 
-- [ ] `mcp-wire-budget` asserts `<= 55_000` and passes.
-- [ ] `cli-context-savings` passes (re-snapshotted if needed).
-- [ ] Full loop test suite green.
-- [ ] No `inputSchema` shape changed (diff confirms `description`-only edits).
-- [ ] Budget test STOPGAP comment replaced with restored-ceiling rationale.
+- [x] `mcp-wire-budget` asserts `<= 55_000` and passes.
+- [x] `cli-context-savings` passes (re-snapshotted if needed).
+- [x] Full loop test suite green.
+- [x] No `inputSchema` shape changed (diff confirms `description`-only edits).
+- [x] Budget test STOPGAP comment replaced with restored-ceiling rationale.
 
 ## Risk Assessment
 
