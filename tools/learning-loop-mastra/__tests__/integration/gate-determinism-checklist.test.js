@@ -178,6 +178,134 @@ describe("checkResolutionEvidence", () => {
     assert.strictEqual(result.orphans[0].expected, "sha256:0000000000000000000000000000000000000000000000000000000000000000");
     assert.ok(result.orphans[0].actual);
     assert.ok(result.orphans[0].actual.startsWith("sha256:"));
+
+    // Orphan records carry the canonical evidence path + verification mode so
+    // the rejection names the exact remediation (finding
+    // meta-260801T2348Z-structured-rejections...).
+    assert.strictEqual(result.orphans[0].evidence_code_ref, "dummy.js");
+    assert.strictEqual(result.orphans[0].verification_mode, "attestation");
+
+    // Rejection carries a machine-readable recovery list (refresh → touch,
+    // since this finding has no verification.steps).
+    assert.ok(Array.isArray(result.recovery), "recovery must be an array");
+    assert.strictEqual(result.recovery.length, 2);
+    assert.deepStrictEqual(result.recovery[0], {
+      tool: "meta_state_refresh_file_index",
+      args: { path: "dummy.js" },
+      why: "cited fingerprint drifted — refresh the file-index baseline to the live hash",
+    });
+    assert.strictEqual(result.recovery[1].tool, "meta_state_touch");
+    assert.deepStrictEqual(result.recovery[1].args, { id: findingId });
+  });
+
+  test("rule-no-orphaned-evidence recovery uses re_verify when the finding has verification.steps", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { computeFileHash } = await importCheckGrounding();
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const dummyFile = join(tempRoot, "dummy-steps.js");
+    writeFileSync(dummyFile, "const s = 1;");
+    const hash = computeFileHash(dummyFile);
+
+    const findingId = core.generateId("orphan-steps");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding with verification steps for orphan check.",
+      status: "open",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "dummy-steps.js",
+      code_fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      verification: { steps: [{ kind: "shell", command: "true" }], history: [] },
+    });
+
+    const rule = {
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
+      applies_to_resolution: "*",
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, false);
+    assert.strictEqual(result.orphans[0].reason, "fingerprint_mismatch");
+    assert.strictEqual(result.orphans[0].verification_mode, "steps");
+    assert.strictEqual(result.recovery.length, 2);
+    assert.strictEqual(result.recovery[0].tool, "meta_state_refresh_file_index");
+    assert.strictEqual(result.recovery[1].tool, "meta_state_re_verify");
+    assert.deepStrictEqual(result.recovery[1].args, { id: findingId });
+  });
+
+  test("rule-no-orphaned-evidence recovery guides no_evidence_code_ref via patch", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const findingId = core.generateId("orphan-no-ref");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding with no evidence code ref for orphan check.",
+      status: "open",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+    });
+
+    const rule = {
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
+      applies_to_resolution: "*",
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, false);
+    assert.strictEqual(result.orphans[0].reason, "no_evidence_code_ref");
+    assert.strictEqual(result.recovery.length, 1);
+    assert.strictEqual(result.recovery[0].tool, "meta_state_patch");
+    assert.deepStrictEqual(result.recovery[0].args.id, findingId);
+  });
+
+  test("rule-no-orphaned-evidence recovery guides code_ref_missing via patch", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const findingId = core.generateId("orphan-missing");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding pointing at a missing file for orphan check.",
+      status: "open",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "does-not-exist-orphan.js",
+    });
+
+    const rule = {
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
+      applies_to_resolution: "*",
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, false);
+    assert.strictEqual(result.orphans[0].reason, "code_ref_missing");
+    assert.strictEqual(result.recovery.length, 1);
+    assert.strictEqual(result.recovery[0].tool, "meta_state_patch");
+    assert.deepStrictEqual(result.recovery[0].args.id, findingId);
   });
 
   test("rule-no-orphaned-evidence allows resolution when all active findings are grounded (fingerprint matches)", async () => {

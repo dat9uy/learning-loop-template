@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { relative as pathRelative } from "node:path";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { isOpen } from "../../core/stale-view.js";
 import { readFileIndex } from "../../core/meta-state.js";
@@ -48,7 +49,7 @@ export const metaStateTouchTool = {
     });
 
     if (isGroundingReject(grounding)) {
-      const wireResult = buildGroundingReject(id, grounding);
+      const wireResult = buildGroundingReject(id, grounding, root);
       appendGateLog(root, {
         timestamp: gateLogTimestamp,
         tool: "meta_state_touch",
@@ -133,13 +134,50 @@ function isGroundingReject(grounding) {
   return groundingStatus === "drifted" || grounding?.grounding?.code_ref_exists === false;
 }
 
-function buildGroundingReject(id, grounding) {
+// Build the machine-readable `recovery` list for a grounding rejection —
+// the remediation that the structured rejection otherwise hides (finding
+// meta-260801T2348Z-structured-rejections-name-the-blocking-rule-and-orphans-but,
+// same class as the resolve-consult rejection). Per reason:
+//   - drifted  → refresh_file_index with the cited path (re-grounds the
+//     drifted baseline; the touch can then be retried against the refreshed
+//     baseline). The grounding snapshot's evidence_code_ref is the absolute
+//     realpath; refresh_file_index keys on the repo-relative canonical form,
+//     so convert with path.relative(root, absPath).
+//   - missing  → re-anchor guidance (the path is operator judgment: restore
+//     the file, or patch the finding to a live evidence path)
+function buildGroundingRecovery(id, grounding, root) {
+  const absPath = grounding?.grounding?.evidence_code_ref ?? null;
+  const reason = grounding?.grounding?.code_ref_exists === false ? "missing" : "drifted";
+  if (reason === "drifted" && absPath) {
+    const relPath = pathRelative(root, absPath);
+    return [
+      {
+        tool: "meta_state_refresh_file_index",
+        args: { path: relPath },
+        why: "cited fingerprint drifted — refresh the file-index baseline to the live hash, then retry touch",
+      },
+    ];
+  }
+  if (reason === "missing") {
+    return [
+      {
+        tool: "meta_state_patch",
+        args: { id, patch: { evidence_code_ref: "<restored-or-new-path>" } },
+        why: "cited evidence file is missing — restore the file or patch the finding to a live evidence path",
+      },
+    ];
+  }
+  return [];
+}
+
+function buildGroundingReject(id, grounding, root) {
   const groundingStatus = grounding?.status ?? "unknown";
   const reason = grounding?.grounding?.code_ref_exists === false ? "missing" : "drifted";
   return {
     touched: false,
     reason,
     id,
+    recovery: buildGroundingRecovery(id, grounding, root),
     grounding: summarizeGrounding(grounding, groundingStatus),
   };
 }
