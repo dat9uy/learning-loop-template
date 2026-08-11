@@ -167,9 +167,9 @@ export const HINT_REGISTRY = Object.freeze([
     kind: "discoverability",
     tier: "on-demand",
     text:
-      "Narrow query: prefer `meta_state_list({ id: [...] })` or `meta_state_list({ ref_by, ref_field })` over the unfiltered dump. The unfiltered list is for batch audit / sweep only; the narrow query is the default.",
+      "Narrow query: prefer `meta_state_list({ id: [...] })` or `meta_state_list({ ref_by, ref_field })` over the unfiltered dump. The unfiltered list is for batch audit / sweep only; the narrow query is the default. Projection semantics: `meta_state_list` default = live latest-version projection (one row per id, max_by(version)). `include_all_versions: true` is audit-only — never use history as a workaround for a fresh write; if a just-written record reads stale, re-query once rather than grepping `meta-state.jsonl`. An id-filtered query that hits a terminal/archived id returns an `excluded_ids` notice naming the id + its status — pass `include_archived: true` to include it.",
     suggestion:
-      "Use `meta_state_list({ id: [...] })` for one-call resolution of cross-reference ids; use `{ ref_by, ref_field }` for 1-hop neighborhood queries. Reserve the unfiltered list for batch audit only.",
+      "Use `meta_state_list({ id: [...] })` for one-call resolution of cross-reference ids; use `{ ref_by, ref_field }` for 1-hop neighborhood queries. Reserve the unfiltered list for batch audit only. Default = live latest-version projection; `include_all_versions` is audit-only, never a workaround for a fresh write; an `excluded_ids` notice on an id query means pass `include_archived: true`.",
     derived_from_rule: null,
   },
   {

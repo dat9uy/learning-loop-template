@@ -92,6 +92,137 @@ describe("meta_state_list id filter", () => {
     const text = JSON.parse(result.content[0].text);
     assert.strictEqual(text.count, 3);
   });
+
+  // Finding meta-260801T2348Z: an id-filtered query that hits a
+  // terminal/archived id must say so (`excluded_ids` notice) instead of
+  // silently returning count 0 — silent exclusion pushed agents to grep
+  // meta-state.jsonl raw.
+  test("id-filtered query on a terminal id emits an excluded_ids notice, not silent count 0", async () => {
+    writeFileSync(join(root, "meta-state.jsonl"), [...SEED_ENTRIES, {
+      id: "delta-resolved",
+      entry_kind: "finding",
+      status: "resolved",
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "resolved entry for excluded_ids test (min 20 chars)",
+      created_at: new Date().toISOString(),
+      resolved_at: new Date().toISOString(),
+      resolved_by: "test",
+    }].map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+    const result = await metaStateListTool.handler({ id: "delta-resolved" });
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.count, 0, "terminal id still excluded by default");
+    assert.ok(Array.isArray(text.excluded_ids), "excluded_ids notice must be present");
+    assert.strictEqual(text.excluded_ids.length, 1);
+    assert.strictEqual(text.excluded_ids[0].id, "delta-resolved");
+    assert.strictEqual(text.excluded_ids[0].status, "resolved");
+    assert.ok(
+      text.excluded_ids[0].note.includes("include_archived"),
+      "notice must carry the include_archived retry hint"
+    );
+  });
+
+  test("include_archived: true suppresses the excluded_ids notice", async () => {
+    const result = await metaStateListTool.handler({ id: "delta-resolved", include_archived: true });
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.count, 1, "terminal id included via include_archived");
+    assert.strictEqual(text.excluded_ids, undefined, "no notice when terminal entries are opted in");
+  });
+
+  test("open ids emit no excluded_ids notice", async () => {
+    const result = await metaStateListTool.handler({ id: "alpha" });
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.count, 1);
+    assert.strictEqual(text.excluded_ids, undefined, "open id must not surface an exclusion notice");
+  });
+
+  test("nonexistent id emits no excluded_ids notice (that's the prefix-hint path)", async () => {
+    const result = await metaStateListTool.handler({ id: "no-such-id-xyz" });
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.count, 0);
+    assert.strictEqual(text.excluded_ids, undefined, "missing id is not an exclusion");
+  });
+
+  test("mixed [open, terminal] id query: open returns, terminal excluded + noticed", async () => {
+    const result = await metaStateListTool.handler({ id: ["alpha", "delta-resolved"] });
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.count, 1);
+    assert.strictEqual(text.entries[0].id, "alpha");
+    assert.ok(Array.isArray(text.excluded_ids));
+    assert.strictEqual(text.excluded_ids.length, 1);
+    assert.strictEqual(text.excluded_ids[0].id, "delta-resolved");
+  });
+
+  test("no excluded_ids notice when an explicit filter (not the terminal exclusion) dropped the id", async () => {
+    // A terminal id dropped by the caller's OWN filter (status:"open",
+    // entry_kind, category, ...) is NOT an exclusion `include_archived` can
+    // recover — surfacing `excluded_ids` would be a false positive with a
+    // dead-end retry hint. The notice must fire only for ids dropped by the
+    // DEFAULT terminal/archived view (no other filter).
+    const cases = [
+      { args: { id: "delta-resolved", status: "open" }, label: "status:open" },
+      { args: { id: "delta-resolved", entry_kind: "change-log" }, label: "entry_kind:change-log" },
+      // delta-resolved's category IS "gate-logic-bug"; a non-matching category
+      // drops it in Step 3, so the terminal-exclusion notice must NOT fire.
+      { args: { id: "delta-resolved", category: "mcp-tool-missing" }, label: "category mismatch" },
+    ];
+    for (const { args, label } of cases) {
+      const result = await metaStateListTool.handler(args);
+      const text = JSON.parse(result.content[0].text);
+      assert.strictEqual(
+        text.excluded_ids,
+        undefined,
+        `${label}: terminal id dropped by explicit filter must NOT emit excluded_ids`
+      );
+    }
+  });
+
+  test("explicit status:'archived' filter is a caller opt-in — no excluded_ids notice", async () => {
+    // `archived` is not in EXCLUDABLE_STATUSES, so without special handling the
+    // caller who explicitly queried `status:"archived"` would get the "you
+    // haven't opted in to archived" notice — a false positive. An explicit
+    // status:"archived" filter is a clear opt-in and must suppress the notice.
+    writeFileSync(join(root, "meta-state.jsonl"), [...SEED_ENTRIES, {
+      id: "epsilon-archived",
+      entry_kind: "finding",
+      status: "archived",
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "archived entry for opt-in test (min 20 chars)",
+      created_at: new Date().toISOString(),
+      archived_at: new Date().toISOString(),
+      archived_by: "test",
+    }].map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+    const result = await metaStateListTool.handler({ id: "epsilon-archived", status: "archived" });
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.excluded_ids, undefined, "explicit status:archived must suppress the notice");
+  });
+
+  test("same-version tie-break: later created_at terminal line is noticed, not silent", async () => {
+    // Two version-1 lines for one id where the later-created is resolved. Step 4
+    // drops the id (later created_at wins on equal version), so the notice must
+    // fire with the terminal status — the same-version corner the tie-break
+    // handles. Without it, a terminal id silently returns count 0.
+    const root2 = mkdtempSync(join(tmpdir(), "tiebreak-"));
+    const origRoot = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = root2;
+    try {
+      writeFileSync(join(root2, "meta-state.jsonl"), [
+        { id: "tie-samev", entry_kind: "finding", status: "open", version: 1, category: "gate-logic-bug", severity: "warning", affected_system: "gate-logic", description: "tie-samev v1 open (min 20 chars)", created_at: "2026-01-01T00:00:00.000Z" },
+        { id: "tie-samev", entry_kind: "finding", status: "resolved", version: 1, category: "gate-logic-bug", severity: "warning", affected_system: "gate-logic", description: "tie-samev v1 resolved (min 20 chars)", created_at: "2026-01-02T00:00:00.000Z" },
+      ].map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+      const result = await metaStateListTool.handler({ id: "tie-samev", include_all_versions: true, compact: false });
+      const text = JSON.parse(result.content[0].text);
+      assert.strictEqual(text.count, 0, "id dropped (projected status resolved)");
+      assert.ok(Array.isArray(text.excluded_ids), "same-version tie-break must emit the notice");
+      assert.strictEqual(text.excluded_ids[0].status, "resolved", "notice reports the projected terminal status");
+    } finally {
+      process.env.GATE_ROOT = origRoot;
+      rmSync(root2, { recursive: true, force: true });
+    }
+  });
 });
 
 // did-you-mean prefix hints: when an id query misses but the queried id is a
