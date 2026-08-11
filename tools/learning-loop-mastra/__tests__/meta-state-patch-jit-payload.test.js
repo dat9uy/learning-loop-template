@@ -1,6 +1,5 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { withMcpServer } from "./with-mcp-server.js";
 import { metaStatePatchTool } from "../tools/handlers/meta-state-patch-tool.js";
 import { metaStateReportTool } from "../tools/handlers/meta-state-report-tool.js";
 import { mkdtempSync } from "node:fs";
@@ -18,16 +17,29 @@ async function reportFinding() {
   })).content[0].text);
 }
 
-test("meta_state_patch wire schema is free-form with a minProperties hint", async () => {
-  await withMcpServer(async ({ listTools }) => {
-    const patch = (await listTools()).find((tool) => tool.name === "mastra_meta_state_patch");
-    assert.ok(patch);
-    assert.equal(patch.inputSchema.properties.patch.anyOf, undefined);
-    assert.equal(patch.inputSchema.properties.patch.minProperties, 1);
-    assert.equal(patch.inputSchema.properties.patch.type, "object");
-    assert.match(patch.description, /description/);
-    assert.match(patch.description, /evidence_code_ref/);
+test("meta_state_patch parity JSON schema is free-form with a minProperties hint", async () => {
+  // meta_state_patch is a CLI tool (single-surface contract); MCP does not
+  // register it. The wire JSON schema is produced by createLoopTool's
+  // attachParityJSONSchema — the exact conversion the MCP server applied.
+  // The steering hint (minProperties:1) lives on the parity JSON schema.
+  const { createLoopTool } = await import("../mastra/create-loop-tool.js");
+  const { toJSONSchema } = await import("zod");
+  const tool = createLoopTool({
+    id: "mastra_meta_state_patch",
+    description: metaStatePatchTool.description,
+    inputSchema: metaStatePatchTool.schema,
+    execute: async () => ({}),
+    pathFields: [],
+    parityHints: metaStatePatchTool.parityJsonSchemaHints ?? {},
   });
+  const parityJSON = JSON.parse(JSON.stringify(toJSONSchema(tool.inputSchema, { target: "draft-7", io: "input" })));
+  const patchProp = parityJSON.properties?.patch;
+  assert.ok(patchProp, "patch property must exist in the parity schema");
+  assert.equal(patchProp.anyOf, undefined);
+  assert.equal(patchProp.minProperties, 1, "steering hint must render minProperties:1");
+  assert.equal(patchProp.type, "object");
+  assert.match(tool.description, /description/);
+  assert.match(tool.description, /evidence_code_ref/);
 });
 
 test("invalid and empty patch responses carry the selected branch schema", async () => {

@@ -1,15 +1,15 @@
-import { describe, test, beforeAll, afterAll } from "vitest";
+import { describe, test } from "vitest";
 import assert from "node:assert";
 import { readFileSync } from "node:fs";
 import { mkdtempSync, mkdirSync, readdirSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { connectMcpServer } from "./with-mcp-server.js";
+import { spawn } from "node:child_process";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
-const mastraEntry = join(projectRoot, "tools/learning-loop-mastra/mastra/server.js");
+const LOOP_BIN = join(projectRoot, "tools/learning-loop-mastra/bin/loop.mjs");
 
 function copySchemas(tempRoot) {
   const schemasSrc = join(projectRoot, "schemas");
@@ -30,65 +30,64 @@ function prepareTempRoot() {
 }
 
 function readRegistryLines(tempRoot) {
-  // Plan 260715-0801 Tier 1 Phase 2: this test only writes change-logs via
-  // log_change, which now lands in change-log.jsonl. Read from there.
+  // log_change lands in change-log.jsonl (Tier 1 Phase 2 dispatch).
   const raw = readFileSync(join(tempRoot, "change-log.jsonl"), "utf8");
   return raw.split("\n").filter((line) => line.trim() !== "");
 }
 
-describe("connectMcpServer module-level mutex", () => {
+// Concurrent record-surface writes: the CLI (bin/loop.mjs) is the single write
+// transport, and the registry-append lock (proper-lockfile, cross-process)
+// must serialize concurrent log_change writes so none is lost. This replaces
+// the former MCP-mutex leg (meta_state_log_change no longer rides MCP; the
+// MCP harness mutex is a test-only concern). The write serialization contract
+// is transport-agnostic and is what survives the single-surface cut-over.
+describe("concurrent CLI writes serialize without lost updates", () => {
   let tempRoot;
-  let a;
-  let b;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     tempRoot = prepareTempRoot();
-    a = await connectMcpServer(mastraEntry, tempRoot);
-    b = await connectMcpServer(mastraEntry, tempRoot);
   });
 
-  afterAll(async () => {
-    if (a) await a.cleanup();
-    if (b) await b.cleanup();
-  });
-
-  test("20 parallel cross-client writes serialize without lost updates", async () => {
+  test("20 parallel CLI log_change writes serialize without lost updates", async () => {
     const calls = [];
     for (let i = 0; i < 10; i++) {
-      calls.push(a.callTool("mastra_meta_state_log_change", {
-        change_dimension: "mechanical",
-        change_target: `tools/mutex-test-a-${i}.js`,
-        change_diff: { added: [`mutex-test-${i}`], removed: [], changed: [] },
-        reason: `Client A mutex race test entry ${i} (min 20 chars)`,
-      }));
-      calls.push(b.callTool("mastra_meta_state_log_change", {
-        change_dimension: "mechanical",
-        change_target: `tools/mutex-test-b-${i}.js`,
-        change_diff: { added: [`mutex-test-${i}`], removed: [], changed: [] },
-        reason: `Client B mutex race test entry ${i} (min 20 chars)`,
-      }));
+      for (const side of ["a", "b"]) {
+        calls.push(new Promise((resolve) => {
+          const child = spawn(
+            process.execPath,
+            [
+              LOOP_BIN,
+              "meta_state_log_change",
+              JSON.stringify({
+                change_dimension: "mechanical",
+                change_target: `tools/mutex-test-${side}-${i}.js`,
+                change_diff: { added: [`mutex-test-${i}`], removed: [], changed: [] },
+                reason: `Client ${side} mutex race test entry ${i} (min 20 chars)`,
+              }),
+            ],
+            {
+              env: { ...process.env, LOOP_SURFACE: ".claude", GATE_ROOT: tempRoot, MASTRA_STORAGE_DRIVER: "memory" },
+              stdio: ["ignore", "pipe", "pipe"],
+            },
+          );
+          let stdout = "";
+          let stderr = "";
+          child.stdout.on("data", (d) => (stdout += d));
+          child.stderr.on("data", (d) => (stderr += d));
+          child.on("exit", (code) => resolve({ code, stdout, stderr }));
+        }));
+      }
     }
 
-    const results = await Promise.all(calls.map((p) => p.catch((err) => ({ error: err.message }))));
-    const failures = results.filter((r) => r.error);
-    assert.strictEqual(failures.length, 0, `Some calls failed: ${JSON.stringify(failures.slice(0, 3), null, 2)}`);
-
-    // created_at must be non-decreasing in call order. With ms resolution two
-    // serialized writes can tie (t == prev), so this is a non-regression check,
-    // not a strict ordering proof. The line-count + unique-id assertions below
-    // are the actual mutex-correctness gate (no lost updates under concurrent
-    // writes).
-    const timestamps = results.map((r) => new Date(r.created_at).getTime());
-    assert.ok(
-      timestamps.every((t, i) => i === 0 || t >= timestamps[i - 1]),
-      "created_at should not regress across serialized writes"
-    );
+    const results = await Promise.all(calls);
+    const failures = results.filter((r) => r.code !== 0);
+    assert.strictEqual(failures.length, 0, `Some CLI writes failed: ${JSON.stringify(failures.slice(0, 3).map((f) => ({ code: f.code, stderr: f.stderr })), null, 2)}`);
 
     const lines = readRegistryLines(tempRoot);
     assert.strictEqual(
       lines.length,
       20,
-      `Expected 20 registry entries, got ${lines.length} — parallel writes raced and lost updates`
+      `Expected 20 registry entries, got ${lines.length} — parallel writes raced and lost updates`,
     );
 
     // Verify every entry is valid JSON (no interleaved/corrupt writes).
@@ -99,5 +98,5 @@ describe("connectMcpServer module-level mutex", () => {
       ids.add(parsed.id);
     }
     assert.strictEqual(ids.size, 20, "Expected 20 unique change-log ids");
-  });
+  }, 60000);
 });

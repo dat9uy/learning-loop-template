@@ -26,6 +26,7 @@ const {
   AGENT_MANIFEST_GROUPS,
   TOOLS_MANIFEST_ENTRIES,
   WORKFLOW_GROUP_TOOLS,
+  CLI_TOTAL_TOOLS,
 } = require("./helpers/manifest-constants.cjs");
 
 const PKG = resolve(__dirname, "..");
@@ -108,5 +109,31 @@ describe("manifest arithmetic", () => {
         `agent ${key} exposes as ${mcpName} but is not in agent-manifest.json#agent.tools`,
       );
     }
+  });
+
+  // Computed crosswalk (not literal): 44 handler-manifest entries = 42 CLI
+  // tools + 2 manifest-only residue handlers. The 50-entry agent declaration
+  // is a SEPARATE contract — it includes workflows + agents + allowlist etc.
+  test(`handler manifest partitions into ${CLI_TOTAL_TOOLS} CLI tools + 2 manifest-only residue (44 total)`, async () => {
+    const { CLI_TOOLS } = await import("../core/cli-tools.js");
+    assert.strictEqual(CLI_TOOLS.size, CLI_TOTAL_TOOLS,
+      `CLI_TOOLS must have ${CLI_TOTAL_TOOLS} entries, got ${CLI_TOOLS.size}`);
+    const { resolveToolImportUrl } = await import("../core/manifest-loader.js");
+    let manifestResidue = 0;
+    for (const entry of tools) {
+      const mod = await import(resolveToolImportUrl(entry.file));
+      const tool = mod[entry.export];
+      if (tool?.name && !CLI_TOOLS.has(tool.name)) manifestResidue++;
+    }
+    assert.strictEqual(
+      manifestResidue,
+      2,
+      `exactly 2 manifest-only residue handlers may be outside CLI_TOOLS (check_runtime_agnostic, workflow_generate_prompt), got ${manifestResidue}`,
+    );
+    assert.strictEqual(
+      tools.length,
+      CLI_TOOLS.size + manifestResidue,
+      `44 manifest entries must equal ${CLI_TOOLS.size} CLI + ${manifestResidue} residue`,
+    );
   });
 });

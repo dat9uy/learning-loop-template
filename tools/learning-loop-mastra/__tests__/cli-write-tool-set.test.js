@@ -2,10 +2,11 @@
 // extended by Phase 3 of plans/260722-2147.
 //
 // Membership test for the CLI write tool set. `CLI_WRITE_TOOLS` is the
-// single source of truth for which mutation handlers the CLI carries; the
-// MCP exclusion set (`CLI_TOOLS = CLI_READ_TOOLS ∪ CLI_WRITE_TOOLS`)
-// drops the same names when `LOOP_RECORDS_VIA_CLI=1`. A future manifest
-// addition is handled by the drift test (cli-write-tool-set-drift.test.js).
+// single source of truth for which mutation handlers the CLI carries;
+// `CLI_TOOLS = CLI_READ_TOOLS ∪ CLI_WRITE_TOOLS` is the CLI allowlist. The
+// CLI is the single record surface; MCP registers only the residue. A future
+// manifest addition is handled by the drift test
+// (cli-write-tool-set-drift.test.js).
 //
 // Phase 3 added 2 workflow helper handlers to CLI_WRITE_TOOLS
 // (`workflow_notify_artifact`, `workflow_trigger`) — stateless handlers

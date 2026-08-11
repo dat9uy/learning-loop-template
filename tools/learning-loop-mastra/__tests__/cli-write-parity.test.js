@@ -1,18 +1,24 @@
 // cli-write-parity.test.js — Phase 2 of plans/260722-1343-write-capable-cli-w.
 //
 // Byte-structural parity: CLI writes produce the same persisted registry
-// state as the direct handler call AND the MCP server, for every tool in
-// CLI_WRITE_TOOLS.
+// state as the direct handler call, for every tool in CLI_WRITE_TOOLS.
 //
 // Strategy (mirrors cli-read-parity.test.js):
 //   - For each write tool, run a step sequence (seed writes that build
 //     prerequisite state, then the target write) against INDEPENDENT
-//     seeded tmpdirs for direct / CLI / MCP (appendGateLog + fingerprint
+//     seeded tmpdirs for direct and CLI (appendGateLog + fingerprint
 //     auto-record leak across a shared root, so each side must be fresh).
 //   - Compare the persisted files the sequence touches: meta-state.jsonl,
 //     change-log.jsonl, gate-log.jsonl, runtime-state.jsonl. Strip
 //     non-deterministic fields (timestamps, fingerprints, version) before
 //     deepStrictEqual.
+//
+// The MCP leg was dropped: MCP no longer registers write tools (single-surface
+// contract), so it cannot serve as a state oracle. The direct-handler oracle
+// (runDirectSeq) applies the same withR2Gate wrapper + schema normalization as
+// createLoopTool, so it is behavior-equivalent to the MCP path was. MCP
+// schema/transport coverage lives in mcp-tools-list-parity.test.js + the
+// residue protocol tests.
 //
 // Seed chaining: most write tools act on an existing entry (resolve, patch,
 // supersede, archive, dispatch). Finding/change-log ids are minute-granular
@@ -51,13 +57,11 @@ import { adaptLegacyHandler } from "../mastra/handler-adapter.js";
 import { resolveToolImportUrl } from "../core/manifest-loader.js";
 import { withR2Gate } from "../mastra/with-r2-gate.js";
 import { normalizeInputSchema } from "../core/schema-normalize.js";
-import { connectMcpServer } from "./with-mcp-server.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
 const PROJECT_ROOT = resolve(PKG_ROOT, "..", "..");
 const LOOP_BIN = join(PKG_ROOT, "bin", "loop.mjs");
-const SERVER_ENTRY = join(PKG_ROOT, "mastra", "server.js");
 
 // Strip non-deterministic fields the parity comparison must ignore.
 //   - any `*_at` key: wall-clock stamps the handler stamps on write
@@ -262,23 +266,6 @@ function runCliSeq(steps, tmpRoot) {
   return results;
 }
 
-async function runMcpSeq(steps, tmpRoot) {
-  const mcp = await connectMcpServer(SERVER_ENTRY, tmpRoot, {
-    LOOP_RECORDS_VIA_CLI: "0",
-  });
-  const results = [];
-  try {
-    for (const step of steps) {
-      const args = resolveArgs(step, results);
-      const envelope = await mcp.callTool("mastra_" + step.tool, args);
-      results.push(unwrap(envelope));
-    }
-  } finally {
-    await mcp.cleanup();
-  }
-  return results;
-}
-
 // Shared arg builders. Descriptions are unique per case so the slug-derived
 // ids never collide within a sequence.
 const report = (description) => ({
@@ -399,32 +386,24 @@ const CASES = [
   },
 ];
 
-describe("cli-write parity: every CLI_WRITE_TOOLS entry (direct vs CLI vs MCP)", () => {
+describe("cli-write parity: every CLI_WRITE_TOOLS entry (direct vs CLI)", () => {
   for (const c of CASES) {
-    test(`${c.name}: direct / CLI / MCP produce byte-structural parity`, async () => {
+    test(`${c.name}: direct and CLI produce byte-structural parity`, async () => {
       const directRoot = makeTempRoot();
       const cliRoot = makeTempRoot();
-      const mcpRoot = makeTempRoot();
-      for (const root of [directRoot, cliRoot, mcpRoot]) copySchemas(null, root);
-      if (c.setup) for (const root of [directRoot, cliRoot, mcpRoot]) c.setup(root);
+      for (const root of [directRoot, cliRoot]) copySchemas(null, root);
+      if (c.setup) for (const root of [directRoot, cliRoot]) c.setup(root);
 
       await runDirectSeq(c.steps, directRoot);
       runCliSeq(c.steps, cliRoot);
-      await runMcpSeq(c.steps, mcpRoot);
 
       const directSnapshot = readSnapshot(directRoot);
       const cliSnapshot = readSnapshot(cliRoot);
-      const mcpSnapshot = readSnapshot(mcpRoot);
 
       assert.deepStrictEqual(
         cliSnapshot,
         directSnapshot,
         `CLI vs direct persisted-state mismatch\nCLI: ${JSON.stringify(cliSnapshot)}\nDirect: ${JSON.stringify(directSnapshot)}`,
-      );
-      assert.deepStrictEqual(
-        cliSnapshot,
-        mcpSnapshot,
-        `CLI vs MCP persisted-state mismatch\nCLI: ${JSON.stringify(cliSnapshot)}\nMCP: ${JSON.stringify(mcpSnapshot)}`,
       );
     }, 60000);
   }

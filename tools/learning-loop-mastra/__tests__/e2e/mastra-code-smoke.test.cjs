@@ -8,10 +8,9 @@
  *   2. stdout JSON parses
  *   3. `ok === true` (live mode against installed `mastracode` package)
  *   4. MCP server `learning-loop` is connected (transport: stdio)
- *   5. 8 MCP tools exposed — the residue surface: the wired
- *      .mastracode/mcp.json sets LOOP_RECORDS_VIA_CLI=1, so the full record
- *      surface (reads + writes, incl. loop_describe) rides the stateless CLI
- *      and MCP keeps only workflow/storage/allowlist/audit + agent wrappers
+ *   5. 8 MCP tools exposed — the residue surface: the full record surface
+ *      (reads + writes, incl. loop_describe) rides the stateless CLI and MCP
+ *      keeps only workflow/storage/allowlist/audit + agent wrappers
  *   6. tool namespacing is `<serverName>_<tool>` (e.g. `learning-loop_mastra_<tool>`)
  *   7. round-trip via `learning-loop_mastra_check_runtime_agnostic` succeeds
  *   8. hook wire-format is compatible (universal bash-gate parses synthetic Mastra-Code-shaped payload)
@@ -72,7 +71,7 @@ test(`smoke:mastracode live branch: MCP server connected + ${MCP_RESIDUE_TOTAL_T
   assert.equal(parsed.mcp_servers[0].connected, true, "learning-loop server must be connected");
   assert.equal(parsed.mcp_servers[0].transport, "stdio", "transport must be stdio");
   assert.equal(parsed.mcp_tool_names.length, MCP_RESIDUE_TOTAL_TOOLS,
-    `expected ${MCP_RESIDUE_TOTAL_TOOLS} MCP residue tools (record surface rides the CLI under LOOP_RECORDS_VIA_CLI=1), got ${parsed.mcp_tool_names.length}`);
+    `expected ${MCP_RESIDUE_TOTAL_TOOLS} MCP residue tools (record surface rides the CLI), got ${parsed.mcp_tool_names.length}`);
 });
 
 test("smoke:mastracode tool namespacing: learning-loop_<primitive|agent|workflow>", { timeout: 60000 }, () => {
@@ -84,7 +83,7 @@ test("smoke:mastracode tool namespacing: learning-loop_<primitive|agent|workflow
   const parsed = JSON.parse(result.stdout);
   if (parsed.status !== "live") return; // skip in non-live mode
   // MCP tool namespacing is `<serverName>_<tool>` per @mastra/mcp client (verified live).
-  // Residue surface (LOOP_RECORDS_VIA_CLI=1) keeps three patterns:
+  // Residue surface keeps three patterns:
   //   1. Primitives:   `learning-loop_mastra_<tool>` (workflow_generate_prompt,
   //      check_runtime_agnostic, update_r2_allowlist)
   //   2. Agent wrappers: `learning-loop_ask_<agent>` (intake, scout, self_improvement)

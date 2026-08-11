@@ -24,9 +24,6 @@ const { probeL1 } = require("../../../tools/learning-loop-mastra/__tests__/helpe
 describe("Claude Code MCP client-side loading acceptance", () => {
   const projectRoot = resolve(__dirname, "..", "..", "..");
   const mcpConfigPath = join(projectRoot, ".mcp.json");
-  const helperPath = pathToFileURL(
-    join(projectRoot, "tools/learning-loop-mastra/__tests__/with-mcp-server.js"),
-  );
 
   test(".mcp.json has learning-loop server configured", () => {
     assert.ok(existsSync(mcpConfigPath), ".mcp.json must exist for Claude Code MCP loading");
@@ -39,51 +36,69 @@ describe("Claude Code MCP client-side loading acceptance", () => {
     assert.ok(server.args.some((a) => a.includes("server.js")), "args must reference server.js");
   });
 
-  test("discoverability surface works via direct MCP server spawn", async () => {
-    const { withMcpServer } = await import(helperPath.href);
+  test("discoverability surface works via CLI (single record surface)", () => {
+    // The record surface (loop_describe, loop_get_instruction, meta_state_report,
+    // meta_state_log_change) rides the stateless CLI (bin/loop.mjs). The CLI and
+    // the MCP server share the same handler code path (adaptLegacyHandler), so
+    // this exercises the same discoverability surface the MCP server used to.
+    const mkdtempSync = require("node:fs").mkdtempSync;
+    const tmpdir = require("node:os").tmpdir;
+    const spawnSync = require("node:child_process").spawnSync;
+    const tempRoot = mkdtempSync(join(tmpdir(), "claude-mcp-loading-cli-"));
+    mkdirSync(join(tempRoot, "records", "meta", "decisions"), { recursive: true });
 
-    await withMcpServer(async ({ callTool, tempRoot }) => {
-      // 1. loop_describe warm tier returns discoverability hints
-      const warm = await callTool("mastra_loop_describe", { tier: "warm" });
-      assert.ok(Array.isArray(warm.discoverability_hints), "warm tier should include discoverability_hints");
-      // The evidence_code_ref citation hint (internalization-rule) is on-demand:
-      // not auto-injected at warm, but resolvable via loop_get_instruction.
-      const instruction = await callTool("mastra_loop_get_instruction", { key: "internalization-rule" });
-      const citationHint = instruction.results?.[0]?.hint ?? "";
-      assert.ok(citationHint.includes("evidence_code_ref"), "citation hint should mention evidence_code_ref");
-
-      // 2. meta_state_report with evidence_code_ref + mechanism_check: true succeeds
-      const reportResult = await callTool("mastra_meta_state_report", {
-        category: "loop-anti-pattern",
-        severity: "warning",
-        affected_system: "mcp-tools",
-        description: "Claude Code MCP loading direct test finding.",
-        evidence_code_ref: "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
-        mechanism_check: true,
+    const loopBin = join(projectRoot, "tools/learning-loop-mastra/bin/loop.mjs");
+    const cli = (tool, args) => {
+      const proc = spawnSync("node", [loopBin, tool, JSON.stringify(args)], {
+        env: { ...process.env, LOOP_SURFACE: ".claude", GATE_ROOT: tempRoot, MASTRA_STORAGE_DRIVER: "memory" },
+        encoding: "utf8",
+        timeout: 30000,
       });
-      assert.strictEqual(reportResult.status, "open");
-      const findingId = reportResult.id;
-      assert.ok(findingId.startsWith("meta-"));
+      assert.strictEqual(proc.status, 0, `cli ${tool} must exit 0; stderr=${proc.stderr}`);
+      return JSON.parse((proc.stdout ?? "").trim());
+    };
 
-      // 3. meta_state_log_change with local:meta-state:<id> succeeds
-      const changeResult = await callTool("mastra_meta_state_log_change", {
-        change_dimension: "mechanical",
-        change_target: "test",
-        change_diff: { added: [], removed: [], changed: [] },
-        reason: "Claude Code MCP loading direct test validates the surface is functional.",
-        source_refs: [`local:meta-state:${findingId}`],
-      });
-      assert.strictEqual(changeResult.logged, true);
+    // 1. loop_describe warm tier returns discoverability hints
+    const warm = cli("loop_describe", { tier: "warm" });
+    assert.ok(Array.isArray(warm.discoverability_hints), "warm tier should include discoverability_hints");
+    // The evidence_code_ref citation hint (internalization-rule) is on-demand:
+    // not auto-injected at warm, but resolvable via loop_get_instruction.
+    const instruction = cli("loop_get_instruction", { key: "internalization-rule" });
+    const citationHint = instruction.results?.[0]?.hint ?? "";
+    assert.ok(citationHint.includes("evidence_code_ref"), "citation hint should mention evidence_code_ref");
 
-      // 4. meta_state_log_change with empty source_refs succeeds (no deprecated ref check in this tool)
-      const secondResult = await callTool("mastra_meta_state_log_change", {
-        change_dimension: "mechanical",
-        change_target: "test",
-        change_diff: { added: [], removed: [], changed: [] },
-        reason: "Claude Code MCP loading direct test second call for idempotency check.",
-        source_refs: [],
-      });
-      assert.strictEqual(secondResult.logged, true);
+    // 2. meta_state_report with evidence_code_ref + mechanism_check: true succeeds
+    const reportResult = cli("meta_state_report", {
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Claude Code MCP loading direct test finding.",
+      evidence_code_ref: "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+      mechanism_check: true,
+    });
+    assert.strictEqual(reportResult.status, "open");
+    const findingId = reportResult.id;
+    assert.ok(findingId.startsWith("meta-"));
+
+    // 3. meta_state_log_change with local:meta-state:<id> succeeds
+    const changeResult = cli("meta_state_log_change", {
+      change_dimension: "mechanical",
+      change_target: "test",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "Claude Code MCP loading direct test validates the surface is functional.",
+      source_refs: [`local:meta-state:${findingId}`],
+    });
+    assert.strictEqual(changeResult.logged, true);
+
+    // 4. meta_state_log_change with empty source_refs succeeds (no deprecated ref check in this tool)
+    const secondResult = cli("meta_state_log_change", {
+      change_dimension: "mechanical",
+      change_target: "test",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "Claude Code MCP loading direct test second call for idempotency check.",
+      source_refs: [],
+    });
+    assert.strictEqual(secondResult.logged, true);
 
       // Verify no temp-root pollution leaked into the real project's meta-state
       const realMetaStatePath = join(projectRoot, "meta-state.jsonl");
@@ -139,7 +154,6 @@ describe("Claude Code MCP client-side loading acceptance", () => {
 
       const changeLogs = changeLogEntries.filter((e) => e.entry_kind === "change-log");
       assert.ok(changeLogs.length >= 1, "at least one change-log entry should be written");
-    });
   });
 
   // Third test: Claude Code MCP client-side loading probe.

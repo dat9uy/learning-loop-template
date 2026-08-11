@@ -2,36 +2,19 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 import { withMcpServer } from "./with-mcp-server.js";
 
-const NON_MANIFEST_PREFIXES = ["run_", "ask_"];
-
-function isManifestTool(tool) {
-  return !NON_MANIFEST_PREFIXES.some((prefix) => tool.name.startsWith(prefix))
-    && tool.name !== "mastra_update_r2_allowlist";
-}
-
-test("manifest tools stay within the context budget", async () => {
+test("production MCP residue stays within the context budget", async () => {
   await withMcpServer(async ({ listTools }) => {
-    const tools = (await listTools()).filter(isManifestTool);
+    // The live MCP surface is the irreducible residue: 8 tools
+    // (3 ask_* agents + 2 run_workflow_storage_* + update_r2_allowlist +
+    // check_runtime_agnostic + workflow_generate_prompt). The CLI is the single
+    // record surface; MCP never registers CLI_TOOLS. The exact 8-name contract
+    // is asserted by cli-optout-wiring.test.js and cli-write-tool-set-drift.test.js.
+    const tools = await listTools();
     const bytes = Buffer.byteLength(JSON.stringify(tools));
-    // Budget tracks the manifest size with modest headroom for near-term tool
-    // additions; raise deliberately, not by round number. After the
-    // portable-six unwrap moved 6 run_workflow_* tools onto the manifest
-    // surface and `meta_state_accept` was added, the wire is ~50 KB; the
-    // 53 KB ceiling leaves headroom for the next 1-2 tools. The runtime-state
-    // `affected_system` enum now also carries the `gate-verb:<verb>` entries
-    // (derived from patterns.json so the write side cannot drift from the
-    // read side), adding ~1.4 KB across the runtime-state tool schemas —
-    // the wire is ~54 KB.
-    //
-    // The ceiling is structurally anchored to the field-glossary ref
-    // steady-state: entry-field descriptions point at the shared glossary
-    // (core/schema-glossary.js) instead of duplicating meaning inline, which
-    // keeps schema prose from growing per-tool. Measured wire is 54,883 bytes
-    // (~117 B headroom under this ceiling). Further tool-doc growth should
-    // extend the glossary pattern — or, for real margin, pay down the
-    // MCP/CLI dual-registration debt (finding
-    // meta-260811T1106Z-mcp-and-cli-surfaces-run-duplicated-tool-registrations-every)
-    // — not raise this ceiling silently.
-    assert.ok(bytes <= 55_000, `manifest tool wire is ${bytes} bytes`);
+    // Ceiling anchored to the measured residue (4,563 all-tools bytes via
+    // __tests__/helpers/measure-residue.mjs), with ~1.4 KB headroom. Further
+    // residue growth pays down schema debt rather than raising this silently.
+    // Re-anchor with: node __tests__/helpers/measure-residue.mjs
+    assert.ok(bytes <= 6_000, `residue all-tools wire is ${bytes} bytes`);
   });
 });

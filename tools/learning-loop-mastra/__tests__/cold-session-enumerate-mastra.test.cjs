@@ -1,11 +1,13 @@
-// Cold-session enumeration test — verifies that every tool declared in
-// tools/learning-loop-mastra/agent-manifest.json is registered by the
-// mastra MCP server, with valid name/description/inputSchema.
+// Cold-session enumeration test — verifies the agent-manifest declaration.
 //
-// This is the canonical cold-session discoverability test post-Phase-D.
-// The legacy equivalent in tools/learning-loop-mcp/__tests__/cold-session-
-// discoverability.test.cjs tests the same property but reads the wrong
-// manifest; Phase 6 fixes it to read agent-manifest.json.
+// The 50-entry agent-manifest.json is a SEPARATE contract from the live MCP
+// surface (8-tool residue) and the CLI allowlist (42). It is the full
+// declaration of every tool/workflow/agent the loop offers; it does NOT
+// assert that the MCP server registers all 50 at once — MCP registers only
+// the irreducible residue and the CLI is the record surface.
+//
+// This file asserts the declaration contract (50 tools across 6 groups) and
+// that the live MCP residue is a subset of that declaration.
 
 const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
@@ -49,13 +51,11 @@ async function spawnServer() {
 describe("cold-session enumerate mastra manifest", () => {
   let server;
   let tools;
-  let byName;
 
   beforeAll(async () => {
     server = await spawnServer();
     const result = await server.client.listTools();
     tools = Array.isArray(result) ? result : result.tools;
-    byName = new Map(tools.map((t) => [t.name, t]));
   }, 15000);
 
   afterAll(async () => {
@@ -77,23 +77,15 @@ describe("cold-session enumerate mastra manifest", () => {
       `expected ${AGENT_MANIFEST_GROUPS} groups in agent-manifest.json, got ${Object.keys(agentManifest.groups).length}`);
   });
 
-  test(`server registers all ${AGENT_MANIFEST_TOTAL_TOOLS} declared tools`, () => {
-    assert.strictEqual(tools.length, AGENT_MANIFEST_TOTAL_TOOLS,
-      `server should expose ${AGENT_MANIFEST_TOTAL_TOOLS} tools, got ${tools.length}`);
-  });
-
-  test("every declared tool is registered", () => {
-    for (const { name } of declaredTools) {
-      assert.ok(byName.has(name),
-        `MCP server does not register ${name} (declared in agent-manifest.json)`);
-    }
-  });
-
-  test("no extra tools beyond declared", () => {
+  test(`live MCP residue is a subset of the ${AGENT_MANIFEST_TOTAL_TOOLS}-tool declaration`, () => {
+    // MCP registers only the 8-tool residue (single-surface contract); the
+    // declaration remains the full 50-entry contract. Every residue tool must
+    // be declared in agent-manifest.json.
     const declared = new Set(declaredTools.map((t) => t.name));
+    assert.ok(tools.length > 0, "live MCP surface must expose at least the residue");
     for (const t of tools) {
       assert.ok(declared.has(t.name),
-        `MCP server exposes ${t.name} but it is not in agent-manifest.json`);
+        `MCP server exposes ${t.name} but it is not declared in agent-manifest.json`);
     }
   });
 
