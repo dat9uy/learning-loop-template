@@ -61,7 +61,7 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "Read the meta-state registry. Defaults to a compact projection excluding resolved/accepted entries; use id/session_id/ref_by+ref_field for narrow queries and include_all_versions:true for history. Read-only.",
+  description: "Read the meta-state registry. Defaults to a compact projection excluding resolved/accepted entries; use id/session_id/ref_by+ref_field for narrow queries and include_all_versions:true for history. Read-only. An id-filtered query whose ids exist but are excluded by the default terminal-status/archived filter emits an `excluded_ids` notice (pass include_archived:true to include them).",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),
@@ -72,7 +72,7 @@ export const metaStateListTool = {
     entry_kinds: z.preprocess(stripEnvelope, z.array(z.enum(["finding", "change-log", "rule", "loop-design"]))).optional()
       .describe("Filter by multiple entry kinds (takes precedence over entry_kind if both set)"),
     id: z.preprocess(stripEnvelope, z.union([z.string(), z.array(z.string())])).optional()
-      .describe("Filter by id (string or string[]). Exact-match only; ids are full slugs, not prefixes. Missing ids are silently skipped, but a queried id that is a unique non-empty prefix of exactly one registry id surfaces an `id_prefix_hints` entry naming the full id. Pairs with `ref_by`/`ref_field` for the narrow query path."),
+      .describe("Filter by id (string or string[]). Exact-match only; ids are full slugs, not prefixes. Missing ids are silently skipped, but a queried id that is a unique non-empty prefix of exactly one registry id surfaces an `id_prefix_hints` entry naming the full id. A queried id that EXISTS but is excluded by the default terminal-status/archived filter surfaces an `excluded_ids` notice (with its projected status) — pass `include_archived: true` to include it. Pairs with `ref_by`/`ref_field` for the narrow query path."),
     ref_by: z.string().optional()
       .describe("Filter entries that reference this id in `ref_field`. Required with `ref_field`."),
     ref_field: z.enum(REF_FIELDS).optional()
@@ -164,6 +164,52 @@ export const metaStateListTool = {
       result = filterEntries(result, activeFilters);
     }
 
+    // Snapshot the id-filtered match set AFTER the non-status filters
+    // (category/status/session/affected_system/entry_kind/ref) and BEFORE the
+    // terminal-status exclusion below, so an id that exists but gets dropped
+    // ONLY by the default terminal/archived exclusion can be reported as
+    // `excluded_ids` instead of silently returning count 0. This is the "say
+    // so in output (N rows excluded; pass include_archived)" half of finding
+    // meta-260801T2348Z. For id-filtered queries the caller explicitly named
+    // these ids; an empty array with no notice is indistinguishable from "id
+    // does not exist", which pushed agents to grep meta-state.jsonl raw (the
+    // loop-anti-pattern the finding records).
+    //
+    // Snapshotting here (not before Step 3) is deliberate: an id dropped by an
+    // explicit status/category/entry_kind filter is NOT an exclusion the
+    // `include_archived` retry can recover — surfacing it as `excluded_ids`
+    // would be a false positive with a dead-end retry hint. Only ids that
+    // survived the caller's own filters and were then dropped by the DEFAULT
+    // terminal/archived view are genuine exclusions.
+    const preExclusionIds =
+      id !== undefined
+        ? Array.from(new Set(result.map((e) => e.id)))
+        : null;
+    // Projected (max-by-version) status per id from the SAME set Step 4 will
+    // exclude over (`result` after Step 3), with the identical tie-break (later
+    // created_at wins on equal version). The notice must report the status the
+    // exclusion actually dropped — projecting from the full `entries` instead
+    // would disagree when Step 3 filters drop the terminal line of a
+    // mixed-version id (minor false positive/negative divergence).
+    const preExclusionProjected =
+      id !== undefined
+        ? (() => {
+            const projected = new Map();
+            for (const e of result) {
+              if (typeof e.id !== "string") continue;
+              const prev = projected.get(e.id);
+              if (!prev || (e.version ?? 0) > (prev.version ?? 0)) {
+                projected.set(e.id, e);
+              } else if ((e.version ?? 0) === (prev.version ?? 0)) {
+                const prevT = prev.created_at ?? "";
+                const nextT = e.created_at ?? "";
+                if (nextT > prevT) projected.set(e.id, e);
+              }
+            }
+            return projected;
+          })()
+        : null;
+
     // Terminal statuses are excluded by default. If the caller explicitly
     // filters by a terminal status (e.g., status="resolved"), honor that
     // filter — the user is opting in to terminal entries.
@@ -186,7 +232,15 @@ export const metaStateListTool = {
     // The projected (default) path has one line per id, so per-line and
     // id-level exclusion coincide there; the per-line filter stays as the
     // cheap fallback for that path.
-    const isExplicitStatusFilter = typeof status === "string" && EXCLUDABLE_STATUSES.has(status);
+    // An explicit `status:"archived"` filter is a caller opt-in to archived
+    // entries, exactly like `status:"resolved"` is for terminal ones. `archived`
+    // is not a member of EXCLUDABLE_STATUSES (it's excluded via the separate
+    // per-line `!include_archived` filter), so without this the caller who
+    // explicitly queried archived would get the "you haven't opted in to
+    // archived" notice — a false positive. Treating it as an explicit terminal
+    // opt-in suppresses the notice and matches the caller's stated intent.
+    const isExplicitStatusFilter =
+      typeof status === "string" && (EXCLUDABLE_STATUSES.has(status) || status === "archived");
     const includeTerminal = include_archived || isExplicitStatusFilter;
     if (!includeTerminal && include_all_versions) {
       // Project max-by-version status per id from the loaded all-versions
@@ -233,6 +287,41 @@ export const metaStateListTool = {
       count: result.length,
       filters_applied: activeFilters,
     });
+
+    // Excluded-id notice (finding meta-260801T2348Z). When an id-filtered
+    // query drops a queried id purely because of the DEFAULT terminal-status /
+    // archived exclusion (the caller did NOT opt into terminal entries), the
+    // caller named that id explicitly — an empty result must say so, not read
+    // as "id does not exist". Emit one row per dropped queried id carrying its
+    // projected (max-by-version) status + entry_kind + the exact retry incantation.
+    //
+    // Fires ONLY when terminal entries were excluded (includeTerminal false),
+    // so a caller who passed include_archived:true or an explicit terminal
+    // status filter gets no noise. Queried ids that don't exist at all stay
+    // silent here (the id_prefix_hints did-you-mean path owns that case).
+    let excludedIdsNotice;
+    if (id !== undefined && preExclusionIds !== null && preExclusionProjected !== null) {
+      const projectedStatusOf = (eid) => preExclusionProjected.get(eid)?.status ?? null;
+      const projectedKindOf = (eid) => preExclusionProjected.get(eid)?.entry_kind ?? null;
+      const excluded = preExclusionIds.filter((eid) => {
+        const status = projectedStatusOf(eid);
+        const isTerminal = EXCLUDABLE_STATUSES.has(status) || status === "archived";
+        // Per-line exclusion can drop a line whose status is terminal even when
+        // the id-level projected status is not; the pre-exclusion id set is the
+        // id-filtered match set BEFORE Step 4, so an id whose EVERY matching
+        // line was dropped is excluded.
+        const droppedByPerLine = !result.some((e) => e.id === eid);
+        return isTerminal && droppedByPerLine;
+      });
+      if (excluded.length > 0 && !includeTerminal) {
+        excludedIdsNotice = excluded.map((eid) => ({
+          id: eid,
+          entry_kind: projectedKindOf(eid),
+          status: projectedStatusOf(eid),
+          note: "id exists but its projected status is terminal/archived; the default view excludes it. Pass include_archived:true (or an explicit status filter) to include it.",
+        }));
+      }
+    }
 
     // Did-you-mean: when an id query misses, surface a unique proper-prefix
     // match so the agent retries once with the full slug instead of guessing
@@ -292,6 +381,7 @@ export const metaStateListTool = {
       ref_by_filter: ref_by || null,
       ref_field_filter: ref_field || null,
       compact: compact ?? true,
+      ...(excludedIdsNotice ? { excluded_ids: excludedIdsNotice } : {}),
       ...(idPrefixHints ? { id_prefix_hints: idPrefixHints } : {}),
     };
 
