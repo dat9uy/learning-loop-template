@@ -4,7 +4,7 @@
 
 **Why this doc exists:** the coerce-layer zod-native migration introduced a 125-line `schema-parity.js` shim that has a non-obvious interaction with the Mastra SDK and zod 4.4.3 internal APIs. Without this doc, future agents have to re-discover the shim's behavior empirically. This file is the canonical reference. (The shim lives in `core/` — a pure zod transform, imported by the shell's tool/workflow factories and the CLI's context-savings path.)
 
-**Transport scope:** this doc describes the **MCP transport's** schema-conversion path (`tools/list` → JSON Schema). The stateless CLI (`tools/learning-loop-mastra/bin/loop.mjs`) calls handlers directly and **bypasses** `MCPServer.convertSchema` and the shim, so under `LOOP_RECORDS_VIA_CLI=1` (set by all three runtimes) the shim only affects the MCP residue surface; the full 41-tool surface on the CLI is unaffected.
+**Transport scope:** this doc describes the **MCP transport's** schema-conversion path (`tools/list` → JSON Schema). The stateless CLI (`tools/learning-loop-mastra/bin/loop.mjs`) calls handlers directly and **bypasses** `MCPServer.convertSchema` and the shim, so the shim only affects the MCP residue surface (8 tools); the 42-tool CLI surface is unaffected.
 
 **Source of truth (read these to verify or extend):**
 - `tools/learning-loop-mastra/core/schema-parity.js` — the shim
@@ -239,7 +239,7 @@ inputSchema. Result: all return real JSON Schemas
 (`type:"object"` with proper `properties` map). The override DOES propagate
 through `MCPServer.convertSchema` → `standardSchemaToJSONSchema` →
 `schema["~standard"].jsonSchema.input` → `process` + `finalize`.
-(The MCP-registered set is the residue under `LOOP_RECORDS_VIA_CLI=1` — the
+(The MCP-registered set is the residue — the
 CLI surface is not on this path.)
 
 **Known caveat (not blocking):** the synthetic probe at

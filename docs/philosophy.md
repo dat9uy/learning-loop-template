@@ -153,7 +153,7 @@ The constraint enforcement layer — the bash gate and the write gate — reads 
 
 This makes the loop self-referential. The loop's state machine (runtime-state rows + promoted rules) controls the loop's execution gates. Operator approval is not a conversational nicety. It is a mechanical state transition: the operator records state via `runtime_state_record` (or unlocks a surface via `gate_mark_preflight`); the gate reads `runtime-state.jsonl` fresh on the next tool call; the gate permits the action.
 
-Transport today is the stateless CLI: all three runtimes set `LOOP_RECORDS_VIA_CLI=1`, and reads and writes ride `tools/learning-loop-mastra/bin/loop.mjs`; the MCP server keeps a small residue. The conversation is ephemeral. The runtime-state row is durable. The gate is stateless and reads fresh state every time. Conversational approval without a recorded row is a false promise — the gate cannot see the conversation. Only the recorded state matters.
+Transport today is the stateless CLI: the CLI is the single record surface in every runtime, reads and writes ride `tools/learning-loop-mastra/bin/loop.mjs`, and the MCP server keeps only the irreducible residue. The conversation is ephemeral. The runtime-state row is durable. The gate is stateless and reads fresh state every time. Conversational approval without a recorded row is a false promise — the gate cannot see the conversation. Only the recorded state matters.
 
 ## Governance Model: Two Tiers
 
