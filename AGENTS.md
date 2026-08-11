@@ -65,7 +65,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 | Kind | Role | Lifespan |
 |---|---|---|
-| `finding` | A loop-self-diagnostic observation. No live TTL (`expires_at` is vestigial); `stale` is a derived view, not a status. Supersede is a flavor of resolve + a citation row (`meta_state_supersede`); `accepted` is a standing trade-off (`meta_state_accept`). | open → accepted \| resolved \| archived |
+| `finding` | A loop-self-diagnostic observation. No live TTL (`expires_at` is vestigial); `stale` is a derived view, not a status. Close findings with `meta_state_resolve` — the only closure to offer (`meta_state_supersede` is an internal resolve flavor that also emits a change-log citation row; not an option to offer). `accepted` is a standing trade-off (`meta_state_accept`). | open → accepted \| resolved \| archived |
 | `change-log` | An immutable audit record of a system change. No TTL. | Forever |
 | `rule` | A promoted invariant the loop enforces. Two enforcement classes: `gate` (hard-block) and `agent` (consult). | Forever (until superseded) |
 | `loop-design` | A deferred design that will create or modify rules, schemas, or tools. | Active → inactive (when shipped) → archived |

@@ -652,6 +652,53 @@ export function stripEvidenceAnchor(codeRef) {
   return stripped;
 }
 
+// Build the machine-readable `recovery` list for an orphan-evidence rejection.
+// Each step names the tool + args the agent should run next and why — the
+// remediation that the structured rejection otherwise hides (finding
+// meta-260801T2348Z-structured-rejections-name-the-blocking-rule-and-orphans-but).
+// Per orphan reason:
+//   - fingerprint_mismatch  → refresh_file_index with the cited path (re-grounds
+//     the drifted baseline), then the freshness step the finding supports:
+//     re_verify when verification.steps is set, else touch (attestation).
+//   - code_ref_missing      → re-anchor guidance (the path is operator judgment:
+//     restore the file, or patch the finding to a live evidence path)
+//   - no_evidence_code_ref  → attach-evidence guidance via patch
+function buildOrphanRecovery(orphans) {
+  const recovery = [];
+  for (const orphan of orphans) {
+    const { id, reason, evidence_code_ref, verification_mode = "attestation" } = orphan;
+    if (reason === "fingerprint_mismatch" && evidence_code_ref) {
+      recovery.push({
+        tool: "meta_state_refresh_file_index",
+        args: { path: evidence_code_ref },
+        why: `cited fingerprint drifted — refresh the file-index baseline to the live hash`,
+      });
+      const reGroundTool = verification_mode === "steps" ? "meta_state_re_verify" : "meta_state_touch";
+      const reGroundArgs = { id };
+      recovery.push({
+        tool: reGroundTool,
+        args: reGroundArgs,
+        why: verification_mode === "steps"
+          ? `re-run the finding's verification steps against the refreshed evidence`
+          : `re-ground the finding against the refreshed baseline (operator attestation)`,
+      });
+    } else if (reason === "code_ref_missing") {
+      recovery.push({
+        tool: "meta_state_patch",
+        args: { id, patch: { evidence_code_ref: "<restored-or-new-path>" } },
+        why: "cited evidence file is missing — restore the file or patch the finding to a live evidence path",
+      });
+    } else if (reason === "no_evidence_code_ref") {
+      recovery.push({
+        tool: "meta_state_patch",
+        args: { id, patch: { evidence_code_ref: "<evidence-path>" } },
+        why: "finding opted into mechanism_check without evidence — attach an evidence_code_ref",
+      });
+    }
+  }
+  return recovery;
+}
+
 // fallow-ignore-next-line complexity -- Branch-1 orphan loop delegates to evaluateOrphanCandidate; Branch-2 determinism-checklist is a 3-condition find. Splitting per-branch keeps the global vs per-finding contract distinct
 export function checkResolutionEvidence(rule, root) {
   const rule_id = rule.id;
@@ -664,7 +711,7 @@ export function checkResolutionEvidence(rule, root) {
       .map((entry) => evaluateOrphanCandidate(entry, root))
       .filter(Boolean);
     if (orphans.length > 0) {
-      return { satisfied: false, rule_id: "rule-no-orphaned-evidence", blocking_id: orphans[0]?.id, applies_to_resolution: rule.applies_to_resolution, orphans };
+      return { satisfied: false, rule_id: "rule-no-orphaned-evidence", blocking_id: orphans[0]?.id, applies_to_resolution: rule.applies_to_resolution, orphans, recovery: buildOrphanRecovery(orphans) };
     }
     return { satisfied: true, rule_id: "rule-no-orphaned-evidence" };
   }
@@ -691,9 +738,17 @@ export function checkResolutionEvidence(rule, root) {
 
 /**
  * Evaluate one active mechanism-checked finding for orphan-evidence drift.
- * Returns an orphan record `{ id, reason, expected?, actual? }` when the entry
- * is orphaned (no evidence code ref, code ref missing, or fingerprint
- * mismatch), or null when the entry grounds cleanly.
+ * Returns an orphan record
+ * `{ id, reason, evidence_code_ref?, verification_mode?, expected?, actual? }`
+ * when the entry is orphaned (no evidence code ref, code ref missing, or
+ * fingerprint mismatch), or null when the entry grounds cleanly. The canonical
+ * `evidence_code_ref` (anchor-stripped) rides the record so the consuming
+ * rejection can name the exact path the agent must refresh / re-anchor — the
+ * remediation the structured rejection otherwise hides (see finding
+ * meta-260801T2348Z-structured-rejections-name-the-blocking-rule-and-orphans-but).
+ * `verification_mode` tells the recovery builder which freshness re-ground step
+ * the finding supports: "steps" (re_verify) when verification.steps is set,
+ * else "attestation" (touch).
  *
  * Baseline resolution (red-team F2): the file-index sidecar is the
  * authoritative baseline, with the per-record field as the vestigial fallback.
@@ -703,9 +758,12 @@ export function checkResolutionEvidence(rule, root) {
 // fallow-ignore-next-line complexity -- extracted Branch-1 orphan evaluation: LIM-4 path resolution + hash guard + dual-baseline comparison; the guard chain is the canonical shape
 function evaluateOrphanCandidate(entry, root) {
   const codeRef = entry.evidence_code_ref;
+  const verificationMode = Array.isArray(entry.verification?.steps) && entry.verification.steps.length > 0
+    ? "steps" : "attestation";
   if (!codeRef) {
-    return { id: entry.id, reason: "no_evidence_code_ref" };
+    return { id: entry.id, reason: "no_evidence_code_ref", verification_mode: verificationMode };
   }
+  const canonical = stripEvidenceAnchor(codeRef);
   // Strip both `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
   // and loop-introspect.js discoverability hint) and `#anchor` suffixes before
   // resolving the file path. Without the `:line` strip, the gate treated
@@ -726,11 +784,10 @@ function evaluateOrphanCandidate(entry, root) {
       ? (err.reason === "outside_root" && err.resolvedPath === null)
       : err.name === "FileNotFoundError";
     if (isMissing) {
-      return { id: entry.id, reason: "code_ref_missing" };
+      return { id: entry.id, reason: "code_ref_missing", evidence_code_ref: canonical, verification_mode: verificationMode };
     }
     throw err;
   }
-  const canonical = stripEvidenceAnchor(codeRef);
   const fileIndex = readFileIndex(root);
   const indexBaseline = fileIndex.has(canonical) ? fileIndex.get(canonical) : null;
   // Validate the per-record fallback against TERMINAL_HASH_REGEX (mirrors
@@ -741,7 +798,7 @@ function evaluateOrphanCandidate(entry, root) {
     ? entry.code_fingerprint : null;
   const expected = indexBaseline ?? perRecord;
   if (expected && expected !== currentHash) {
-    return { id: entry.id, reason: "fingerprint_mismatch", expected, actual: currentHash };
+    return { id: entry.id, reason: "fingerprint_mismatch", evidence_code_ref: canonical, verification_mode: verificationMode, expected, actual: currentHash };
   }
   return null;
 }

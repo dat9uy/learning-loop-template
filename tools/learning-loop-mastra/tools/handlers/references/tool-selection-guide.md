@@ -25,7 +25,7 @@ definition (DRY).
 |---|---|
 | Record a finding (operator-observed loop issue) | `meta_state_report` |
 | Log a system change (immutable audit log) | `meta_state_log_change` |
-| Close a finding (with `resolution` text) | `meta_state_resolve` |
+| Close a finding (with `resolution` text) | `meta_state_resolve` — the default closure. Do NOT offer `meta_state_supersede` as an option; it is an internal resolve flavor for change-log-cited closures only |
 | Re-check if a finding is still true | `meta_state_derive_status` |
 | Re-hash a cited path's code after a refactor (re-grounds all anchored findings) | `meta_state_refresh_file_index` |
 | Query the registry (filterable) | `meta_state_list` |
@@ -35,7 +35,7 @@ definition (DRY).
 | Archive stale findings (structural fix for size overruns) | `meta_state_archive` |
 | Atomic batch CRUD (cap 500 ops) | `meta_state_batch` |
 | Walk the registry and propose lifecycle transitions | `meta_state_sweep` |
-| Mark one entry as superseded by a change-log | `meta_state_supersede` |
+| Mark one entry as superseded by a change-log (internal resolve flavor — only when the closure is itself a change-log citation) | `meta_state_supersede` |
 | Re-verify a stale entry by running its verification.steps | `meta_state_re_verify` |
 | Re-ground an aged finding whose verification.steps is empty (operator attestation; checks grounding snapshot) | `meta_state_touch` |
 

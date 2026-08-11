@@ -236,6 +236,15 @@ describe("meta_state_touch — grounding-guarded re-grounding for aged findings"
     assert.strictEqual(parsed.grounding.status, "drifted");
     assert.strictEqual(parsed.grounding.hash_match, false);
 
+    // Rejection carries a machine-readable recovery list: refresh the cited
+    // path, then retry touch (finding meta-260801T2348Z-structured-rejections...).
+    assert.ok(Array.isArray(parsed.recovery), "recovery must be an array on drifted rejection");
+    assert.strictEqual(parsed.recovery.length, 1);
+    assert.strictEqual(parsed.recovery[0].tool, "meta_state_refresh_file_index");
+    // The refresh path is repo-relative (the grounding's absPath converted).
+    assert.strictEqual(parsed.recovery[0].args.path, targetRel);
+    assert.strictEqual(parsed.recovery[0].args.path.startsWith("/"), false, "refresh path must be relative, not absolute");
+
     // No stamp applied.
     const after = readRegistry(root).find((e) => e.id === "meta-touch-drifted");
     assert.ok(!after.last_verified_at, "no stamp on drifted entry");
@@ -256,6 +265,12 @@ describe("meta_state_touch — grounding-guarded re-grounding for aged findings"
     assert.strictEqual(parsed.touched, false);
     assert.strictEqual(parsed.reason, "missing");
     assert.strictEqual(parsed.grounding.code_ref_exists, false);
+
+    // Missing-file rejection guides re-anchoring via patch.
+    assert.ok(Array.isArray(parsed.recovery), "recovery must be an array on missing rejection");
+    assert.strictEqual(parsed.recovery.length, 1);
+    assert.strictEqual(parsed.recovery[0].tool, "meta_state_patch");
+    assert.strictEqual(parsed.recovery[0].args.id, "meta-touch-missing");
 
     const after = readRegistry(root).find((e) => e.id === "meta-touch-missing");
     assert.ok(!after.last_verified_at, "no stamp on missing entry");

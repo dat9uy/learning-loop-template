@@ -16,7 +16,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
  */
 export const metaStateSupersedeTool = {
   name: "meta_state_supersede",
-  description: "Close a finding by citing it to a change-log entry. Atomically stamps status=resolved + resolved_at + resolved_by + resolution AND emits a citation row {source: finding, target: change-log, rationale:\"consolidated into <change-log id>\"}. Replaces the prior `superseded` closure (the `consolidated_into`/`superseded_at`/`superseded_by` fields are inert-historical; the canonical supersede edge is now a citation row). Use for findings whose underlying cause was captured by a change-log entry (e.g., a finding was TTL-killed but the underlying bug is still relevant — the citation preserves the lineage).",
+  description: "INTERNAL resolve flavor — do NOT offer this as a closure option. The default closure for any finding is `meta_state_resolve`. This tool exists only for the specific case where the finding's closure is itself a change-log citation: it stamps status=resolved + resolved_at + resolved_by + resolution AND emits a citation row {source: finding, target: change-log, rationale:\"consolidated into <change-log id>\"}. When an agent is closing a finding, always use `meta_state_resolve` unless the closure already cites a change-log entry.",
   schema: {
     id: z.string().describe("Finding entry id to supersede"),
     consolidated_into: z.string().describe("Id of the change-log entry that is the canonical source"),
