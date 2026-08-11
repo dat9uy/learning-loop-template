@@ -87,6 +87,9 @@ files:
   - path: field-glossary.js
     role: primitive
     summary: Single source of truth for meta-state field definitions; served via loop_describe cold tier and JIT error payloads.
+  - path: schema-glossary.js
+    role: primitive
+    summary: Shared describeField helper pointing schema nodes at the field glossary (See field_glossary.<field>); entry-field semantics only, never filter/op-input params.
   - path: canonical-compare.js
     role: primitive
     summary: Sorted-keys + set-semantics canonical comparator for the no-op short-circuit (resolves meta-260715T2311Z-gratuitous-mutations).

@@ -30,7 +30,7 @@ export function _clearRefreshHashCacheForTests() {
 export const metaStateRefreshFileIndexTool = {
   name: "meta_state_refresh_file_index",
   description:
-    "Refresh the path-keyed fingerprint index for a cited path. One call upserts the path's current SHA-256 into file-index.jsonl, re-grounding ALL findings anchored to this path — the O(1)-per-file-change operator. " +
+    "Refresh the path-keyed fingerprint index for a cited path. One call upserts the path's current SHA-256 into file-index.jsonl, re-grounding ALL findings anchored to this path. " +
     "AMPLIFIED BLAST RADIUS: a single refresh accepts drift for every mechanism_check:true finding whose evidence_code_ref canonicalizes to this path. Caller identity (session_id/agent) is recorded in the gate log; pass `reason` to document why the change is legitimate. " +
     "Errors when the file is missing (code_missing) or the path escapes root. Returns { path, code_fingerprint, refreshed_at, status, findings_regrounded, reason? }. The response shape always sets cache_hit: false (the in-process dedupe cache was removed; a real file edit now always triggers an upsert). For drift detection, use meta_state_check_grounding.",
   schema: {

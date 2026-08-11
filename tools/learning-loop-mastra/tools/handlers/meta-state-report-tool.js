@@ -8,6 +8,7 @@ import { slugify } from "../../core/slugify.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { assertinvariant } from "../../core/operation-invariant.js";
+import { describeField } from "../../core/schema-glossary.js";
 
 // `reopens` was removed from the report-tool surface. The
 // field stays `.optional()` on the finding schema (inert-historical;
@@ -25,7 +26,7 @@ const REPORT_FIELDS = [
 const reportSchema = Object.fromEntries(
   REPORT_FIELDS.map((field) => [
     field,
-    metaStateFindingEntrySchema.shape[field].describe(`See field_glossary.${field}`),
+    describeField(field, metaStateFindingEntrySchema.shape[field]),
   ]),
 );
 

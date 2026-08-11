@@ -7,6 +7,7 @@ import {
 import { slugify } from "../../core/slugify.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { describeField } from "../../core/schema-glossary.js";
 
 /**
  * Set equality for arrays of strings (order-independent).
@@ -35,7 +36,7 @@ const DESIGN_FIELDS = metaStateLoopDesignSchema
   }))
   .shape;
 const designSchema = Object.fromEntries(
-  Object.entries(DESIGN_FIELDS).map(([field, schema]) => [field, schema.describe(`See field_glossary.${field}`)]),
+  Object.entries(DESIGN_FIELDS).map(([field, schema]) => [field, describeField(field, schema)]),
 );
 
 export const metaStateProposeDesignTool = {
