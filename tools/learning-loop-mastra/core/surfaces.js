@@ -13,7 +13,7 @@ import { basename, dirname, join } from "node:path";
  * consistency is the caller's responsibility — there is no transaction
  * spanning surfaces.
  */
-export const SURFACES = Object.freeze([".claude", ".factory", ".mastracode"]);
+export const SURFACES = Object.freeze([".claude", ".factory", ".mastracode", ".hermes"]);
 
 /**
  * Section-aware path generator. Returns the per-surface path for a given

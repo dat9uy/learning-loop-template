@@ -1,0 +1,64 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .hermes/coordination/hooks/recurrence-check-on-start.cjs"
+          }
+        ]
+      },
+      {
+        "matcher": "first_turn",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .hermes/hooks/loop-surface-inject.cjs"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .hermes/coordination/hooks/inbound-state-gate.cjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "write_file|patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .hermes/coordination/hooks/write-coordination-gate.cjs"
+          }
+        ]
+      },
+      {
+        "matcher": "terminal",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .hermes/coordination/hooks/bash-coordination-gate.cjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "terminal",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .hermes/coordination/hooks/toolchain-failure-capture.cjs"
+          }
+        ]
+      }
+    ]
+  }
+}

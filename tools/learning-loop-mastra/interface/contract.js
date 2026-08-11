@@ -15,6 +15,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, lstatSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
+import { SURFACES } from "../core/surfaces.js";
 
 // Per-runtime config layout. Surface = runtime dir at project root.
 // mcp_config = path to MCP server config (relative to project root).
@@ -39,6 +40,21 @@ const RUNTIMES = {
       ".mastracode/skills/learning-loop/SKILL.md",
       ".claude/skills/learning-loop/SKILL.md",      // Claude-compatible auto-discovery
     ],
+  },
+  // Hermes Agent — native shell-hook runtime (config lives in ~/.hermes/config.yaml;
+  // .hermes/*.json are the committed project-local mirrors the validator checks).
+  "hermes": {
+    surface: ".hermes",
+    transport: "mcp",
+    mcp_config: ".hermes/mcp.json",
+    settings: "hooks.json",
+    // Hermes wires lifecycle events via shell hooks (pre_tool_call /
+    // pre_llm_call / on_session_start) declared in ~/.hermes/config.yaml.
+    // The .hermes/hooks.json mirror records that wiring in-repo (the
+    // filename follows the .mastracode declarative-hooks convention; the
+    // shape is Claude-Code-style so settings-integration resolves the 4
+    // shim basenames).
+    skill_discovery_paths: [".hermes/skills/learning-loop/SKILL.md"],
   },
 };
 
@@ -294,14 +310,14 @@ function readManifestSafe(rootPath) {
 }
 
 function checkMirrorPresence(name, rootPath) {
-  // The skill is "mirrored" if it appears in at least 2 of the 3 runtime
+  // The skill is "mirrored" if it appears in at least 2 of the runtime
   // surfaces (parity-test asserts byte-identity; the contract only checks
   // the binary "is the mirror present somewhere"). Single-surface
   // placements are NOT loop-maintained (the mirror convention requires
-  // ≥ 2 surfaces). Until `.mastracode/skills/` materializes, the
-  // .claude + .factory pair (2 surfaces) is the loop-maintained state.
+  // ≥ 2 surfaces). Surfaces are sourced from core/surfaces.js so a new
+  // runtime surface is picked up without a contract-side edit.
   let count = 0;
-  for (const surface of [".claude", ".factory", ".mastracode"]) {
+  for (const surface of SURFACES) {
     if (existsSync(join(rootPath, surface, "skills", name, "SKILL.md"))) count++;
   }
   return count >= 2;
