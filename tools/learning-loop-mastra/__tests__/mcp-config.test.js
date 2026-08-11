@@ -15,6 +15,7 @@ const EXPECTED_ENV = {
   ".mcp.json": { LOOP_SURFACE: ".claude" },
   ".factory/mcp.json": { LOOP_SURFACE: ".factory" },
   ".mastracode/mcp.json": { LOOP_SURFACE: ".mastracode" },
+  ".hermes/mcp.json": { LOOP_SURFACE: ".hermes" },
 };
 
 for (const [file, expectedEnv] of Object.entries(EXPECTED_ENV)) {

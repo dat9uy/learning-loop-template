@@ -150,6 +150,13 @@ async function loadRuntimeHooks(surface) {
     const cfg = readJson(join(root, ".mastracode/hooks.json"));
     return flattenMastracode(cfg);
   }
+  if (surface === ".hermes") {
+    // Hermes records its hook wiring in .hermes/hooks.json (Claude-Code
+    // nested shape; the live config lives in ~/.hermes/config.yaml, whose
+    // shell-hook entries mirror these commands).
+    const cfg = readJson(join(root, ".hermes/hooks.json"));
+    return flattenClaude(cfg.hooks);
+  }
   throw new Error(`unknown surface: ${surface}`);
 }
 
@@ -268,7 +275,7 @@ async function forEachHookAcrossSurfaces(fn) {
   }
 }
 
-await test("loadRuntimeHooks resolves all 3 runtime config shapes (shape test)", async () => {
+await test("loadRuntimeHooks resolves all runtime config shapes (shape test)", async () => {
   const SURFACES = await loadSurfaces();
   for (const surface of SURFACES) {
     const hooks = await loadRuntimeHooks(surface);
@@ -348,7 +355,15 @@ await test("SessionStart adapter matcher (`startup`) is asserted", async () => {
       h.command.includes("loop-surface-inject")
     );
     if (adapterEntry) {
-      assert.strictEqual(adapterEntry.matcher, "startup", `${surface}: SessionStart adapter must carry matcher:"startup"`);
+      if (surface === ".factory") {
+        assert.strictEqual(adapterEntry.matcher, "startup", `${surface}: SessionStart adapter must carry matcher:"startup"`);
+      } else {
+        // Non-.factory adapter surfaces (e.g. .hermes' pre_llm_call
+        // first-turn adapter) wire their own matcher; the exact-value
+        // equality against the manifest is asserted by the general
+        // forEachHookAcrossSurfaces parity test below.
+        assert.ok(adapterEntry.matcher, `${surface}: SessionStart adapter must carry a non-empty matcher`);
+      }
     } else {
       assert.notStrictEqual(surface, ".factory", ".factory must wire the SessionStart adapter");
     }

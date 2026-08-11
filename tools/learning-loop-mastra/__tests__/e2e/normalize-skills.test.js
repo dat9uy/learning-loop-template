@@ -156,7 +156,7 @@ test("clobber→normalize: restores the v2 extended schema for mastra (external/
     assert.ok(m, "mastra entry must remain in skills");
     assert.strictEqual(m.external, true, "external must be restored to true");
     assert.strictEqual(m.delivery, "npx-per-runtime+fanout-undetected", "delivery must be restored");
-    assert.deepStrictEqual(m.targets, [".claude", ".factory", ".mastracode"], "targets must be restored");
+    assert.deepStrictEqual(m.targets, [".claude", ".factory", ".mastracode", ".hermes"], "targets must be restored from the canonical SURFACES list");
     assert.strictEqual(m.maturity, null, "maturity must be restored");
     assert.strictEqual(m.source, "mastra-ai/skills", "source must be preserved");
     assert.strictEqual(m.sourceType, "npx-skills-cli", "sourceType must be restored to loop's canonical");

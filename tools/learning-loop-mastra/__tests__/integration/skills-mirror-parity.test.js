@@ -22,9 +22,9 @@ import assert from "node:assert";
 import { readFileSync, existsSync, lstatSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
+import { SURFACES } from "../../core/surfaces.js";
 
 const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
-const SURFACES = [".claude", ".factory", ".mastracode"];
 const LOOP_MAINTAINED_SKILLS = ["learning-loop", "coordination-gate"];
 
 function readIfExists(path) {
@@ -33,7 +33,7 @@ function readIfExists(path) {
 }
 
 for (const skill of LOOP_MAINTAINED_SKILLS) {
-  test(`${skill} is byte-identical across all 3 runtime surfaces (mirror parity)`, () => {
+  test(`${skill} is byte-identical across all runtime surfaces (mirror parity)`, () => {
     const contents = SURFACES.map((s) =>
       readIfExists(join(MCP_ROOT, s, "skills", skill, "SKILL.md")),
     );
@@ -41,7 +41,7 @@ for (const skill of LOOP_MAINTAINED_SKILLS) {
     assert.strictEqual(
       present.length,
       SURFACES.length,
-      `${skill}: SKILL.md must exist in all 3 surfaces; found in ${present.length}`,
+      `${skill}: SKILL.md must exist in all ${SURFACES.length} surfaces; found in ${present.length}`,
     );
     // Compare buffers (Buffer.equals is the byte-identity check).
     const buffers = contents.map((c) => Buffer.from(c, "utf8"));

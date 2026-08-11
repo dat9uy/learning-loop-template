@@ -46,7 +46,7 @@ await test("surfaces.js exports all cross-surface helpers", () => {
 await test("surfaces.js SURFACES is frozen and contains the canonical runtimes", async () => {
   const mod = await import("../../core/surfaces.js");
   assert.ok(Object.isFrozen(mod.SURFACES), "SURFACES must be Object.frozen");
-  assert.deepStrictEqual([...mod.SURFACES], [".claude", ".factory", ".mastracode"]);
+  assert.deepStrictEqual([...mod.SURFACES], [".claude", ".factory", ".mastracode", ".hermes"]);
 });
 
 await test("surfaces.js helper signatures are stable", () => {
@@ -218,6 +218,7 @@ await test("shims-in-sync fails when shim contents differ across surfaces (manif
   writeFileSync(join(root, ".claude", "coordination", "hooks", "test-hook.cjs"), "// shim", "utf8");
   writeFileSync(join(root, ".factory", "coordination", "hooks", "test-hook.cjs"), "// shim", "utf8");
   writeFileSync(join(root, ".mastracode", "coordination", "hooks", "test-hook.cjs"), "// divergent shim", "utf8");
+  writeFileSync(join(root, ".hermes", "coordination", "hooks", "test-hook.cjs"), "// divergent shim", "utf8");
   // No manifest fixture written → loadHooksManifest returns null → legacy
   // all-surfaces parity applies to the unknown-named `test-hook.cjs`.
 

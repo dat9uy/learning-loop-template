@@ -62,7 +62,7 @@ describe("identity-pin", () => {
     process.env.LOOP_SURFACE = "../etc";
     assert.throws(
       () => pinRuntimeIdAtBoot(),
-      (err) => err.message === ERRORS.INVALID_LOOP_SURFACE.replace("{value}", "../etc").replace("{allowed}", ".claude, .factory, .mastracode"),
+      (err) => err.message === ERRORS.INVALID_LOOP_SURFACE.replace("{value}", "../etc").replace("{allowed}", ".claude, .factory, .mastracode, .hermes"),
       `must throw exact INVALID_LOOP_SURFACE constant with substitutions`,
     );
   });

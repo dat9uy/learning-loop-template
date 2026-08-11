@@ -23,11 +23,11 @@ import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
+import { SURFACES } from "../../core/surfaces.js";
 
 const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
 const SCRIPT_PATH = join(MCP_ROOT, "tools/scripts/sync-skills.mjs");
 const CANONICAL_DIR = join(MCP_ROOT, "tools/learning-loop-mastra/skills");
-const SURFACES = [".claude", ".factory", ".mastracode"];
 
 function readSkillBytes(surface, name) {
   const p = join(MCP_ROOT, surface, "skills", name, "SKILL.md");
@@ -132,13 +132,13 @@ test("sync-skills is idempotent (second run writes 0 bytes, no mtime bump)", () 
   withFixture(["test-skill"], {}, (root) => {
     const r1 = runSyncSkills(root);
     assert.strictEqual(r1.code, 0, `first run must exit 0: ${r1.err}`);
-    assert.match(r1.out, /3 wrote, 0 unchanged/, `first run must write all 3 mirrors: ${r1.out}`);
+    assert.match(r1.out, /4 wrote, 0 unchanged/, `first run must write all 4 mirrors: ${r1.out}`);
     const mirror = mirrorPath(root, ".claude", "test-skill");
     const mtimeAfterFirst = statSync(mirror).mtimeMs;
 
     const r2 = runSyncSkills(root);
     assert.strictEqual(r2.code, 0, `second run must exit 0: ${r2.err}`);
-    assert.match(r2.out, /0 wrote, 3 unchanged/, `second run must write nothing: ${r2.out}`);
+    assert.match(r2.out, /0 wrote, 4 unchanged/, `second run must write nothing: ${r2.out}`);
     assert.strictEqual(
       statSync(mirror).mtimeMs,
       mtimeAfterFirst,
