@@ -6,12 +6,11 @@
 //   - MCP-only by one of the declared overrides (server-state,
 //     operator-policy, agent-facing, deferred-rehoming).
 //
-// Axis B (wiring) — which transport a given runtime exposes F on — is
-// runtime config. The CLI uses `CLI_TOOLS` as its allowlist. Opted-in MCP
-// runtimes exclude the same set when `LOOP_RECORDS_VIA_CLI=1` (full record
-// surface — reads + writes) or `LOOP_READS_VIA_CLI=1` (reads-only backward
-// compat). The union is exported as `CLI_TOOLS` so a single membership
-// check covers both transport opt-outs.
+// Single-surface invariant: the stateless CLI (bin/loop.mjs) is the ONLY
+// transport for this set in every runtime. MCP registers only the irreducible
+// residue (workflow / storage / allowlist / audit + agent tools) — no flag
+// re-exposes CLI_TOOLS on MCP. `CLI_TOOLS` is the union of `CLI_READ_TOOLS`
+// and `CLI_WRITE_TOOLS`; a single membership check covers the whole set.
 //
 // Note on `pathFields: []`: this is **R2 path-ownership bypass** (the CLI
 // path hardcodes `pathFields:[]` at `bin/loop.mjs:123`, so the R2 gate
@@ -29,11 +28,6 @@
 // The drift test also covers the `run_<wf.id>` workflow tools (registered
 // via `workflows-manifest.json` at `mastra/server.js:135,187`) — same
 // reclassification rule, same reason taxonomy.
-//
-// Rollback: `LOOP_RECORDS_VIA_CLI=0` restores ALL tools to MCP and
-// re-opens the split-brain W closed; do not use as a per-tool escape
-// hatch. Targeted rollback = move the specific entry out of `CLI_TOOLS`
-// back into `MCP_RESIDUE` with a reason tag.
 
 export const CLI_READ_TOOLS = new Set([
   // Original L3 reads surface (R-runtime backward compat).
@@ -45,8 +39,8 @@ export const CLI_READ_TOOLS = new Set([
   "meta_state_check_grounding",
   "runtime_state_read",
   // Auxiliary read-ish tools: stateless handlers in tools/manifest.json
-  // that were originally left on MCP as residue. They ride the CLI under LOOP_READS_VIA_CLI=1 and
-  // LOOP_RECORDS_VIA_CLI=1 alike (CLI_READ_TOOLS widens both opt-out flags).
+  // that were originally left on MCP as residue. They ride the CLI with the
+  // rest of the read surface — the CLI is the only read transport.
   "gate_check",
   "gate_check_recurrence",
   "meta_state_sweep",
