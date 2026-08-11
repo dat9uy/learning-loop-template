@@ -120,11 +120,11 @@ meta_state_list({ id: "<id>", include_all_versions: true, include_archived: true
 | `pnpm test:unit` | Fast per-commit feedback (vitest unit project only; coverage off; ~1:30 wall) |
 | `pnpm test:integration` | In-process composition tests (core/handlers/mastra/interface/storage; no subprocess) |
 | `pnpm test:e2e` | MCP-server / CLI-subprocess tests in isolation (with coverage) |
-| `pnpm test` | Full gate — all three projects + coverage (use for pre-push, CI, fix-loop) |
+| `pnpm test` | Full gate — all three projects + coverage (CI-authoritative; local fix-loops; pre-merge verification) |
 | `pnpm fallow:gate` | Stable coverage+complexity audit AFTER refresh_file_index |
-| `pnpm gate:self-verify` | Pre-push local CI-equivalent (test + coverage + fallow) |
+| `pnpm gate:self-verify` | Local CI-equivalent before pushing (test + coverage + fallow) |
 
-The pre-commit hook (`simple-git-hooks.pre-commit`) runs `pnpm test:unit` for fast per-commit feedback. The pre-push hook (`simple-git-hooks.pre-push`) runs `pnpm test && pnpm fallow:gate` for the full gate. CI (`test.yml`) runs the full gate independently on PRs and `push: main` — it is the authoritative gate; the local pre-push is a defense-in-depth backstop. The `gate:self-verify` wrapper remains the fix-loop companion. See `plans/260803-1314-hybrid-test-tiering-and-pre-push-gate/` for the rationale (cold-vs-warm × coverage-on/off measurement matrix).
+The pre-commit hook (`simple-git-hooks.pre-commit`) runs `pnpm test:unit` for fast per-commit feedback. There is deliberately **no local pre-push hook**: CI (`test.yml`) runs the full gate (`pnpm test` + the fallow audit) as a **required merge check** on PRs and `push: main` — it is the sole authoritative gate. The R13 regression guard (`__tests__/r2/precommit-hook.test.js`) locks this invariant: `package.json` must have no `simple-git-hooks.pre-push` entry. (A local pre-push full gate was dropped in PR #124 — it was redundant with CI and outlasted the agent-harness push timeout, exit 143 mid-hook.) `pnpm gate:self-verify` remains the local fix-loop companion for pre-push confidence, not a hook. See `plans/260803-1314-hybrid-test-tiering-and-pre-push-gate/` for the historical rationale (cold-vs-warm × coverage-on/off measurement matrix).
 
 ---
 
@@ -148,7 +148,7 @@ Without this config, `merge=union` is a silent no-op and parallel change-log PRs
 
 ## 4b. Git Push Setup (one-time per-clone for autonomous shells)
 
-Autonomous shells (subagents, headless runtimes) cannot inherit the operator's interactive `SSH_AUTH_SOCK`, so a passphrase-protected SSH key blocks every push with `Permission denied (publickey)`. The same shell is the one most likely to bypass the pre-push gate under flake pressure, destroying the audit trail — auth fragility and audit-trail preservation are coupled.
+Autonomous shells (subagents, headless runtimes) cannot inherit the operator's interactive `SSH_AUTH_SOCK`, so a passphrase-protected SSH key blocks every push with `Permission denied (publickey)`. The same shell is the one most likely to skip local verification (`pnpm gate:self-verify`) and rely on CI-only enforcement under flake pressure, weakening the local feedback loop — auth fragility and audit-trail preservation are coupled.
 
 **One-time per-clone setup script:** `bash tools/scripts/setup-git-push.sh` (or the combined `bash tools/scripts/setup-git.sh` from §4 to run both per-clone git setups at once). Idempotent, fail-closed, full rollback on every failure path:
 
@@ -172,7 +172,7 @@ The mutation region is wrapped in `flock` + an `ERR` trap that restores BOTH the
 
 Read-only, fail-open (any internal error → warning line, exit 0). Common case < 1s, worst case ≤ ~5s (3s probe + 2s reachability). Wired for `.claude` only alongside the merge-driver preflight hook (§4); `.factory` and `.mastracode` deferred to follow-up (the `.factory` adapter is hardcoded to the inject-* hooks, so a non-trivial extension is required before the preflight can dispatch through it).
 
-**Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to bypass the pre-push gate under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk. A promoted gate rule detecting the bypass itself is the mitigation (proposed via `meta_state_promote_rule` for operator decision).
+**Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to skip local verification or bypass the pre-commit/commit-msg hooks under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk (the full gate still runs on CI regardless). A promoted gate rule detecting the bypass itself is the mitigation (proposed via `meta_state_promote_rule` for operator decision).
 
 ---
 
