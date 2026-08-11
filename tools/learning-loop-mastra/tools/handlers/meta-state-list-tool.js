@@ -61,7 +61,7 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "Read the meta-state registry. Defaults to a compact projection excluding resolved/accepted entries; use id/session_id/ref_by+ref_field for narrow queries and include_all_versions:true for history. Read-only. An id-filtered query whose ids exist but are excluded by the default terminal-status/archived filter emits an `excluded_ids` notice (pass include_archived:true to include them).",
+  description: "Read the meta-state registry. Defaults to a compact projection excluding resolved/accepted entries; use id/session_id/ref_by+ref_field for narrow queries and include_all_versions:true for history. Read-only. Id queries on excluded (terminal/archived) ids emit an `excluded_ids` notice (pass include_archived:true to include).",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),
@@ -72,7 +72,7 @@ export const metaStateListTool = {
     entry_kinds: z.preprocess(stripEnvelope, z.array(z.enum(["finding", "change-log", "rule", "loop-design"]))).optional()
       .describe("Filter by multiple entry kinds (takes precedence over entry_kind if both set)"),
     id: z.preprocess(stripEnvelope, z.union([z.string(), z.array(z.string())])).optional()
-      .describe("Filter by id (string or string[]). Exact-match only; ids are full slugs, not prefixes. Missing ids are silently skipped, but a queried id that is a unique non-empty prefix of exactly one registry id surfaces an `id_prefix_hints` entry naming the full id. A queried id that EXISTS but is excluded by the default terminal-status/archived filter surfaces an `excluded_ids` notice (with its projected status) — pass `include_archived: true` to include it. Pairs with `ref_by`/`ref_field` for the narrow query path."),
+      .describe("Filter by id (string or string[]). Exact-match only; ids are full slugs, not prefixes. Missing ids are silently skipped, but a queried id that is a unique non-empty prefix of exactly one registry id surfaces an `id_prefix_hints` entry naming the full id. A queried id that EXISTS but is excluded by the default terminal/archived view surfaces an `excluded_ids` notice — pass `include_archived:true` to include it. Pairs with `ref_by`/`ref_field` for the narrow query path."),
     ref_by: z.string().optional()
       .describe("Filter entries that reference this id in `ref_field`. Required with `ref_field`."),
     ref_field: z.enum(REF_FIELDS).optional()
