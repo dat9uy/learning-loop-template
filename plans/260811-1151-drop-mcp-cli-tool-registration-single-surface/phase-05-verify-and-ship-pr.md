@@ -42,9 +42,10 @@ green (the finding's acceptance is the shipped single-surface contract + green t
    `cli-mcp-subset-registration.test.js`; `cli-optout-wiring.test.js` green;
    `cli-sessionstart-banner.test.js` green on unconditional banner.
 2. If any test fails, fix the regression rather than weakening the test (repo rule). Common
-   expected failures: a test still importing the deleted subset-registration module; a
-   missed `callTool` on a non-residue tool (Phase 3 gap); a tier-membership mismatch
-   (Phase 2 `vitest.config.mjs`). Remove stray imports / route the call / fix the tier.
+   expected failures: a test still importing the deleted subset-registration module; a missed
+   `*.callTool` on a non-residue tool; a 42/44/50 crosswalk mismatch; a tier-membership
+   mismatch; or a missing CLI subprocess environment. Remove stray imports, route the call,
+   fix the tier, or restore isolated env/root propagation.
 3. `pnpm lint` / typecheck if the project configures them (check `package.json` scripts).
 4. Run `check_runtime_agnostic` against the changed surface (the hook + server are
    runtime-agnostic surfaces); confirm the 6-item checklist still holds.
@@ -52,16 +53,21 @@ green (the finding's acceptance is the shipped single-surface contract + green t
    `feat(hook): unconditional transport banner`, `test(mcp): re-target wire budget to residue`,
    `test: re-base parity oracle to direct-handler`, `docs: retire records-via-CLI flags`).
    No finding IDs / phase numbers in commit messages.
-6. `gh pr create` with a body summarizing: the debt paid, the measured residue (8 tools /
-   4,563 B), the re-anchored ceiling (55,000 → 6,000 all-tools), the session-start banner
-   redesign, the parity + cold-session re-anchor, and the accepted contract-reversal risk.
-   Per repo PR-body registry-deltas rule, enumerate any meta-state registry deltas.
-7. Resolve the finding: `loop.mjs meta_state_resolve '{"id":"meta-260811T1106Z-mcp-and-cli-surfaces-run-duplicated-tool-registrations-every",
-   "resolution":"MCP registration of CLI_TOOLS dropped; CLI is single record surface; session-start banner unconditional; wire budget re-anchored to residue (6,000 all-tools); parity + cold-session re-anchored to CLI; flags retired from server/hook/configs/docs.",
-   "resolved_by":"operator"}'`.
-8. Watch CI: `gh pr checks <n> --watch`; fix until every required check is green. Verify
-   `gh pr view <n> --json mergeStateStatus` == `CLEAN` (bind context to job id, not
-   workflow name — repo rule).
+6. `gh pr create` with a body summarizing: the debt paid, separate 42/44/5/8/50 surfaces,
+   the measured live residue (8 tools / 4,563 B), the re-anchored ceiling (55,000 → 6,000
+   all-tools), the Claude banner behavior/degraded path, retained MCP schema coverage, parity
+   re-anchor, and accepted contract-reversal risk. Per repo PR-body registry-deltas rule,
+   enumerate any meta-state registry deltas.
+7. Watch CI: `gh pr checks <n> --watch`; bind every required result to its job id, fix until
+   all required jobs are green, then verify `gh pr view <n> --json mergeStateStatus` ==
+   `CLEAN`. Do not resolve the finding before this check.
+8. After CI is green and `CLEAN`, resolve the finding with the PR number/URL in the resolution.
+   Use the complete CLI environment and project root, for example:
+   `LOOP_SURFACE=.claude GATE_ROOT=$PWD node tools/learning-loop-mastra/bin/loop.mjs meta_state_resolve '{"id":"meta-260811T1106Z-mcp-and-cli-surfaces-run-duplicated-tool-registrations-every","resolution":"MCP registration of CLI_TOOLS dropped; separate CLI/manifest/agent/live-MCP contracts verified; session-start banner behavior verified; wire budget re-anchored to residue; parity and cold-session contracts re-anchored; flags retired; PR=<number> <url>","resolved_by":"operator"}'`.
+9. Rollback procedure, if required: before reverting flag-dependent server registration, restore
+   `LOOP_RECORDS_VIA_CLI=1` in all three runtime configs, verify the old full-surface budget and
+   runtime smoke, then revert server/hook/docs changes. Never revert only `server.js` after
+   flags have been removed.
 
 ## Success Criteria
 
@@ -86,5 +92,9 @@ green (the finding's acceptance is the shipped single-surface contract + green t
   of job id gives a false CLEAN. Signal: `gh pr view` shows CLEAN but `gh pr checks` still
   lists a pending/failed job. Response: bind to the job id and re-verify.
 - **Finding resolution premature:** resolving before CI green leaves a "resolved" finding
-  over a red PR. Pre-decided response: resolve only after step-8 confirms CLEAN; if CI goes
-  red after resolution, re-open via a new finding rather than editing the resolution.
+  over a red PR. Pre-decided response: resolve only after step-7 confirms job-id-bound CLEAN,
+  then include the PR pointer in step 8; if CI goes red after resolution, re-open via a new
+  finding rather than editing the resolution.
+- **Rollback exposure:** restoring only server code after config flags are removed re-exposes
+  the full MCP surface. Signal: old wire-budget measurement or runtime smoke exceeds the
+  residue contract. Response: restore all three flags first, verify, then revert code.

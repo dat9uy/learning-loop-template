@@ -21,14 +21,16 @@ residue-measurement script as a reusable helper.
 
 ## Requirements
 
-- Functional: wire-budget test measures the 8-tool residue and asserts `<= 6_000` all-tools
-  bytes. `cli-optout-wiring.test.js` asserts the residue-only contract (no flag). The
-  session-start banner test asserts the unconditional banner. `mcp-config.test.js` drops the
-  flag assertion (keeps `LOOP_SURFACE`). The drift test boots `withMcpServer` and asserts
-  `listTools` equals the documented residue set.
-- Non-functional: no test references either flag as an opt-out knob after this phase. Tier
-  membership in `vitest.config.mjs` stays disjoint (e2e tests in `E2E_FILES`). The
-  measurement script is committed (not `/tmp`) so the ceiling is re-checkable.
+- Functional: wire-budget test measures the exact 8-tool live residue and asserts `<= 6_000`
+  all-tools bytes. `cli-optout-wiring.test.js` asserts the residue-only contract (no flag).
+  The session-start banner test asserts unconditional Claude behavior plus degraded config
+  behavior. `mcp-config.test.js` drops the flag assertion (keeps `LOOP_SURFACE`). The drift
+  test asserts both the 5-entry classified manifest residue and the exact 8-entry live MCP
+  residue with server prefixes.
+- Non-functional: no active test/script references either flag as an opt-out knob after this
+  phase. Tier membership in `vitest.config.mjs` stays disjoint. The measurement script is
+  committed (not `/tmp`) so the ceiling is re-checkable. MCP schema/transport coverage is
+  retained in its existing bounded tests.
 
 ## Architecture
 
@@ -42,13 +44,19 @@ this phase covers only the guard/contract tests).
 Commit `__tests__/helpers/measure-residue.mjs` (the script that produced the 4,563 figure)
 so the ceiling anchor is reproducible.
 
-**Drift guard:** `cli-write-tool-set-drift.test.js` already defines `MCP_RESIDUE` (5 entries:
-2 `run_workflow_storage_*`, `update_r2_allowlist`, `check_runtime_agnostic`,
-`workflow_generate_prompt`) and asserts `CLI_TOOLS ∩ MCP_RESIDUE = ∅` + completeness.
-Strengthen it to also boot `withMcpServer` and assert `listTools` (manifest residue) equals
-the `MCP_RESIDUE` manifest members — one authoritative guard, not a competing one. The 3
-`ask_*` agents register outside the manifest loop, so document that the drift guard covers
-manifest+workflow residue (5) while the live-surface count is 8 (5 + 3 agents). [Finding 9]
+**Drift guard:** `cli-write-tool-set-drift.test.js` already defines the five bare-name
+`MCP_RESIDUE` classification entries (2 storage workflows, `update_r2_allowlist`,
+`check_runtime_agnostic`, `workflow_generate_prompt`) and asserts
+`CLI_TOOLS ∩ MCP_RESIDUE = ∅` + completeness. Strengthen it with two exact assertions:
+(1) 44 handler-manifest entries partition into 42 `CLI_TOOLS` plus the two manifest-only
+residue handlers; (2) a `withMcpServer` boot exposes the exact eight live names:
+`mastra_check_runtime_agnostic`, `mastra_update_r2_allowlist`,
+`mastra_workflow_generate_prompt`, `run_workflow_storage_read`,
+`run_workflow_storage_round_trip`, and the three `ask_*` agent names. Keep bare
+classification and prefixed live names as separate constants. [Red-team corrections 5, 10]
+
+The drift test must not replace the existing MCP schema/transport tests: those continue to
+cover `createLoopTool` conversion, registration, and representative protocol behavior.
 
 ## Related Code Files
 
@@ -60,6 +68,8 @@ manifest+workflow residue (5) while the live-surface count is 8 (5 + 3 agents). 
 - Modify: `vitest.config.mjs`
 - Delete: `__tests__/cli-mcp-subset-registration.test.js`
 - Create: `__tests__/helpers/measure-residue.mjs`
+- Modify: `__tests__/helpers/manifest-constants.cjs` (explicit 42/44/5/8/50 counts and expected sets)
+- Modify: `__tests__/manifest-arithmetic.test.cjs` (computed CLI/manifest/agent crosswalk)
 
 ## Implementation Steps
 
@@ -94,7 +104,8 @@ manifest+workflow residue (5) while the live-surface count is 8 (5 + 3 agents). 
 8. Delete `__tests__/cli-mcp-subset-registration.test.js` (its two flag-dependent tests —
    `LOOP_READS_VIA_CLI=1 excludes only 12 reads`, `LOOP_RECORDS_VIA_CLI=1 ...` — are gone;
    the flag-independent two were salvaged in step 3).
-9. Run `pnpm vitest run` on the six touched files + the tier-membership test; confirm green.
+9. Add the computed arithmetic guard: 44 handler-manifest entries = 42 CLI + 2 manifest-only; live MCP = 2 manifest-only + 1 allowlist + 2 storage workflows + 3 agents = 8; keep the 50 agent-manifest declaration separate.
+10. Run `pnpm vitest run` on the touched guard files, manifest arithmetic, and tier-membership test; confirm green.
 
 ## Success Criteria
 

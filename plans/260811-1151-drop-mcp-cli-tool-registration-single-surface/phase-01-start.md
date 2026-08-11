@@ -22,9 +22,11 @@ comment is updated.
 ## Requirements
 
 - Functional: MCP `listTools` returns exactly the 8-tool residue in every config, regardless
-  of any `LOOP_*_VIA_CLI` env value. The session-start hook emits the transport banner
-  (records-via-CLI text, write-tool sketches, `--args-file` form, pinned `LOOP_SURFACE`
-  value) on every runtime without reading either flag.
+  of any `LOOP_*_VIA_CLI` env value. The Claude session-start discoverability hook emits the
+  transport banner (records-via-CLI text, write-tool sketches, `--args-file` form, pinned
+  `LOOP_SURFACE` value) without reading either flag. Missing or malformed config retains a
+  tested degraded path and must not advertise an unbootable CLI identity. Factory and
+  MastraCode remain separate hook surfaces unless explicitly wired and tested in this plan.
 - Non-functional: shared core (`adaptLegacyHandler`, `withR2Gate`, `pinRuntimeIdAtBoot`,
   `CLI_TOOLS` / `CLI_READ_TOOLS` definitions) stays behaviorally unchanged — Phase 1 touches
   only comments in `core/cli-tools.js` and `bin/loop.mjs`, not logic. No DRY split.
@@ -39,14 +41,17 @@ Delete the `READS_VIA_CLI` (44) and `RECORDS_VIA_CLI` (50) consts + their commen
 remove `CLI_READ_TOOLS` from the line-21 import (keep `CLI_TOOLS`).
 
 **Session-start hook** (`hooks/universal/session-start-inject-discoverability.cjs:161-175`)
-— `buildConfiguredTransportBanner` reads `recordsViaCli`/`readsViaCli` from the runtime
-`mcp.json` and gates the entire banner on `readsViaCli`. Collapse it: the banner always
-emits the records-via-CLI text (the CLI is the single record surface now). Remove the flag
-reads at 167-168 and the `readsViaCli`/`recordsViaCli` branching; `buildTransportBanner`
-loses those params (or they default to the single-surface state). The write-tool arg
-sketches + `--args-file` form + pinned `LOOP_SURFACE` value MUST still render — they are
-the agent's only pointer to the CLI transport and the gate-sensitive-payload escape hatch.
-[Finding 3]
+— `buildConfiguredTransportBanner` currently reads flags from `.mcp.json` and gates the
+Claude banner on `readsViaCli`. Collapse only the flag decision: for a valid Claude config,
+the banner always emits the records-via-CLI text. Remove flag reads and branching, but
+preserve a fail-closed/degraded result when config is missing or malformed so the hook does
+not advertise a CLI that cannot satisfy `pinRuntimeIdAtBoot`. The write-tool arg sketches,
+`--args-file` form, and pinned `LOOP_SURFACE` value MUST still render. The current universal
+hook is wired only through `.claude/settings.json`; do not claim Factory/MastraCode coverage
+without adding their runtime-specific hook wiring and tests. [Red-team corrections 7, 9]
+
+Rollback safety: if this phase is reverted, restore the three config flags before restoring
+flag-dependent server registration; never revert `server.js` alone after Phase 4 removes flags.
 
 **Stale comments** — `core/cli-tools.js:11-14,33-36,48-49` describes the flags as active
 opt-out knobs and documents a "Rollback: `LOOP_RECORDS_VIA_CLI=0` restores ALL tools to
@@ -91,7 +96,7 @@ stale text. Rewrite to the single-surface invariant (MCP registers only the resi
 ## Success Criteria
 
 - [ ] `server.js` has no `READS_VIA_CLI`/`RECORDS_VIA_CLI` reference and no `CLI_READ_TOOLS` import; one unconditional `CLI_TOOLS.has` skip.
-- [ ] Session-start hook emits the banner with no flag read; sketches + `--args-file` + `LOOP_SURFACE` still render.
+- [ ] Claude session-start hook emits the banner with no flag read; valid-config sketches + `--args-file` + `LOOP_SURFACE` render; missing/malformed config follows the degraded path.
 - [ ] `cli-tools.js`, `bin/loop.mjs`, `placement.yaml` carry no stale flag-as-active-opt-out prose; the "Rollback: flag=0" sentence is gone.
 - [ ] `listTools` (no env flags) returns exactly the 8 residue names, ~4,563 all-tools bytes.
 - [ ] `grep -rn "LOOP_RECORDS_VIA_CLI\|LOOP_READS_VIA_CLI" tools/learning-loop-mastra/ --exclude-dir=__tests__` returns zero.
