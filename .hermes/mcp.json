@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "learning-loop": {
+      "command": "node",
+      "args": [
+        "tools/learning-loop-mastra/mastra/server.js"
+      ],
+      "env": {
+        "LOOP_SURFACE": ".hermes"
+      }
+    }
+  }
+}

@@ -15,6 +15,17 @@ You do NOT need this if:
 - You're just running prompts — use one of the existing runtimes.
 - You're writing a new MCP tool — that's a Core/Mastra shell change, not runtime integration.
 
+> **Newest onboarded runtime:** Hermes Agent (`.hermes/`, runtime id `hermes`).
+> Hermes wires lifecycle events via **shell hooks** declared in the global
+> `~/.hermes/config.yaml` (`pre_tool_call`, `pre_llm_call`, `on_session_start`,
+> `post_tool_call`); the in-repo `.hermes/*.json` files are the committed
+> mirrors the contract validator checks. The gate shims in
+> `.hermes/coordination/hooks/` are `kind: "adapter"` in `hooks-lock.json`
+> (they translate Hermes' wire protocol to the universal hooks and pin
+> `GATE_ROOT`; they also carry a project-scope guard because Hermes shell
+> hooks are global, unlike Claude Code's project-scoped settings.json). See
+> `.hermes/coordination/hooks/README.md` for the wiring record.
+
 ## The 5 requirements (checklist)
 
 A runtime MUST satisfy all 5. Validate with `node tools/learning-loop-mastra/interface/contract.js <your-runtime-id>`.

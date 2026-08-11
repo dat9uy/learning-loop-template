@@ -267,4 +267,26 @@ const mastra = new Mastra({
   mcpServers: { "learning-loop": server },
 });
 
+// Stdio-protocol hygiene: the @mastra/mcp SDK's startStdio() emits
+// `Started MCP Server (stdio)` to STDOUT via this.logger.info. A stdio MCP
+// server's stdout MUST carry only JSON-RPC frames — the banner corrupts the
+// handshake for strict clients (Hermes' Python MCP SDK aborts with
+// "Connection closed"; Claude Code happens to tolerate the leading noise).
+// Route the SDK logger's info/debug/warn output to stderr (the server's own
+// boot line already uses console.error); errors and trackException keep the
+// original logger. Applied AFTER `new Mastra(...)` — the Mastra constructor
+// re-assigns mcpServer.logger — and before startStdio(), which is the only
+// remaining stdout-logging call site. Construction-time registration logs
+// are unaffected.
+const serverLogger = server.logger;
+server.logger = new Proxy(serverLogger, {
+  get(target, prop) {
+    if (prop === "info" || prop === "debug" || prop === "warn") {
+      return (...args) => console.error("[learning-loop mcp]", ...args);
+    }
+    const value = target[prop];
+    return typeof value === "function" ? value.bind(target) : value;
+  },
+});
+
 await server.startStdio();

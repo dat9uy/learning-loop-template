@@ -25,7 +25,7 @@ afterEach(() => {
 // ─── SURFACES ───
 
 await test("SURFACES is frozen and equals the canonical runtime set", () => {
-  assert.deepStrictEqual(SURFACES, [".claude", ".factory", ".mastracode"]);
+  assert.deepStrictEqual(SURFACES, [".claude", ".factory", ".mastracode", ".hermes"]);
   assert.throws(() => {
     SURFACES.push(".cursor");
   });
@@ -42,6 +42,7 @@ await test("getAllCoordinationPaths maps each surface to <surface>/coordination/
     ".claude/coordination/hooks/bash-gate.js",
     ".factory/coordination/hooks/bash-gate.js",
     ".mastracode/coordination/hooks/bash-gate.js",
+    ".hermes/coordination/hooks/bash-gate.js",
   ]);
 });
 
@@ -51,6 +52,7 @@ await test("getAllCoordinationPaths handles nested subpaths", () => {
     ".claude/coordination/a/b/c.txt",
     ".factory/coordination/a/b/c.txt",
     ".mastracode/coordination/a/b/c.txt",
+    ".hermes/coordination/a/b/c.txt",
   ]);
 });
 

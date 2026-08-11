@@ -39,9 +39,9 @@ The meta-surface is implemented across 3 layers:
   `interface/CONTRACT.md`); the transport-agnostic participation contract
   lives at `docs/runtime-contract.md`. **Hooks** (universal scripts in
   `hooks/universal/` + per-runtime shim files in `.claude/coordination/hooks/`,
-  `.factory/coordination/hooks/`, or declarative `.mastracode/hooks.json`)
-  are boundary adapters within Runtime interface — they translate
-  runtime-specific protocol to/from Core. Policy lives in Core, not in hooks.
+  `.factory/coordination/hooks/`, `.hermes/coordination/hooks/`, or declarative
+  `.mastracode/hooks.json`) are boundary adapters within Runtime interface —
+  they translate runtime-specific protocol to/from Core. Policy lives in Core, not in hooks.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -184,7 +184,7 @@ The long-term direction lives in `docs/trajectory.md` — read it before reasoni
 
 ## 6. Runtime Interface Ownership (R2)
 
-Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, and for Mastra Code: declarative config in `.mastracode/{mcp,hooks,settings,database}.json`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.** Each runtime agent works on its own branch; cross-runtime edits require an operator-approved PR. The `interface/CONTRACT.md` conformance checklist is the loop's concern; the runtime's coordination directory is the runtime's concern. Enforcement: git branch protection + PR review + the R2 write-gate (LIM-3 caller identity + LIM-4 path traversal). See `docs/security/plan-5-hardening.md` for the gating chain, R2 allowlist schema, and the operator runbook for diagnosing `cross_runtime_write_denied`.
+Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, `.hermes/coordination/hooks/` + `.hermes/*.json` mirrors, and for Mastra Code: declarative config in `.mastracode/{mcp,hooks,settings,database}.json`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.** Each runtime agent works on its own branch; cross-runtime edits require an operator-approved PR. The `interface/CONTRACT.md` conformance checklist is the loop's concern; the runtime's coordination directory is the runtime's concern. Enforcement: git branch protection + PR review + the R2 write-gate (LIM-3 caller identity + LIM-4 path traversal). See `docs/security/plan-5-hardening.md` for the gating chain, R2 allowlist schema, and the operator runbook for diagnosing `cross_runtime_write_denied`.
 
 ---
 

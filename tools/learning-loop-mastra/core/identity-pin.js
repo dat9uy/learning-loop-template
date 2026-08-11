@@ -50,6 +50,7 @@ const SURFACE_TO_RUNTIME = {
   ".claude": "claude-code",
   ".factory": "droid",
   ".mastracode": "mastra-code",
+  ".hermes": "hermes",
 };
 
 let pinState = null;
