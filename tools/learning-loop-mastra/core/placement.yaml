@@ -225,6 +225,12 @@ files:
   - path: command-classification.js
     role: helper
     summary: Pure runtime-neutral command classifier — gate/recurrence/event modes over shell-parse + blanker primitives; dual-view inert-span provenance for unexpected-match events.
+  - path: command-interpretation.js
+    role: facade
+    summary: Opaque request-local Command Interpretation interface — matches a command against a supplied Rule for policy-neutral provenance facts and requests recurrence projection without exposing parser or blanking views.
+  - path: command-recurrence.js
+    role: helper
+    summary: Pure coarse recurrence projection owner; Command Interpretation exposes its opaque Rule-scoped key request while legacy tracker helpers forward here.
   - path: workflow-registry.js
     role: helper
     summary: Reads workflow manifest and provides lookup helpers.

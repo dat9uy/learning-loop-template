@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
 import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
-import { classifyCommand } from "./command-classification.js";
+import { interpretCommand } from "./command-interpretation.js";
 import { readRegistry, readFileIndex, toLegacyRuleView } from "./meta-state.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
@@ -783,10 +783,10 @@ const EVENT_SOURCE_BASH_GATE_EVALUATOR = "bash-gate-evaluator";
 //     shape but the whole match lies inside an inert region the gate blanked)
 //     is a SEPARATE non-permission telemetry event: `decision: "ok"` plus
 //     `event: "unexpected-match"`, never an allow override.
-// The classifier never throws; the try/catch is belt-and-suspenders so a future
-// classifier throw can never reach applyPromotedRules' catch/continue and turn a
-// matched command into `{decision:"ok"}`.
-function buildPromotedMatchResult(command, rule) {
+// The interpretation interface never throws and keeps unknown provenance
+// visible. The caller adds the gate decision and telemetry envelope here; the
+// interpretation itself remains policy-neutral.
+function buildPromotedMatchResult(command, rule, facts = null) {
   const base = {
     decision: "escalate",
     reason: `Promoted rule "${rule.id}" matched: ${rule.pattern}`,
@@ -795,18 +795,8 @@ function buildPromotedMatchResult(command, rule) {
     pattern_type: rule.pattern_type,
   };
 
-  // The gate already proved the regex matched; classify for provenance only.
-  let event;
-  try {
-    event = command != null
-      ? classifyCommand(command, { mode: "event", rulePattern: rule.pattern })
-      : null;
-  } catch {
-    event = null;
-  }
-
-  const match_origin = event?.match_origin ?? "unknown";
-  const candidate_kind = event?.candidate_kind ?? "unclassified";
+  const match_origin = facts?.match_origin ?? "unknown";
+  const candidate_kind = facts?.candidate_kind ?? "unclassified";
 
   // Kill-switch guard: GATE_HEREDOC_BLANKER=0 short-circuits the heredoc
   // blanker, so the gate evaluated the command un-blanked and the classifier's
@@ -857,6 +847,7 @@ function buildPromotedMatchResult(command, rule) {
 export function applyPromotedRules(command, filePath, rules, root = findProjectRoot()) {
   const override = readGateOverride(root);
   const overrideSet = override ? new Set(override.rule_ids) : new Set();
+  const interpretation = command != null ? interpretCommand(command) : null;
 
   // Proven inert-data telemetry is deferred to AFTER the full rule loop: an
   // `event: "unexpected-match"` marker is a non-permission telemetry event, so
@@ -887,6 +878,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
 
     const { pattern_type, pattern, id: rule_id } = rule;
     let matched = false;
+    let matchFacts = null;
 
     try {
       if (pattern_type === "determinism-checklist") {
@@ -901,105 +893,17 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
           console.warn(`Rule ${rule_id}: regex pattern rejected by safety check`);
           continue;
         }
-        const re = new RegExp(pattern);
-        // Heredoc pre-pass at the top of the regex branch: blank quoted-
-        // delimiter heredoc bodies for the promoted-rule allowlist
-        // (DATA_COMMANDS ∪ {cat, tee} ∪ node-family). Node-family is an
-        // accepted bypass here (JS source is data to the shell gate, sibling
-        // of the documented stripNodeEvalBody limitation). The pass runs ONCE
-        // over the whole command so both the per-segment pass below and the
-        // fullStripped chain share the blanked form. Null-guard: applyPromotedRules
-        // is called with command=null by evaluate-write-gate.js — the regex
-        // branch already null-guards, and the pre-pass must too.
-        const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_PROMOTED);
-        // Quote-concatenation normalization: fold adjacent-quote splits
-        // (`vitest r''un` → `vitest run`) so the promoted-rule regexes see the
-        // joined form. Same gap the first-class constraint surface closes in
-        // matchConstraintPattern. Applied once over the whole command so both
-        // the per-segment and full-command passes share the folded form. The
-        // verb layer (matchGateVerb) is already immune via the tokenizer.
-        const quoteSafe = normalizeQuoteConcatenation(heredocSafe);
-        // Per-segment: a forbidden token in any leg of a compound command
-        // (splitSegments splits on ; & |, honoring quotes). This remains the
-        // primary match surface so substring rules behave exactly as before.
-        // applyInertSinkBlanking runs once over the whole command first, because
-        // deciding whether an echo segment's prose is inert needs the sibling
-        // pipe target that splitSegments discards. It blanks echo/printf quoted
-        // args where the segment has no real pipe at all (bare `echo "x"` —
-        // the common case) or where the printed output routes to a configured
-        // inert sink; a redirect, an exec segment, or a pipe to anything else
-        // preserves the prose, so the bypass shapes still match here.
-        const echoSafe = applyInertSinkBlanking(quoteSafe);
-        for (const segment of splitSegments(echoSafe)) {
-          const stripped = stripMessageFlags(segment);
-          const nodeStripped = stripNodeEvalBody(stripped);
-          const dataStripped = stripDataCommandQuotes(nodeStripped);
-          const cliStripped = stripCliArgvPayload(dataStripped);
-          if (re.test(cliStripped)) {
-            matched = true;
-            break;
-          }
-        }
-        // Full-command: patterns that span a delimiter splitSegments removes
-        // (e.g. a literal pipe: `vitest run ... | tail`) are unreachable
-        // per-segment, because no segment retains the delimiter. Test the
-        // full command as a second pass. This is a strict superset: a pattern
-        // that matches the full command either matches a segment already
-        // (substring/alternation rules — the matched text lives in some
-        // segment) or spans a removed delimiter (newly reachable). The data-
-        // command strip is applied here too so a banned token living only in a
-        // grep/jq pattern on one side of a real pipe cannot pair with the pipe
-        // to false-positive. stripEchoProse extends the same reasoning to
-        // echo/printf: a banned token living only in an echo label on one side
-        // of a real read-only pipe (grep/tail/head) cannot pair with it to
-        // false-escalate. stripCliArgvPayload extends it to the loop CLI
-        // inline-JSON argv (canonical `node .../bin/loop.mjs <tool> <quoted>`):
-        // a banned token living only in that JSON data cannot run, so it cannot
-        // pair with a real pipe to false-escalate. The blanking is quote-kind-
-        // aware — a double-quoted `$(...)` argv is real execution and stays
-        // visible (see stripCliArgvPayload). Executed-body verbs (bash -c, sh -c,
-        // python -c, awk, sed) are deliberately NOT stripped here — their quoted
-        // bodies run, so a banned token in `bash -c "vitest run" | tail` is a
-        // real violation. stripDataCommandQuotes/stripEchoProse/stripCliArgvPayload
-        // preserve ; & | (quote-aware split) so spanning patterns still match
-        // real violations.
-        if (!matched) {
-          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripCliArgvPayload(stripNodeEvalBody(stripMessageFlags(quoteSafe)))));
-          if (re.test(fullStripped)) {
-            matched = true;
-          }
-        }
-        // Dual-view inert-data telemetry: the gate blanked the raw match (so
-        // `matched` stayed false), but the RAW command still carries the
-        // banned-looking shape. If the classifier proves the raw match lies
-        // ENTIRELY inside an inert region the gate blanked (quoted heredoc
-        // body, node -e body, echo prose, data-command quote), emit the
-        // separate `event: "unexpected-match"` telemetry marker with decision
-        // staying ok. Cheap pre-filter: the raw command must contain the raw
-        // pattern before we spend a classify. A non-inert (executable) raw
-        // match is NOT emitted here — only the discrimated inert-data pair.
-        // `buildPromotedMatchResult` returns `event: "unexpected-match"` only
-        // for that pair; anything else is discarded so a non-matched command
-        // can never be flipped to escalate.
-        //
-        // Deferred, never returned inline: the inert marker is recorded and
-        // the loop CONTINUES, because a real violation from a LATER rule in
-        // the same compound command must still escalate. Returning here would
-        // mask e.g. a `rule-no-raw-stdout-vitest` violation chained behind an
-        // inert `rule-no-new-artifact-types` heredoc. `if (!pendingTelemetry)`
-        // keeps the FIRST inert marker (deterministic) while a real escalate
-        // on any rule returns from inside the loop and discards it.
-        //
-        // Kill-switch guard: when GATE_HEREDOC_BLANKER=0 the blanker returns
-        // the command unchanged, so the inert classification is UNSOUND — the
-        // body was never proven inert by the gate and a real executor shape
-        // must escalate. Skip the telemetry path entirely so the raw match
-        // reaches the normal escalate branch.
-        if (!matched && command != null && process.env.GATE_HEREDOC_BLANKER !== "0" && re.test(command)) {
-          const prov = buildPromotedMatchResult(command, rule);
-          if (prov.event === "unexpected-match") {
-            if (!pendingTelemetry) pendingTelemetry = prov;
-          }
+        matchFacts = interpretation?.matchRule(rule) ?? {
+          matched: false,
+          supported: false,
+          match_origin: "unknown",
+          candidate_kind: "unclassified",
+          raw_match: null,
+        };
+        matched = matchFacts.matched;
+        if (!matched && process.env.GATE_HEREDOC_BLANKER !== "0" && matchFacts.candidate_kind === "unexpected-match") {
+          const prov = buildPromotedMatchResult(command, rule, matchFacts);
+          if (!pendingTelemetry) pendingTelemetry = prov;
         }
       } else if (pattern_type === "glob" && filePath) {
         if (!isGlobScopeWhitelisted(pattern)) {
@@ -1014,7 +918,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
     }
 
     if (matched) {
-      return buildPromotedMatchResult(command, rule);
+      return buildPromotedMatchResult(command, rule, matchFacts);
     }
   }
   // No rule produced a real violation. If the loop recorded a proven inert-data

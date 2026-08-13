@@ -43,7 +43,7 @@ import {
 import {
   blankDataPayloadsForKey,
   normalizePrefixForKey,
-} from "./recurrence-tracker.js";
+} from "./command-recurrence.js";
 
 // ─── Mode-constant validation ────────────────────────────────────────────────
 
