@@ -14,3 +14,17 @@ Quick reference:
 - **Budget / side-effect commands:** there is no `budget_check` tool. Before a side-effect command (vendor API, package install, sudo, docker), call `gate_check`; record budget/ledger rows via `runtime_state_record`, and record the reasoning via `meta_state_report(category:"budget-check")`. See `AGENTS.md` §2 (Internalization Rule) for the citation flow.
 - **Gate-verb allowance (bounded 30 min):** the bash gate blocks executor verbs (`bash`, `eval`, `node -e`, …) unless an active `gate-verb:<verb>` observation exists. When blocked, the block message emits the full 2-call incantation (verb substituted, fresh timestamp) — copy it. To record an allowance proactively before any block fires, fetch the canonical recipe via `loop_get_instruction({key:'gate-verb-allowance'})` — that extra lookup on the pre-block path is the accepted tradeoff for keeping this file minimal; the blocked path stays zero-discovery.
 - **Audit trail (versioned-append history per id):** `meta_state_list({ id, include_all_versions: true, include_archived: true })` — bypasses the `max_by(version)` projection. See `AGENTS.md` §2.1.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in this repository’s GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the five default canonical labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Domain documentation uses a single-context layout. See `docs/agents/domain.md`.
