@@ -8,10 +8,12 @@ import { spawnSync } from "node:child_process";
 import {
   findRecurrentGroups,
   checkAndEmit,
+} from "../../core/recurrence-tracker.js";
+import {
   hashRecurrenceKey,
   normalizePrefix,
   normalizePrefixForKey,
-} from "../../core/recurrence-tracker.js";
+} from "../../core/command-recurrence.js";
 import { writeEntryIfAbsent } from "../../core/meta-state.js";
 import { gateCheckRecurrenceTool } from "../../tools/handlers/gate-check-recurrence-tool.js";
 

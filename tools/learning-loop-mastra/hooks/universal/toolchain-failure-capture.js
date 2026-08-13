@@ -42,7 +42,7 @@ import {
 } from "./lib/protocol-adapter.js";
 import { appendDecisionLog } from "../../core/gate-decision-log.js";
 import { resolveSessionId } from "./lib/resolve-session-id.js";
-import { normalizePrefix } from "../../core/recurrence-tracker.js";
+import { normalizePrefix } from "../../core/command-recurrence.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 // Toolchain-pattern set: commands we WANT to capture on failure. Adding a
