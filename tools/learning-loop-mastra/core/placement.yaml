@@ -29,6 +29,9 @@ files:
   - path: promoted-rule-policy.js
     role: facade
     summary: Owns I3 ordering, scope predicates, gate overrides, pattern safety, command/path matching, provenance, deferred inert telemetry, heredoc kill-switch, and enforcement result shaping over the compiled I3 projection.
+  - path: protected-shell-writes.js
+    role: facade
+    summary: Owns protected-path classification, Runtime Topology-derived patterns (preflight markers + decision log), marker exceptions, trusted decision-log writers, compound-command masking defense, and exact reason selection. Consumes an interpreted command and returns the block decision shape or null — the final precedence fold stays with the gate evaluator.
   - path: hint-registry.js
     role: facade
     summary: Single source of truth for context-injection hints (slug-keyed entries).
