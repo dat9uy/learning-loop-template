@@ -9,6 +9,7 @@ const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { mockAgentChecklistRulesById } = require("./helpers/agent-checklist-rules.cjs");
+const { LEGACY_HINT_FIXTURE } = require("./fixtures/legacy-hint-content.cjs");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const REGISTRY_PATH = resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/hint-registry.js");
@@ -44,6 +45,20 @@ describe("hint registry invariants", () => {
       }
       assert.ok(typeof e.suggestion === "string" && e.suggestion.length > 20, `entry ${i}: suggestion must be a non-empty one-liner`);
     }
+  });
+
+  test("legacy Hint content remains byte-for-byte stable", () => {
+    const actual = registry.HINT_REGISTRY
+      .map(({ slug, kind, tier, order, text, suggestion }) => ({
+        slug,
+        kind,
+        tier,
+        ...(order === undefined ? {} : { order }),
+        text,
+        suggestion,
+      }));
+    assert.deepStrictEqual(actual, LEGACY_HINT_FIXTURE,
+      "legacy Hint identity/content/order must match the independently maintained fixture");
   });
 
   test("discoverability entries cover the 17 expected slugs", () => {

@@ -3,8 +3,7 @@
  *
  * Characterization of externally visible Bash-gate / write-gate / inbound-gate
  * behavior through the highest existing observable seam: the stable evaluator
- * interfaces (evaluateBashGate / evaluateInboundGate) plus the shared
- * root-defaulting helper (findProjectRoot). These tests close ONLY the
+ * interfaces (evaluateBashGate / evaluateInboundGate). These tests close ONLY the
  * demonstrated coverage gaps the characterization inventory found; behavior
  * already pinned by evaluate-bash-gate.test.js / evaluate-write-gate.test.js /
  * evaluate-inbound-gate.test.js / gate-* integration tests is NOT duplicated.
@@ -31,23 +30,26 @@
  *      (rule_id, meta_state_id, pattern_type, event_source, match_origin,
  *      candidate_kind).
  *   5. Staleness escalate populates observation_id + the staleness reason text.
- *   6. Root defaulting: GATE_ROOT env branch + records/-walk fallback, and the
- *      evaluators' root-less defaulting to that resolution.
+ *   6. Root defaulting: GATE_ROOT env branch + records/-walk fallback through
+ *      the evaluator's root-less defaulting seam.
  *   7. Malformed input: non-string non-null command → ok.
- *   8. Propagated failure: a malformed meta-state.jsonl does not crash the
- *      evaluator — loadPromotedRules swallows and the gate stays fail-open.
- *   9. Fail-closed boundary spellings: `>>` append to records/** and
+ *   8. Malformed registry failure: malformed meta-state.jsonl does not crash
+ *      the evaluator — loadPromotedRules swallows and the gate stays fail-open.
+ *   9. A genuinely propagated evaluator dependency failure remains a throw,
+ *      distinct from malformed-registry degradation.
+ *  10. Fail-closed boundary spellings: `>>` append to records/** and
  *      runtime-state.jsonl, `tee` to .loop/runtime-tracking.json, and the
  *      decision-log path-prefix looseness (absolute / `.//` / `.git`-style
  *      prefixes, `.gate-decision.log.backup` over-match).
- *  10. Inbound gate: stale_signature field, the suppression mechanism
+ *  11. Inbound gate: stale_signature field, the suppression mechanism
  *      (same-signature-in-window → "already surfaced"; window expiry or
  *      signature change → full re-emit), and the steering pointer.
  *
  * Not gaps (already covered by the existing suite, per the #155 inventory):
- * legacy Hint identity/content/channel/order/budget/truncation (hint-registry/
- * hint-renderer/rule-derived-process-hints unit tests + loop-get-instruction
- * e2e + mcp-wire-budget/cli-sessionstart-banner), and startup fail-open
+ * legacy Hint identity/content/channel/order/budget/truncation (the
+ * independently maintained legacy-hint fixture plus hint-registry/
+ * hint-renderer/rule-derived-process-hints tests + loop-get-instruction e2e +
+ * mcp-wire-budget/cli-sessionstart-banner), and startup fail-open
  * degradation with visible errors (e2e session-start-inject-discoverability/
  * process-hints, toolchain-failure-capture, gate-recurrence, git preflight
  * hooks). No tests were added for those areas because no demonstrated gap
@@ -71,25 +73,39 @@
 
 import { test } from "vitest";
 import assert from "node:assert";
-import { mkdtempSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import {
-  evaluateBashGate,
-  DECISION_LOG_WRITE_REASON,
-} from "./evaluate-bash-gate.js";
+import { evaluateBashGate } from "../../core/evaluate-bash-gate.js";
 import {
   evaluateInboundGate,
   buildSteeringPointer,
   SUPPRESS_WINDOW_MS,
-} from "./evaluate-inbound-gate.js";
-import { findProjectRoot } from "./gate-logic.js";
+} from "../../core/evaluate-inbound-gate.js";
 
 // ── helpers ──
 
 function makeRoot() {
   return mkdtempSync(join(tmpdir(), "preservation-baseline-"));
+}
+
+function withGateRoot(root, callback) {
+  const previous = process.env.GATE_ROOT;
+  if (root === undefined) {
+    delete process.env.GATE_ROOT;
+  } else {
+    process.env.GATE_ROOT = root;
+  }
+  try {
+    return callback();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = previous;
+    }
+  }
 }
 
 function writeRuntimeState(root, entries) {
@@ -113,6 +129,19 @@ function writePromotedRule(root, { id, pattern }) {
   });
   writeFileSync(join(root, "meta-state.jsonl"), rule + "\n");
 }
+
+const RECORDS_WRITE_REASON =
+  "Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.";
+const RUNTIME_STATE_WRITE_REASON =
+  "Direct shell writes to runtime-state.jsonl / .loop/runtime-state-local.jsonl are gated. Use gate_mark_preflight(surface:'runtime-state-edit') to unlock row maintenance for 30 minutes, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only).";
+const DECISION_LOG_WRITE_REASON =
+  "Direct shell writes to .gate-decision.log are blocked. The decision log is produced by the bash-gate evaluator hook; appending forged rows is prohibited.";
+const INBOUND_REPEAT_CONTEXT =
+  "INBOUND STATE GATE: 1 stale active observation already surfaced this session (surfaces: vnstock (1)); review via `meta_state_list` / `runtime_state_read`. Inline list suppressed (already surfaced this session).\n\n→ READ `meta-state.jsonl` FIRST (last 20 lines). Recent `change-log` and `finding` entries often explain the operator's intent and the gate's escalation context. The stale observations are a subset; the full context is in the registry.\n\nBefore proceeding, update affected observations via record_observation MCP tool.\nDo NOT assume external state matches observation records — verify first.";
+const INBOUND_FULL_ONE_CONTEXT =
+  "INBOUND STATE GATE: Operator message contains a state-change signal. 1 stale active observation detected (surfaces: vnstock (1)); review via `meta_state_list` / `runtime_state_read`.\n\n→ READ `meta-state.jsonl` FIRST (last 20 lines). Recent `change-log` and `finding` entries often explain the operator's intent and the gate's escalation context. The stale observations are a subset; the full context is in the registry.\n\nBefore proceeding, update affected observations via record_observation MCP tool.\nDo NOT assume external state matches observation records — verify first.";
+const INBOUND_FULL_TWO_CONTEXT =
+  "INBOUND STATE GATE: Operator message contains a state-change signal. 2 stale active observations detected (surfaces: vnstock (2)); review via `meta_state_list` / `runtime_state_read`.\n\n→ READ `meta-state.jsonl` FIRST (last 20 lines). Recent `change-log` and `finding` entries often explain the operator's intent and the gate's escalation context. The stale observations are a subset; the full context is in the registry.\n\nBefore proceeding, update affected observations via record_observation MCP tool.\nDo NOT assume external state matches observation records — verify first.";
 
 // ── 1. Precedence: promoted-rule escalate beats hard-block ──
 
@@ -198,66 +227,58 @@ test("promoted-rule escalate carries the verbatim reason and complete metadata",
 
 test("staleness escalate populates observation_id and the reason text", () => {
   const root = makeRoot();
+  const observationUpdatedAt = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const stateChangeAt = new Date().toISOString();
   writeRuntimeState(root, [
     {
       id: "obs-stale-escalate",
       kind: "budget-state",
       status: "active",
       affected_system: "vnstock",
-      timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      timestamp: observationUpdatedAt,
     },
   ]);
   const markerPath = join(root, "marker.json");
-  writeFileSync(markerPath, JSON.stringify({ timestamp: new Date().toISOString() }));
+  writeFileSync(markerPath, JSON.stringify({ timestamp: stateChangeAt }));
+  const previousMarkerPath = process.env.GATE_MARKER_PATH;
   process.env.GATE_MARKER_PATH = markerPath;
   try {
     const result = evaluateBashGate({ command: "pip install vnstock", root });
     assert.strictEqual(result.decision, "escalate");
     assert.strictEqual(result.inbound_gate, true);
     assert.strictEqual(result.observation_id, "obs-stale-escalate");
-    assert.ok(result.reason.includes('Observation "obs-stale-escalate" updated at'), `reason must name the observation; got: ${result.reason}`);
-    assert.ok(result.reason.includes("may be stale"), `reason must carry the staleness framing; got: ${result.reason}`);
+    assert.strictEqual(
+      result.reason,
+      `Observation "obs-stale-escalate" updated at ${observationUpdatedAt}, but operator sent state-change at ${stateChangeAt}. Observation may be stale. Update before proceeding.`,
+    );
   } finally {
-    delete process.env.GATE_MARKER_PATH;
+    if (previousMarkerPath === undefined) delete process.env.GATE_MARKER_PATH;
+    else process.env.GATE_MARKER_PATH = previousMarkerPath;
   }
 });
 
 // ── 6. Root defaulting ──
 
-test("findProjectRoot honors GATE_ROOT, then falls back to the records/-walk root", () => {
-  const prev = process.env.GATE_ROOT;
+test("evaluateBashGate without root uses GATE_ROOT's rule registry", () => {
   const tempRoot = makeRoot();
-  process.env.GATE_ROOT = tempRoot;
-  try {
-    assert.strictEqual(findProjectRoot(), tempRoot, "GATE_ROOT branch must win when set");
-  } finally {
-    if (prev === undefined) {
-      delete process.env.GATE_ROOT;
-    } else {
-      process.env.GATE_ROOT = prev;
-    }
-  }
-  // Walk-up fallback: the repo root contains records/.
-  const walked = findProjectRoot();
-  assert.ok(existsSync(join(walked, "records")), "walk-up fallback must resolve to a root containing records/");
-});
-
-test("evaluateBashGate without root consults GATE_ROOT's rule registry", () => {
-  const root = makeRoot();
-  writePromotedRule(root, { id: "rule-only-in-temp-root", pattern: "\\bno-such-cmd\\b" });
-  const prev = process.env.GATE_ROOT;
-  process.env.GATE_ROOT = root;
-  try {
+  writePromotedRule(tempRoot, { id: "rule-only-in-temp-root", pattern: "\\bno-such-cmd\\b" });
+  withGateRoot(tempRoot, () => {
     const result = evaluateBashGate({ command: "no-such-cmd --flag" });
     assert.strictEqual(result.decision, "escalate");
     assert.strictEqual(result.rule_id, "rule-only-in-temp-root", "root-less evaluation must resolve GATE_ROOT");
-  } finally {
-    if (prev === undefined) {
-      delete process.env.GATE_ROOT;
-    } else {
-      process.env.GATE_ROOT = prev;
-    }
-  }
+  });
+});
+
+test("evaluateBashGate without root uses the records-walk fallback", () => {
+  withGateRoot(undefined, () => {
+    const result = evaluateBashGate({ command: "vitest run | tail" });
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+    assert.strictEqual(
+      result.reason,
+      'Promoted rule "rule-no-raw-stdout-vitest" matched: (vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b',
+    );
+  });
 });
 
 // ── 7. Malformed input ──
@@ -268,13 +289,21 @@ test("non-string non-null command → ok (guard branch)", () => {
   assert.strictEqual(result.decision, "ok");
 });
 
-// ── 8. Propagated failure: malformed rule registry stays fail-open ──
+// ── 8. Malformed registry is fail-open; propagated evaluator failures remain throws ──
 
 test("malformed meta-state.jsonl does not crash the evaluator (fail-open)", () => {
   const root = makeRoot();
   writeFileSync(join(root, "meta-state.jsonl"), "{not-valid-json\n");
   const result = evaluateBashGate({ command: "ls -la", root });
   assert.strictEqual(result.decision, "ok", "a malformed registry must degrade, not throw");
+});
+
+test("invalid evaluator root propagates its dependency failure", () => {
+  assert.throws(
+    () => evaluateBashGate({ command: "ls -la", root: 42 }),
+    (error) => error?.code === "ERR_INVALID_ARG_TYPE",
+    "an invalid root dependency failure must propagate through the evaluator",
+  );
 });
 
 // ── 9. Fail-closed boundary spellings ──
@@ -284,7 +313,7 @@ test(">> append to records/** → block (records-class reason)", () => {
   const result = evaluateBashGate({ command: "echo x >> records/meta/test.json", root });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.hard_block, true);
-  assert.ok(result.reason.includes("records"), `expected records-class reason; got: ${result.reason}`);
+  assert.strictEqual(result.reason, RECORDS_WRITE_REASON);
 });
 
 test(">> append to runtime-state.jsonl → block (runtime-state reason)", () => {
@@ -292,7 +321,7 @@ test(">> append to runtime-state.jsonl → block (runtime-state reason)", () => 
   const result = evaluateBashGate({ command: "echo x >> runtime-state.jsonl", root });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.hard_block, true);
-  assert.ok(result.reason.includes("runtime-state"), `expected runtime-state reason; got: ${result.reason}`);
+  assert.strictEqual(result.reason, RUNTIME_STATE_WRITE_REASON);
 });
 
 test("tee to .loop/runtime-tracking.json → block (records-class reason)", () => {
@@ -300,7 +329,7 @@ test("tee to .loop/runtime-tracking.json → block (records-class reason)", () =
   const result = evaluateBashGate({ command: "echo x | tee .loop/runtime-tracking.json", root });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.hard_block, true);
-  assert.ok(result.reason.includes("records"), `expected records-class reason; got: ${result.reason}`);
+  assert.strictEqual(result.reason, RECORDS_WRITE_REASON);
 });
 
 test("decision-log path-prefix looseness: absolute / .// / .git-style prefixes all block with the dedicated reason", () => {
@@ -362,8 +391,7 @@ test("same stale signature within the suppress window → 'already surfaced' poi
     now,
   });
   assert.strictEqual(second.decision, "warn");
-  assert.ok(second.context_message.includes("already surfaced this session"), "repeat within window must collapse to the one-line pointer");
-  assert.ok(!second.context_message.includes("Operator message contains a state-change signal"), "the full pointer must not re-emit");
+  assert.strictEqual(second.context_message, INBOUND_REPEAT_CONTEXT);
 });
 
 test("expired suppress window re-emits the full pointer", () => {
@@ -379,8 +407,7 @@ test("expired suppress window re-emits the full pointer", () => {
     now,
   });
   assert.strictEqual(expired.decision, "warn");
-  assert.ok(!expired.context_message.includes("already surfaced this session"), "an expired window must re-emit the full pointer");
-  assert.ok(expired.context_message.includes("state-change signal"), "the full pointer must re-emit");
+  assert.strictEqual(expired.context_message, INBOUND_FULL_ONE_CONTEXT);
 });
 
 test("changed stale signature re-emits the full pointer", () => {
@@ -414,7 +441,7 @@ test("changed stale signature re-emits the full pointer", () => {
   });
   assert.strictEqual(changed.decision, "warn");
   assert.strictEqual(changed.stale_signature, "obs-a,obs-b");
-  assert.ok(!changed.context_message.includes("already surfaced this session"), "a changed stale set must re-emit");
+  assert.strictEqual(changed.context_message, INBOUND_FULL_TWO_CONTEXT);
 });
 
 test("buildSteeringPointer returns the canonical pull pointer", () => {
