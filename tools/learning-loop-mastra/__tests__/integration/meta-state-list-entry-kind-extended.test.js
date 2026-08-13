@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
-import { writeEntry, generateId } from "../../core/meta-state.js";
+import { writeEntry, updateEntry, generateId } from "../../core/meta-state.js";
 
 const originalEnv = process.env.GATE_ROOT;
 
@@ -198,6 +198,50 @@ test("meta_state_list with entry_kind='change-log' returns the same entries as b
     const result = await call({ entry_kind: "change-log" });
     assert.equal(result.count, 1);
     assert.equal(result.entries[0].entry_kind, "change-log");
+  } finally {
+    teardown();
+  }
+});
+
+test("meta_state_list with entry_kind='rule' + include_all_versions returns the full rule history", async () => {
+  // Rule history reads (preservation baseline, issue #155): Rule ids must
+  // stay stable across append-only versions, and include_all_versions must
+  // expose every version line while the default read collapses to the latest.
+  const root = setupFixture();
+  try {
+    await writeTestEntry(root, {
+      id: "rule-history",
+      entry_kind: "rule",
+      origin: "meta-test-origin",
+      enforcement: "gate",
+      pattern_type: "regex",
+      pattern: "old-pattern",
+      description: "Rule history v0 description that is at least 20 characters long.",
+      status: "active",
+      promoted_at: "2026-06-06T20:00:00.000Z",
+      promoted_by: "operator",
+      created_at: "2026-06-06T20:00:00.000Z",
+    });
+    await updateEntry(root, "rule-history", {
+      pattern: "new-pattern",
+      description: "Rule history v1 description that is at least 20 characters long.",
+    });
+
+    const allVersions = await call({ entry_kind: "rule", include_all_versions: true });
+    assert.equal(allVersions.count, 2, "both version lines must be returned");
+    const versions = allVersions.entries
+      .filter((e) => e.id === "rule-history")
+      .sort((a, b) => a.version - b.version);
+    assert.equal(versions.length, 2);
+    assert.equal(versions[0].version, 0);
+    assert.equal(versions[0].pattern, "old-pattern");
+    assert.equal(versions[1].version, 1);
+    assert.equal(versions[1].pattern, "new-pattern");
+
+    const collapsed = await call({ entry_kind: "rule" });
+    const latest = collapsed.entries.find((e) => e.id === "rule-history");
+    assert.equal(latest.version, 1, "default read must collapse to the latest version");
+    assert.equal(latest.pattern, "new-pattern");
   } finally {
     teardown();
   }

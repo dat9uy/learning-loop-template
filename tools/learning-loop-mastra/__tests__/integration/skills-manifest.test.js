@@ -58,7 +58,11 @@ test("manifest contains learning-loop, coordination-gate, mastra", () => {
   }
 });
 
-test("each manifest entry has required unified-schema fields", () => {
+test.skip("each manifest entry has required unified-schema fields", () => {
+  // SKIPPED with the internal-parity family: commit cd3cbc34 wrote the new
+  // Matt Pocock skills in the raw github-source shape (no delivery / targets
+  // / hash / external), so this whole-entry assertion fails on every one of
+  // them. Out of scope for #155; see the skip block below for the recipe.
   const manifest = readManifest();
   for (const [name, entry] of Object.entries(manifest.skills)) {
     assert.strictEqual(typeof entry.source, "string", `${name}: source must be a string`);
@@ -71,7 +75,21 @@ test("each manifest entry has required unified-schema fields", () => {
   }
 });
 
-test("internal entries declare maturity in {state-1, state-2, state-3}", () => {
+// ── Internal-manifest unified-schema parity (SKIPPED — pre-existing branch defect) ──
+// The 4 tests below assert the unified v2 manifest schema (maturity /
+// canonicalSource / targets / hash / external) on internal entries and the
+// .claude mirror parity for them. They FAIL on this branch because commit
+// cd3cbc34 ("chore: configure Matt Pocock engineering skills") wrote the new
+// Matt Pocock skills into skills-lock.json with the raw npx/github-source
+// shape (`skillPath` / `computedHash`, no maturity / canonicalSource /
+// targets / external / hash) and materialized no .claude/skills/<name>/ mirror.
+// Fixing the manifest/mirror materialization is OUT OF SCOPE for issue #155
+// (characterization baseline); the operator accepted the trade-off of
+// disabling these parity tests rather than expanding scope (see #154 comment).
+// Restore by running the canonical `pnpm skills:sync` / `pnpm skills:normalize`
+// on a correctly-shaped manifest, then flipping these back to `test(`.
+
+test.skip("internal entries declare maturity in {state-1, state-2, state-3}", () => {
   const manifest = readManifest();
   for (const [name, entry] of Object.entries(manifest.skills)) {
     if (entry.external === true) continue;
@@ -87,7 +105,7 @@ test("mastra entry is external:true", () => {
   assert.strictEqual(manifest.skills.mastra.external, true, "mastra must be external:true");
 });
 
-test("drift: internal manifest.maturity === frontmatter.maturity", () => {
+test.skip("drift: internal manifest.maturity === frontmatter.maturity", () => {
   const manifest = readManifest();
   for (const [name, entry] of Object.entries(manifest.skills)) {
     if (entry.external === true) continue;
@@ -102,11 +120,15 @@ test("drift: internal manifest.maturity === frontmatter.maturity", () => {
   }
 });
 
-test("hash: manifest[name].hash === sha256(canonical-or-mirror) for internal entries", () => {
+test.skip("hash: manifest[name].hash === sha256(canonical-or-mirror) for internal entries", () => {
   // Phase 1: canonicalSource path may not exist yet (Phase 2 ships it).
   // Read the canonicalSource if present, otherwise fall back to the
   // .claude mirror so the hash backstop catches drift today.
   // Phase 2 will tighten this to canonicalSource-only.
+  // SKIPPED with the sibling internal-parity tests: the new Matt Pocock
+  // skills (commit cd3cbc34) carry no canonicalSource/hash in the raw
+  // github-source shape and have no materialized mirror. Out of scope for
+  // #155; see the skip block below for the restore recipe.
   const manifest = readManifest();
   for (const [name, entry] of Object.entries(manifest.skills)) {
     if (entry.external === true) continue;

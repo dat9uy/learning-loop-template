@@ -22,6 +22,16 @@ test("validate('droid') on real repo returns ok: true", () => {
   assert.ok(result.notes.includes("identity-marker-not-adopted"));
 });
 
+test("validate('hermes') on real repo returns ok: true", () => {
+  // Hermes is declared in the RUNTIMES catalog but was never exercised by the
+  // conformance suite (characterization baseline, issue #155). The declaration
+  // must continue to validate against the committed .hermes/*.json mirrors.
+  delete process.env.RUNTIME_ID;
+  const result = validate("hermes", PROJECT_ROOT);
+  assert.equal(result.ok, true, `hermes must pass conformance: missing=${JSON.stringify(result.missing)}`);
+  assert.deepEqual(result.missing, []);
+});
+
 test("validate('mastra-code') on real repo returns ok: true (.mastracode/ shipped)", () => {
   delete process.env.RUNTIME_ID;
   const result = validate("mastra-code", PROJECT_ROOT);
