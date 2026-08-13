@@ -37,6 +37,7 @@ function runGate(command) {
 }
 
 function writeRule() {
+  writeFileSync(join(root, "test-rule-contract.js"), "export const contract = true;\n");
   writeFileSync(
     join(root, "meta-state.jsonl"),
     JSON.stringify({

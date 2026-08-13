@@ -23,6 +23,7 @@ afterEach(() => {
 });
 
 function writeRule(ruleId, pattern) {
+  writeFileSync(join(root, "test-rule-contract.js"), "export const contract = true;\n");
   const rule = {
     entry_kind: "rule",
     id: ruleId,

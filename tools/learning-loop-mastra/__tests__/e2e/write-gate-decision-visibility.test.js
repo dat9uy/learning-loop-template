@@ -85,6 +85,7 @@ await test("product preflight block: exit 0 + deny + preflight_checklist in addi
 });
 
 await test("escalate decision: promoted glob rule → exit 0 + permissionDecision deny envelope", () => {
+  writeFileSync(join(root, "test-rule-contract.js"), "export const contract = true;\n");
   const rule = {
     entry_kind: "rule",
     id: "rule-test-write-escalate",

@@ -3,7 +3,7 @@ import { readRegistry } from "../../core/meta-state.js";
 import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { loadPromotedRules, checkResolutionEvidence } from "../../core/gate-logic.js";
+import { loadGroundedPromotedRules, checkResolutionEvidence } from "../../core/gate-logic.js";
 
 // TERMINAL_STATUSES collapses to {resolved, accepted}
 // (`superseded` was folded into `resolved` + a citation row).
@@ -79,7 +79,7 @@ export const metaStateResolveTool = {
     }
 
     // Consult determinism-checklist rules before resolving
-    const rules = loadPromotedRules(root);
+    const rules = loadGroundedPromotedRules(root);
 
     // Consult global rules (applies_to_resolution === "*") for every resolution
     for (const rule of rules) {

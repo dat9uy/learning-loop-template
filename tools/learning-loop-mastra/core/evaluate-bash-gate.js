@@ -10,7 +10,7 @@ import {
   matchGateVerb,
   checkObservationExists,
   makeGateDecision,
-  loadPromotedRules,
+  loadGroundedPromotedRules,
   applyPromotedRules,
   findProjectRoot,
   normalizeQuoteConcatenation,
@@ -327,7 +327,7 @@ export function evaluateBashGate({ command, root }) {
   // emitted when the final decision is ok — a real constraint (docker, path
   // write) still wins over the telemetry event. Real executable matches
   // escalate (provenance rides on the returned object).
-  const promotedRules = loadPromotedRules(resolvedRoot);
+  const promotedRules = loadGroundedPromotedRules(resolvedRoot);
   const promotedCheck = applyPromotedRules(command, null, promotedRules, resolvedRoot);
   if (promotedCheck.decision === "escalate") {
     return promotedCheck;

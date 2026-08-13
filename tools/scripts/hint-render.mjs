@@ -72,9 +72,9 @@ async function main() {
   // map this replaces made the "byte-exact render" claim false for 8/10
   // process hints and under-reported partition sizes by ~2.6k chars.
   // Falls back to empty map (skip+warn behavior) when the registry is absent.
-  const { loadPromotedRules } = await import("../learning-loop-mastra/core/gate-logic.js");
+  const { loadGroundedPromotedRules } = await import("../learning-loop-mastra/core/gate-logic.js");
   const rulesById = new Map(
-    loadPromotedRules(process.cwd()).map((r) => [r.id, r]),
+    loadGroundedPromotedRules(process.cwd()).map((r) => [r.id, r]),
   );
 
   const { partitions, provenance, warnings } = renderHints({

@@ -115,6 +115,7 @@ function writeRuntimeState(root, entries) {
 
 // Write a promoted regex rule into the fixture root's meta-state.jsonl.
 function writePromotedRule(root, { id, pattern }) {
+  writeFileSync(join(root, "test-rule-contract.js"), "export const contract = true;\n");
   const rule = JSON.stringify({
     id,
     entry_kind: "rule",

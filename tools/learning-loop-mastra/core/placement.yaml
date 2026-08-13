@@ -17,6 +17,12 @@ files:
   - path: gate-logic.js
     role: facade
     summary: Gate decision library — globMatch, applyPromotedRules, writePreflightMarker.
+  - path: evidence-ref.js
+    role: primitive
+    summary: Shared evidence-code reference suffix normalization for Rule and finding grounding.
+  - path: rule-index.js
+    role: facade
+    summary: Compiles the canonical active Rule registry into validated I2/I3 projections with I3 evidence grounding diagnostics.
   - path: gate-override.js
     role: facade
     summary: Reads/validates .gate-override markers with TTL expiry.

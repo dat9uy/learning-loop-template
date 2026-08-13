@@ -6,7 +6,7 @@
 
 import { describe, test } from "vitest";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeEntry, readRegistry, updateEntry } from "../../core/meta-state.js";
@@ -221,6 +221,11 @@ describe("dispatch close flow (refresh_file_index → log_change → resolve)", 
       // values (this rule is normally promoted from a finding, but the resolve
       // tool only cares that an active determinism-checklist rule with
       // applies_to_resolution="*" exists in the registry).
+      mkdirSync(join(tempDir, "tools/learning-loop-mastra/core"), { recursive: true });
+      writeFileSync(
+        join(tempDir, "tools/learning-loop-mastra/core/gate-logic.js"),
+        "export function checkResolutionEvidence() {}\n",
+      );
       await writeEntry(tempDir, {
         id: "rule-no-orphaned-evidence",
         entry_kind: "rule",

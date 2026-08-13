@@ -1,6 +1,6 @@
 import { test } from "vitest";
 import assert from "node:assert";
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -275,6 +275,11 @@ test("cascade_from fails the operator gate before child validation (consult-gate
     created_at: new Date().toISOString(),
     version: 0,
   });
+  mkdirSync(join(tempRoot, "tools/learning-loop-mastra/core"), { recursive: true });
+  writeFileSync(
+    join(tempRoot, "tools/learning-loop-mastra/core/gate-logic.js"),
+    "export function checkResolutionEvidence() {}\n",
+  );
   await core.writeEntry(tempRoot, {
     id: "rule-cold-session-test-must-pass-before-resolution",
     entry_kind: "rule",
