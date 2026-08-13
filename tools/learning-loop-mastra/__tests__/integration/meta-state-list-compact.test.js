@@ -55,7 +55,7 @@ describe("meta_state_list compact mode", () => {
         entry_kind: "rule",
         status: "active",
         origin: "compact-finding-active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: ".*",
         description: "Active rule for compact test (min 20 chars)",

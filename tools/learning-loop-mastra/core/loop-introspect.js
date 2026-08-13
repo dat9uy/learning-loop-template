@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readRegistry, META_STATE_FINDING_CATEGORIES, readFileIndex, canonicalIndexKey } from "./meta-state.js";
+import { readRegistry, META_STATE_FINDING_CATEGORIES, readFileIndex, canonicalIndexKey, toLegacyRuleView } from "./meta-state.js";
 import { loadPromotedRules } from "./gate-logic.js";
 import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
 import { isOpen, isStaleView, computeCurrentHashes } from "./stale-view.js";
@@ -549,12 +549,12 @@ export function listAllFindings(root, { categories } = {}) {
 }
 
 /**
- * List promoted rules (active gate-enforced rules).
+ * List promoted Rules (active I2/I3 Rules).
  * Only returns command-path rules (regex/glob) for discoverability surfaces.
  * determinism-checklist rules are not discoverable via command/path matching.
  *
- * Synthesizes a backward-compatible shape from both entry_kind="rule"
- * (first-class) and legacy finding entries with promoted_to_rule.
+ * Projects the canonical entry_kind="rule" records through the temporary
+ * legacy view required by existing gate/hint consumers.
  */
 export function listPromotedRules(root) {
   const rules = loadPromotedRules(root);
@@ -565,6 +565,7 @@ export function listPromotedRules(root) {
       rule_id: r.id,
       pattern_type: r.pattern_type,
       pattern: r.pattern,
+      internalization_level: r.internalization_level,
       enforcement: r.enforcement,
       status: r.status,
       origin: r.origin,
@@ -784,7 +785,8 @@ export function summarize(entry) {
   if (entry.subtype) compact.subtype = entry.subtype;
   if (entry.title) compact.title = entry.title;
   if (entry.rule_id) compact.rule_id = entry.rule_id;
-  if (entry.enforcement) compact.enforcement = entry.enforcement;
+  if (entry.internalization_level) compact.internalization_level = entry.internalization_level;
+  if (entry.entry_kind === "rule") compact.enforcement = toLegacyRuleView(entry).enforcement;
   if (entry.pattern_type) compact.pattern_type = entry.pattern_type;
   if (entry.pattern) compact.pattern = entry.pattern;
   if (entry.scope_predicate) compact.scope_predicate = entry.scope_predicate;

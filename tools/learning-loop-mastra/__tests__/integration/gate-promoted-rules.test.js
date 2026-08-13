@@ -50,6 +50,35 @@ describe("gate promoted rules regression", () => {
     const rules = loadPromotedRules(tempDir);
     assert.deepStrictEqual(rules, []);
   });
+
+  test("loadPromotedRules skips malformed JSON lines and preserves valid siblings", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-malformed-sibling-"));
+    const metaPath = join(tempDir, "meta-state.jsonl");
+    const validRule = {
+      id: "rule-valid-sibling",
+      entry_kind: "rule",
+      internalization_level: "I3",
+      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
+      pattern_type: "regex",
+      pattern: "sibling-pattern",
+      description: "Valid Rule sibling must survive malformed JSON lines.",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+    };
+    writeFileSync(metaPath, `${JSON.stringify(validRule)}\n{not-json}\n`);
+    const warnings = [];
+    const originalWarn = console.warn;
+    console.warn = (...args) => warnings.push(args.join(" "));
+    try {
+      const rules = loadPromotedRules(tempDir);
+      assert.equal(rules.length, 1);
+      assert.equal(rules[0].id, validRule.id);
+      assert.ok(warnings.some((warning) => warning.includes("line 2") && warning.includes("malformed JSON")));
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
 });
 
 describe("gate promoted rules new behavior", () => {
@@ -59,7 +88,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-no-docker",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "docker\\s+run",
       },
@@ -77,7 +106,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-no-secrets",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "glob",
         pattern: "product/**/secrets/**",
       },
@@ -93,7 +122,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-no-docker",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "docker\\s+run",
       },
@@ -108,7 +137,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-no-secrets",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "glob",
         pattern: "product/**/secrets/**",
       },
@@ -123,7 +152,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-no-docker",
         entry_kind: "rule",
         status: "inactive",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "docker\\s+run",
       },
@@ -132,13 +161,13 @@ describe("gate promoted rules new behavior", () => {
     assert.strictEqual(result.decision, "ok");
   });
 
-  test("non-gate enforcement agent is ignored", () => {
+  test("I2 agent-judgment Rule is ignored by the action-boundary evaluator", () => {
     const rules = [
       {
         id: "rule-no-docker",
         entry_kind: "rule",
         status: "active",
-        enforcement: "agent",
+        internalization_level: "I2",
         pattern_type: "regex",
         pattern: "docker\\s+run",
       },
@@ -153,7 +182,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-bad",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "[invalid(",
       },
@@ -168,7 +197,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-first",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: ".*",
       },
@@ -176,7 +205,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-second",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: ".*",
       },
@@ -195,7 +224,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-test",
         entry_kind: "rule",
         origin: "meta-test-origin",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
         description: "Cache hit test rule for loadPromotedRules regression coverage",
@@ -223,7 +252,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-test",
         entry_kind: "rule",
         origin: "meta-test-origin",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
         description: "Cache miss test rule for loadPromotedRules regression coverage",
@@ -243,7 +272,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-test",
         entry_kind: "rule",
         origin: "meta-test-origin",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
         description: "Cache miss test rule for loadPromotedRules regression coverage",
@@ -256,7 +285,7 @@ describe("gate promoted rules new behavior", () => {
           id: "rule-second",
           entry_kind: "rule",
           origin: "meta-test-origin",
-          enforcement: "gate",
+          internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
           pattern_type: "regex",
           pattern: "second",
           description: "Second cache miss test rule for loadPromotedRules regression coverage",
@@ -277,7 +306,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-redos",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "(a+)+",
       },
@@ -292,7 +321,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-traversal",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "glob",
         pattern: "**/secrets/**",
       },
@@ -307,7 +336,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-disabled",
         entry_kind: "rule",
         status: "disabled",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: ".*",
       },
@@ -325,7 +354,7 @@ describe("gate promoted rules new behavior", () => {
         id: "rule-active",
         entry_kind: "rule",
         origin: "meta-test-origin",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "active",
         description: "Active rule for loadPromotedRules status filter regression coverage",
@@ -338,7 +367,7 @@ describe("gate promoted rules new behavior", () => {
           id: "rule-disabled",
           entry_kind: "rule",
           origin: "meta-test-origin",
-          enforcement: "gate",
+          internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
           pattern_type: "regex",
           pattern: "disabled",
           description: "Disabled rule for loadPromotedRules status filter regression coverage",
@@ -351,7 +380,7 @@ describe("gate promoted rules new behavior", () => {
           id: "rule-agent",
           entry_kind: "rule",
           origin: "meta-test-origin",
-          enforcement: "agent",
+          internalization_level: "I2",
           pattern_type: "regex",
           pattern: "agent",
           description: "Agent rule for loadPromotedRules status filter regression coverage",
@@ -362,7 +391,7 @@ describe("gate promoted rules new behavior", () => {
         "\n"
     );
 
-    // loadPromotedRules returns all active rules; enforcement filtering
+    // loadPromotedRules returns all active Rules; I2/I3 filtering
     // happens in applyPromotedRules
     const rules = loadPromotedRules(tempDir);
     assert.strictEqual(rules.length, 2);
@@ -377,7 +406,7 @@ describe("gate promoted rules G8 message-flag values are data", () => {
     id: "rule-no-new-artifact-types",
     entry_kind: "rule",
     status: "active",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "regex",
     pattern: "propose|design|create|new\\s+(schema|artifact|directory|convention)",
   };
@@ -504,7 +533,7 @@ describe("gate promoted rules G8 message-flag values are data", () => {
         id: "rule-no-new-artifact-types",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
       },
@@ -528,7 +557,7 @@ describe("gate promoted rules G8 subcommand-class fix (P1)", () => {
     id: "rule-no-new-artifact-types",
     entry_kind: "rule",
     status: "active",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "regex",
     pattern:
       "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
@@ -596,7 +625,7 @@ describe("gate promoted rules evaluator provenance (plan 260809-1538)", () => {
     id: "rule-no-raw-stdout-vitest",
     entry_kind: "rule",
     status: "active",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "regex",
     pattern: "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b",
   };
@@ -660,7 +689,7 @@ describe("gate promoted rules inert telemetry deferred past later rules (defect-
     id: "rule-no-new-artifact-types",
     entry_kind: "rule",
     status: "active",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "regex",
     pattern:
       "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
@@ -669,7 +698,7 @@ describe("gate promoted rules inert telemetry deferred past later rules (defect-
     id: "rule-no-raw-stdout-vitest",
     entry_kind: "rule",
     status: "active",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "regex",
     pattern: "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b",
   };
@@ -677,7 +706,7 @@ describe("gate promoted rules inert telemetry deferred past later rules (defect-
     id: "rule-no-verify-bypass-denied",
     entry_kind: "rule",
     status: "active",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "regex",
     pattern: "git[\\s][^|;&]*\\b(commit|push|cherry-pick|revert|merge)\\b[^|;&]*--no-verify",
   };
@@ -733,7 +762,7 @@ describe("gate promoted rules status semantics (P1)", () => {
         id: "rule-test-active",
         entry_kind: "rule",
         origin: "meta-test-origin",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
         description: "Active rule for status semantics regression coverage",
@@ -756,7 +785,7 @@ describe("gate promoted rules status semantics (P1)", () => {
         id: "rule-test-disabled",
         entry_kind: "rule",
         status: "disabled",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
       }) + "\n"
@@ -771,7 +800,7 @@ describe("gate promoted rules status semantics (P1)", () => {
         id: "rule-resolved-test",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "match-me",
       },
@@ -798,7 +827,7 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
         id: "rule-bad-pattern-type",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "this-is-not-a-valid-pattern-type",
         pattern: ".*",
       }) + "\n",
@@ -819,16 +848,16 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
     }
   });
 
-  test("warn-and-skips a rule entry missing required enforcement field", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-schema-missing-enforcement-"));
+  test("warn-and-skips a rule entry missing required internalization level", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-schema-missing-internalization-level-"));
     const metaPath = join(tempDir, "meta-state.jsonl");
     writeFileSync(
       metaPath,
       JSON.stringify({
-        id: "rule-missing-enforcement",
+        id: "rule-missing-internalization-level",
         entry_kind: "rule",
         status: "active",
-        // enforcement: missing — required by metaStateRuleEntrySchema
+        // internalization_level: missing — required by metaStateRuleEntrySchema
         pattern_type: "regex",
         pattern: ".*",
       }) + "\n",
@@ -840,7 +869,7 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
       const rules = loadPromotedRules(tempDir);
       assert.deepStrictEqual(rules, []);
       assert.ok(
-        warnings.some((w) => w.includes("rule-missing-enforcement") && w.includes("schema validation failed")),
+        warnings.some((w) => w.includes("rule-missing-internalization-level") && w.includes("schema validation failed")),
       );
     } finally {
       console.warn = origWarn;
@@ -854,7 +883,7 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
       id: "rule-valid",
       entry_kind: "rule",
       origin: "meta-test-origin",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "valid-pattern",
       description: "Valid test rule for F-3 mixed-registry regression test",
@@ -866,7 +895,7 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
       id: "rule-invalid",
       entry_kind: "rule",
       origin: "meta-test-origin",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "totally-bogus",
       pattern: ".*",
       description: "Invalid test rule for F-3 mixed-registry regression test",

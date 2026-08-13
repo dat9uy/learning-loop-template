@@ -49,7 +49,7 @@ test.sequential("a promoted regex matching the CLI invocation shape is rejected 
     const promotion = await metaStatePromoteRuleTool.handler({
       id: finding.id,
       rule_id: "rule-test-cli-self-footgun",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: String.raw`\bnode\s+tools/learning-loop-mastra/bin/loop\.mjs\b`,
     });

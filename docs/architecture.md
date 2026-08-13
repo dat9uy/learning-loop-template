@@ -221,7 +221,7 @@ Returns `ok`, `block`, or `escalate` for a given command. Splits on `;`, `&`, `|
 
 #### gate_override
 
-Temporarily overrides a promoted gate rule for the current session. The override is TTL'd (max 24h), audited in `runtime-state.jsonl`, and applies only to regex/glob rules enforced by the bash gate. Requires a non-empty `operator_note` for the audit trail. Reads and writes the `.gate-override` marker via `readModifyWriteOnAllSurfaces` for cross-surface consistency.
+Temporarily overrides a promoted I3 action-boundary Rule for the current session. The override is TTL'd (max 24h), audited in `runtime-state.jsonl`, and applies only to regex/glob Rules enforced by the bash gate. Requires a non-empty `operator_note` for the audit trail. Reads and writes the `.gate-override` marker via `readModifyWriteOnAllSurfaces` for cross-surface consistency.
 
 #### Hook-bypass denial (registry data)
 

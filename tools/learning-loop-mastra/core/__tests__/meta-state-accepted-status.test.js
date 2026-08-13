@@ -176,7 +176,7 @@ describe("acceptEntry — core op", () => {
       id: "rule-test-1",
       entry_kind: "rule",
       origin: "meta-test-open",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "test",
       description: "Rule entry for accepted-status regression guard payload.",

@@ -48,7 +48,10 @@ const WRITE_TOOL_SKETCHES = {
   // annotation does not poison the required-keys check.
   meta_state_report: `{category:${META_STATE_FINDING_CATEGORIES.join("|")},severity:${META_STATE_FINDING_SEVERITIES.join("|")},affected_system,description}`,
   meta_state_resolve: "{id,resolution,resolved_by:operator|auto-resolve?}",
-  meta_state_promote_rule: "{id,rule_id,enforcement:gate|agent,pattern_type:regex|glob|determinism-checklist|agent-checklist,pattern,hint_text?,hint_suggestion?,hint_order?,hint_slug?}",
+  // This is the shared universal discoverability projection, not a
+  // runtime-owned adapter/configuration surface. Keep it aligned with the
+  // canonical Core tool schema so new callers do not learn retired fields.
+  meta_state_promote_rule: "{id,rule_id,internalization_level:I2|I3,pattern_type:regex|glob|determinism-checklist|agent-checklist,pattern,evidence_code_ref?,hint_text?,hint_suggestion?,hint_order?,hint_slug?}",
   // change_dimension is an enforced enum and change_diff is a nested object
   // whose keys the Zod type-error does NOT reveal — annotating both kills the
   // guess→reject→`--schema`→retry round-trip (session 6bd99328).

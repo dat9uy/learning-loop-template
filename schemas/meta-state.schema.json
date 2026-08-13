@@ -96,22 +96,45 @@
     },
     "rule": {
       "type": "object",
-      "required": ["entry_kind", "id", "origin", "enforcement", "pattern_type", "pattern", "description"],
+      "required": ["entry_kind", "id", "internalization_level", "pattern_type", "pattern", "description", "promoted_at", "promoted_by"],
+      "allOf": [
+        {
+          "if": { "properties": { "internalization_level": { "const": "I3" } } },
+          "then": { "required": ["evidence_code_ref"] }
+        },
+        {
+          "if": { "properties": { "internalization_level": { "const": "I2" } } },
+          "then": { "required": ["description"] }
+        }
+      ],
       "properties": {
         "entry_kind": { "const": "rule" },
         "id": { "type": "string", "pattern": "^rule-[a-z0-9-]+$" },
-        "origin": { "type": "string" },
-        "enforcement": { "enum": ["gate", "agent"] },
-        "pattern_type": { "enum": ["regex", "glob", "resolution-evidence-required"] },
+        "internalization_level": { "enum": ["I2", "I3"] },
+        "pattern_type": { "enum": ["regex", "glob", "determinism-checklist", "agent-checklist"] },
         "pattern": { "type": "string" },
         "scope_predicate": { "enum": ["none", "project_has_learning_loop_mcp"] },
         "applies_to_resolution": { "type": "string" },
+        "applies_to": {
+          "type": "object",
+          "properties": {
+            "tools": { "type": "array", "items": { "type": "string" } },
+            "surfaces": { "type": "array", "items": { "type": "string" } },
+            "rules": { "type": "array", "items": { "type": "string" } },
+            "statuses": { "type": "array", "items": { "type": "string" } },
+            "schemas": { "type": "array", "items": { "type": "string" } }
+          }
+        },
         "supersedes": { "type": "string" },
         "description": { "type": "string", "minLength": 20 },
-        "status": { "enum": ["active", "inactive"], "default": "active" },
+        "status": { "enum": ["active", "inactive", "archived"], "default": "active" },
         "promoted_at": { "type": "string", "format": "date-time" },
         "promoted_by": { "type": "string" },
-        "evidence_code_ref": { "type": "string" },
+        "evidence_code_ref": { "type": "string", "minLength": 1, "pattern": "\\S" },
+        "hint_text": { "type": "string", "minLength": 20 },
+        "hint_order": { "type": "integer" },
+        "hint_suggestion": { "type": "string", "minLength": 20, "maxLength": 200, "pattern": "^[^\\n\\r]+$" },
+        "hint_slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
         "evidence_journal": { "type": "string" },
         "evidence_test": { "type": "string" },
         "code_fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },

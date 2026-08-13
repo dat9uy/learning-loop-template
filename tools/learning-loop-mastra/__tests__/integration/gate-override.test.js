@@ -27,7 +27,7 @@ function writeRule(ruleId, pattern) {
     entry_kind: "rule",
     id: ruleId,
     origin: "meta-test",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "regex",
     pattern,
     description: `Test rule ${ruleId} for gate-override regression coverage`,

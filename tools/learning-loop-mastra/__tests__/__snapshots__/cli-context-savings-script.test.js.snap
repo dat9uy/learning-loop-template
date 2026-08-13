@@ -2,11 +2,11 @@
 
 exports[`measure:context default run prints required keys with sane ranges 1`] = `
 {
-  "banner_bytes": 3912,
-  "banner_bytes_reads_only": 3912,
-  "banner_bytes_records_via_cli": 3912,
+  "banner_bytes": 3936,
+  "banner_bytes_reads_only": 3936,
+  "banner_bytes_records_via_cli": 3936,
   "cli_tool_count": 42,
-  "dropped_def_bytes": 51786,
+  "dropped_def_bytes": 51911,
   "measured_at": Any<String>,
   "per_tool": [
     {
@@ -14,7 +14,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
       "name": "meta_state_log_change",
     },
     {
-      "bytes": 2938,
+      "bytes": 3039,
       "name": "meta_state_promote_rule",
     },
     {
@@ -30,7 +30,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
       "name": "runtime_state_read",
     },
     {
-      "bytes": 2056,
+      "bytes": 2066,
       "name": "meta_state_patch",
     },
     {
@@ -142,7 +142,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
       "name": "gate_check_recurrence",
     },
     {
-      "bytes": 744,
+      "bytes": 758,
       "name": "gate_override",
     },
     {
@@ -179,7 +179,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
     },
   ],
   "root": Any<String>,
-  "savings_bytes": 47874,
+  "savings_bytes": 47975,
   "savings_pct": 92.4,
 }
 `;

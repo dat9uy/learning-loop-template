@@ -79,7 +79,7 @@ test("writeEntry accepts all 4 known branches (finding, change-log, rule, loop-d
       entry_kind: "rule",
       id: "rule-test-ok",
       origin: "test-origin",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "regex",
       pattern: "test-pattern",
       description: "RED test: rule branch is supported in schema_branches (min 20 chars)",

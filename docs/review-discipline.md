@@ -21,7 +21,7 @@ The loop assumes the next reader is skeptical. Review makes that assumption real
 |---|---|---|
 | **finding** | Before resolving or promoting it | Is `evidence_code_ref` still live? Is the status derived, or merely asserted? Is the grounding fresh (`meta_state_derive_status` / `meta_state_check_grounding`)? Is it `stale`-view (re-verify before closing)? |
 | **change-log** | Before relying on the recorded change | Does `change_target` + `applies_to.schemas` cover the bound artifacts touched? Is it the authoritative lineage for a `superseded` finding (`consolidates`)? |
-| **rule** | Before enforcing or extending it | Is the rule still `active`? Does `pattern_type` / `enforcement` match how it is consumed (state-2 `agent-checklist` vs state-3 `gate`)? Is a superseding rule linked? |
+| **rule** | Before enforcing or extending it | Is the rule still `active`? Does `pattern_type` / `internalization_level` match how it is consumed (I2/state-2 `agent-checklist` vs I3/state-3 action-boundary)? Is a superseding rule linked? |
 | **loop-design** | Before shipping it | Is `shipped_in_plan` stamped (`meta_state_ship_loop_design`)? Does the design still address the motivating findings (`addresses`)? |
 | **runtime-state row** (budget-state) | Before budget-consuming actions | Is the latest `budget-state` row `active` and fresh (`runtime_state_read`)? Has the surface been paused or stopped? Is the ledger consistent with the gate's view? |
 | **product code** | After implementation | Does it stay within the rule's boundary? Does it respect output policy? Does it handle the risks flagged in planning? |

@@ -184,7 +184,7 @@ describe("meta-state schema new behavior", () => {
         description: "Agent proposed a new artifact type which violates the philosophy.",
         promoted_to_rule: {
           rule_id: "should-be-ignored",
-          enforcement: "gate",
+          internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
           pattern_type: "regex",
           pattern: "new schema",
           promoted_at: new Date().toISOString(),
@@ -269,7 +269,7 @@ describe("meta-state schema new behavior", () => {
       entry_kind: "rule",
       id: "rule-test-evidence-coverage",
       origin: "meta-260607T0008Z-dual-field-schema-risk",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "regex",
       pattern: "test",
       description: "A test rule for evidence coverage test",

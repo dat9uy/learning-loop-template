@@ -81,8 +81,8 @@ surface, lifecycle, manifest).
 
 ### 2.3 rule
 
-**Purpose:** Promoted gate/agent rules with their own lifecycle. Created when
-a finding is promoted via `meta_state_promote_rule`.
+**Purpose:** Promoted I2/I3 Rules with their own lifecycle. Created when a
+finding is promoted via `meta_state_promote_rule`.
 
 **Created by:** `meta_state_promote_rule`
 
@@ -92,14 +92,14 @@ a finding is promoted via `meta_state_promote_rule`.
 |-------|------|----------|-------|
 | `id` | string | yes | `rule-<slug>` (stable, not timestamp-based) |
 | `entry_kind` | `"rule"` | default | Discriminator |
-| `origin` | string | yes | Finding id that originated this rule |
-| `enforcement` | enum | yes | `gate`, `agent` |
+| `internalization_level` | enum | yes | `I2` (delivered for agent judgment), `I3` (enforced at an action boundary) |
 | `pattern_type` | enum | yes | `regex`, `glob`, `determinism-checklist`, `agent-checklist` |
 | `pattern` | string | yes | The pattern (regex body, glob path, or session_id) |
-| `status` | enum | default | `active`, `inactive` |
-| `description` | string | yes | min 20 chars |
+| `description` | string | yes | Authoritative Rule description; I3 Rules additionally require `evidence_code_ref` |
+| `evidence_code_ref` | string | conditional | Required and non-empty for I3 Rules; grounds the deterministic consumer |
+| `status` | enum | default | `active`, `inactive`, `archived` |
 
-**Full schema:** `core/meta-state.js:164-197`.
+**Full schema:** `core/meta-state.js` Rule branch schema.
 
 ### 2.4 loop-design
 

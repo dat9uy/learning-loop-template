@@ -89,7 +89,7 @@ await test("escalate decision: promoted glob rule → exit 0 + permissionDecisio
     entry_kind: "rule",
     id: "rule-test-write-escalate",
     origin: "meta-test",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "glob",
     pattern: "docs/**",
     description: "Test promoted glob rule for write-gate decision visibility",

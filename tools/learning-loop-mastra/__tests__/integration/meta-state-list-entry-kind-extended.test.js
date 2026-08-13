@@ -38,7 +38,8 @@ test("meta_state_list with entry_kind='rule' returns only rule entries", async (
       id: "rule-test-1",
       entry_kind: "rule",
       origin: "meta-test-origin",
-      enforcement: "gate",
+      internalization_level: "I3",
+      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
       pattern_type: "regex",
       pattern: "test-pattern",
       description: "Test rule description that is at least 20 characters long.",
@@ -108,7 +109,8 @@ test("meta_state_list with entry_kinds=['rule', 'loop-design'] returns both", as
       id: "rule-test-2",
       entry_kind: "rule",
       origin: "meta-test-origin",
-      enforcement: "gate",
+      internalization_level: "I3",
+      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
       pattern_type: "regex",
       pattern: "test-pattern",
       description: "Test rule description that is at least 20 characters long.",
@@ -213,7 +215,8 @@ test("meta_state_list with entry_kind='rule' + include_all_versions returns the 
       id: "rule-history",
       entry_kind: "rule",
       origin: "meta-test-origin",
-      enforcement: "gate",
+      internalization_level: "I3",
+      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
       pattern_type: "regex",
       pattern: "old-pattern",
       description: "Rule history v0 description that is at least 20 characters long.",
@@ -222,13 +225,27 @@ test("meta_state_list with entry_kind='rule' + include_all_versions returns the 
       promoted_by: "operator",
       created_at: "2026-06-06T20:00:00.000Z",
     });
+    await writeTestEntry(root, {
+      id: "rule-history-prior",
+      entry_kind: "rule",
+      internalization_level: "I3",
+      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
+      pattern_type: "regex",
+      pattern: "prior-pattern",
+      description: "Prior Rule version used as a supersession target.",
+      status: "active",
+      promoted_at: "2026-06-06T19:00:00.000Z",
+      promoted_by: "operator",
+      created_at: "2026-06-06T19:00:00.000Z",
+    });
     await updateEntry(root, "rule-history", {
       pattern: "new-pattern",
       description: "Rule history v1 description that is at least 20 characters long.",
+      supersedes: "rule-history-prior",
     });
 
     const allVersions = await call({ entry_kind: "rule", include_all_versions: true });
-    assert.equal(allVersions.count, 2, "both version lines must be returned");
+    assert.equal(allVersions.count, 3, "all Rule version lines must be returned");
     const versions = allVersions.entries
       .filter((e) => e.id === "rule-history")
       .sort((a, b) => a.version - b.version);

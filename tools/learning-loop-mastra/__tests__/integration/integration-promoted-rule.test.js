@@ -77,7 +77,7 @@ describe("integration: promoted rule end-to-end", () => {
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-new-artifact",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "new\\s+schema",
       });
@@ -119,7 +119,7 @@ describe("integration: promoted rule end-to-end", () => {
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-new-artifact",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "new\\s+schema",
       });
@@ -157,7 +157,7 @@ describe("integration: promoted rule end-to-end", () => {
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-list",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
       });
@@ -215,7 +215,7 @@ describe("integration: promoted rule end-to-end", () => {
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-describe",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
       });
@@ -255,7 +255,7 @@ describe("integration: promoted rule end-to-end", () => {
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-recovery",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         // `.*` would self-match the CLI invocation
         // shape and is rejected by the activation guard. Use a specific,
@@ -390,7 +390,7 @@ describe("integration: promoted rule end-to-end", () => {
       const previewResult = await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-preview",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "new\\s+schema",
         preview: true,

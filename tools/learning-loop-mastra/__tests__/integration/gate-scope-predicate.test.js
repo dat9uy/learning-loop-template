@@ -53,7 +53,7 @@ describe("gate scope predicate", () => {
       id: "rule-test-" + Math.random().toString(36).slice(2, 8),
       entry_kind: "rule",
       origin: "meta-test-origin",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "test",
       description: "Test rule for scope-predicate regression coverage",
@@ -171,7 +171,7 @@ describe("gate scope predicate", () => {
         id: "rule-test-no-mcp",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
         scope_predicate: "project_has_learning_loop_mcp",
@@ -202,7 +202,7 @@ describe("gate scope predicate", () => {
         id: "rule-test-other",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
         scope_predicate: "project_has_learning_loop_mcp",
@@ -233,7 +233,7 @@ describe("gate scope predicate", () => {
         id: "rule-test-bad",
         entry_kind: "rule",
         status: "active",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "regex",
         pattern: "test",
         scope_predicate: "project_has_learning_loop_mcp",
@@ -305,7 +305,7 @@ describe("gate scope predicate", () => {
       const promoteResult = await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-scope-promote",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "glob",
         pattern: "tools/**/*.test.js",
         scope_predicate: "project_has_learning_loop_mcp",
@@ -359,7 +359,7 @@ describe("gate scope predicate", () => {
       const promoteResult = await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-whitelist",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "glob",
         pattern: "**/*", // Over-broad, not whitelisted
         scope_predicate: "project_has_learning_loop_mcp",
@@ -398,7 +398,7 @@ describe("gate scope predicate", () => {
       await metaStatePromoteRuleTool.handler({
         id: report1Text.id,
         rule_id: "rule-test-duplicate",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "glob",
         pattern: "tools/**/*.test.js",
       });
@@ -415,7 +415,7 @@ describe("gate scope predicate", () => {
       const promoteResult = await metaStatePromoteRuleTool.handler({
         id: report2Text.id,
         rule_id: "rule-test-duplicate", // Same rule_id
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "glob",
         pattern: "tools/**/*.test.js",
       });

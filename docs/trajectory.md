@@ -129,7 +129,7 @@ When all three are true, the skill is loop-maintained (state-3 encoded). The mar
 
 Autonomy is on the meta-surface axis, not the judgment axis. The destination keeps humans in the loop for:
 
-- **Meta-surface scope.** What the loop is allowed to learn about itself, what findings get promoted to rules, what rules get enforced as `gate` vs `agent` enforcement. The operator remains the authority on what the loop is allowed to learn about itself.
+- **Meta-surface scope.** What the loop is allowed to learn about itself, what findings get promoted to Rules, and whether each Rule is internalized at I2 (agent judgment) or I3 (deterministic action boundary). The operator remains the authority on what the loop is allowed to learn about itself.
 - **Irreversible operations.** Anything the constraint enforcement layer gates today stays gated. The auto-loop earns no exemption from device-slot ledgers, budget exhaustion, or scope-bounded observations.
 - **Class-approval definitions.** Operators write the pre-approval patterns. The loop does not propose its own expansion of authority.
 - **The meta-surface system itself.** Findings, rules, and loop-designs are operator-ackable. The loop may surface signals; it does not redefine its own success criteria without operator sign-off. This is the limit that prevents the self-referential system from optimizing itself out of alignment with the operator's intent. The meta-state system is the most dangerous component to give full autonomy to, because it is the one that decides what the rest of the loop learns.

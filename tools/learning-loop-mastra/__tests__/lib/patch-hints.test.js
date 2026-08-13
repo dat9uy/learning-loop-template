@@ -45,7 +45,7 @@ describe("listMutableFieldsCsv", () => {
     assert.ok(!csv.includes("category"), `rule hint must not include finding-only field category (got: ${csv})`);
     // Rule-specific fields must appear.
     assert.ok(csv.includes("pattern"), `rule hint must include rule-only field pattern (got: ${csv})`);
-    assert.ok(csv.includes("enforcement"), `rule hint must include rule-only field enforcement (got: ${csv})`);
+    assert.ok(csv.includes("internalization_level"), `rule hint must include rule-only field internalization_level (got: ${csv})`);
   });
 
   test("loop-design kind lists description first (evidence_code_ref is finding-only)", () => {

@@ -4,7 +4,7 @@ import { metaStatePatchTool } from "../../tools/handlers/meta-state-patch-tool.j
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";
 import { metaStateResolveTool } from "../../tools/handlers/meta-state-resolve-tool.js";
-import { readRegistry } from "../../core/meta-state.js";
+import { readRegistry, writeEntry } from "../../core/meta-state.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -595,9 +595,10 @@ test("empty_patch hint for rule names rule-specific fields, no finding leakage",
       id: "meta-260717T2000Z-rule-empty-hint-fixture",
       entry_kind: "rule",
       status: "active",
-      enforcement: "gate",
+      internalization_level: "I3",
       pattern_type: "regex",
       pattern: "(test)-hint",
+      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
       description: "Rule fixture for empty_patch per-kind hint test (min 20 chars)",
       affected_system: "meta",
       created_at: new Date().toISOString(),
@@ -623,8 +624,8 @@ test("empty_patch hint for rule names rule-specific fields, no finding leakage",
       `rule hint must name pattern (got: ${result.hint})`,
     );
     assert.ok(
-      result.hint.includes("enforcement"),
-      `rule hint must name enforcement (got: ${result.hint})`,
+      result.hint.includes("internalization_level"),
+      `rule hint must name internalization_level (got: ${result.hint})`,
     );
     // No finding-specific leakage:
     assert.ok(
@@ -634,6 +635,71 @@ test("empty_patch hint for rule names rule-specific fields, no finding leakage",
     // Lifecycle tools still named:
     assert.ok(result.hint.includes("meta_state_supersede"), "rule hint must still mention supersede");
     assert.ok(result.hint.includes("meta_state_log_change"), "rule hint must still mention log_change");
+  } finally {
+    teardown();
+  }
+});
+
+test("meta_state_patch requires and emits supersession for a material Rule change", async () => {
+  const root = setup();
+  try {
+    const targetRule = {
+      id: "rule-material-target-fixture",
+      entry_kind: "rule",
+      status: "active",
+      internalization_level: "I3",
+      evidence_code_ref: "test-rule-contract.js",
+      pattern_type: "regex",
+      pattern: "target-fixture",
+      description: "Target Rule fixture for material supersession coverage.",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+      created_at: new Date().toISOString(),
+      version: 0,
+    };
+    const sourceRule = {
+      id: "rule-material-source-fixture",
+      entry_kind: "rule",
+      status: "active",
+      internalization_level: "I3",
+      evidence_code_ref: "test-rule-contract.js",
+      pattern_type: "regex",
+      pattern: "source-fixture",
+      description: "Source Rule fixture for material supersession coverage.",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+      created_at: new Date().toISOString(),
+      version: 0,
+    };
+    await writeEntry(root, targetRule);
+    await writeEntry(root, sourceRule);
+
+    const missingRelation = await patchCall({
+      id: sourceRule.id,
+      entry_kind: "rule",
+      patch: { pattern: "changed-source-fixture" },
+    });
+    assert.equal(missingRelation.patched, false);
+    assert.equal(missingRelation.reason, "supersedes_required");
+
+    const result = await patchCall({
+      id: sourceRule.id,
+      entry_kind: "rule",
+      patch: {
+        pattern: "changed-source-fixture",
+        supersedes: targetRule.id,
+      },
+    });
+    assert.equal(result.patched, true);
+    assert.equal(result.version, 1);
+    assert.equal(readRegistry(root).find((entry) => entry.id === sourceRule.id).pattern, "changed-source-fixture");
+
+    const citations = (await import("node:fs")).readFileSync(join(root, "citations.jsonl"), "utf8")
+      .trim().split("\n").filter(Boolean).map(JSON.parse);
+    assert.ok(citations.some((citation) =>
+      citation.source === sourceRule.id
+      && citation.target === targetRule.id
+      && citation.rationale === "supersedes"));
   } finally {
     teardown();
   }
@@ -650,7 +716,7 @@ test("meta_state_patch rule supersedes with CAS mismatch emits no citation", asy
       id: "meta-rule-supersedes-target-fixture",
       entry_kind: "rule",
       status: "active",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "(target)-fixture",
       description: "Target rule fixture for supersedes citation guard (min 20 chars)",
@@ -662,7 +728,7 @@ test("meta_state_patch rule supersedes with CAS mismatch emits no citation", asy
       id: "meta-rule-supersedes-source-fixture",
       entry_kind: "rule",
       status: "active",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "(source)-fixture",
       description: "Source rule fixture for supersedes citation guard (min 20 chars)",

@@ -17,7 +17,7 @@ const INERT_BANNED_RULE = {
   id: "rule-inert-banned-fixture",
   entry_kind: "rule",
   status: "active",
-  enforcement: "gate",
+  internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
   pattern_type: "regex",
   pattern: "FORBIDDEN_TOKEN",
 };
@@ -26,7 +26,7 @@ const DOCKER_RULE = {
   id: "rule-synthetic-docker",
   entry_kind: "rule",
   status: "active",
-  enforcement: "gate",
+  internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
   pattern_type: "regex",
   pattern: "docker\\s+run",
 };
