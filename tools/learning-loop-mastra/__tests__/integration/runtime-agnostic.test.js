@@ -375,7 +375,9 @@ await test("stripCommentsAndStrings removes comments and template literals befor
 });
 
 await test("GLOB_SCOPE_WHITELIST includes both surface prefixes via SURFACES", () => {
-  const src = readFileSync(join(CORE_DIR, "gate-logic.js"), "utf8");
+  // The whitelist primitive is now owned by promoted-rule-policy.js;
+  // gate-logic.js re-exports it. Assert the derivation at the owner.
+  const src = readFileSync(join(CORE_DIR, "promoted-rule-policy.js"), "utf8");
   assert.ok(src.includes("...SURFACES.map"), "GLOB_SCOPE_WHITELIST must use SURFACES.map(...) to derive prefixes");
 });
 

@@ -13,8 +13,8 @@ import {
   inferSurface,
   readPreflightMarker,
   loadGroundedPromotedRules,
-  applyPromotedRules,
 } from "./gate-logic.js";
+import { evaluateI3PathPolicy } from "./promoted-rule-policy.js";
 import { SURFACES, getAllCoordinationPaths, getAllSurfacePaths } from "./surfaces.js";
 import { BOUND_ARTIFACTS } from "./bound-artifacts.js";
 import {
@@ -423,8 +423,8 @@ function blockResult(rule, filePath) {
 }
 
 function applyPromotedRulesCheck(relPath, resolvedRoot) {
-  const promotedRules = loadGroundedPromotedRules(resolvedRoot);
-  const promotedCheck = applyPromotedRules(null, relPath, promotedRules);
+  const i3Rules = loadGroundedPromotedRules(resolvedRoot).filter((r) => r.internalization_level === "I3");
+  const promotedCheck = evaluateI3PathPolicy({ filePath: relPath, root: resolvedRoot, i3Rules });
   if (promotedCheck.decision === "escalate") return promotedCheck;
   return { decision: "ok" };
 }

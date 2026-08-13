@@ -26,6 +26,9 @@ files:
   - path: gate-override.js
     role: facade
     summary: Reads/validates .gate-override markers with TTL expiry.
+  - path: promoted-rule-policy.js
+    role: facade
+    summary: Owns I3 ordering, scope predicates, gate overrides, pattern safety, command/path matching, provenance, deferred inert telemetry, heredoc kill-switch, and enforcement result shaping over the compiled I3 projection.
   - path: hint-registry.js
     role: facade
     summary: Single source of truth for context-injection hints (slug-keyed entries).
