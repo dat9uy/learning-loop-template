@@ -111,11 +111,27 @@ describe("Command Interpretation interface", () => {
   test("does not expose parser, blanking, or recurrence normalization details", () => {
     const interpretation = interpretCommand("echo 'vitest run fixture.test.js'");
 
-    assert.deepEqual(Object.keys(interpretation), ["matchRule"]);
+    assert.deepEqual(Object.keys(interpretation), ["matchRule", "matchConfiguredConstraints"]);
     assert.equal("normalized" in interpretation, false);
     assert.equal("segments" in interpretation, false);
     assert.equal("blanked" in interpretation, false);
     assert.equal("raw" in interpretation, false);
+  });
+
+  test("returns policy-neutral configured command matches without exposing parser details", () => {
+    const interpretation = interpretCommand("pip install vnstock; bash -c 'echo hi'");
+    const result = interpretation.matchConfiguredConstraints({
+      constraintPatterns: {
+        "package-manager": /\b(?:pip|pnpm)\s+install\s+vnstock\b/,
+      },
+      gateVerbs: [{ verb: "bash", flags: null, indirection: false }],
+      indirectionVerbs: new Set(),
+    });
+
+    assert.deepEqual(result, {
+      constraintMatch: "package-manager",
+      gateVerbMatch: "gate-verb:bash",
+    });
   });
 
   test("requests the existing coarse recurrence key independently", () => {

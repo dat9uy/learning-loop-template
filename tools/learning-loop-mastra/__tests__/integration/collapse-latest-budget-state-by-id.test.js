@@ -21,7 +21,7 @@ import {
   collapseLatestBudgetStateById,
 } from "../../core/runtime-state.js";
 import { readRuntimeObservations } from "../../core/file-readers.js";
-import { checkObservationExists, makeGateDecision } from "../../core/gate-logic.js";
+import { checkObservationExists, makeGateDecision } from "../../core/command-constraint-policy.js";
 
 function ts(minutesAgo) {
   return new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();

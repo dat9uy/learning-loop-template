@@ -313,12 +313,12 @@ describe("hint registry injection-policy tier", () => {
   });
 
   test("gate-verb-allowance incantation matches the gate block message (single source)", () => {
-    // The hint is the static reference; the bash-gate block message is the
-    // dynamic emitter. The shared substrings must appear in both so the two
-    // surfaces cannot silently diverge.
+    // The hint is the static reference; the bash-gate block message emitter is
+    // the dynamic one (now owned by the Command Constraint Policy). The shared
+    // substrings must appear in both so the two surfaces cannot silently diverge.
     const { readFileSync } = require("node:fs");
     const gateSrc = readFileSync(
-      resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/evaluate-bash-gate.js"),
+      resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/command-constraint-policy.js"),
       "utf8",
     );
     for (const shared of [

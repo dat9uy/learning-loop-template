@@ -32,6 +32,9 @@ files:
   - path: protected-shell-writes.js
     role: facade
     summary: Owns protected-path classification, Runtime Topology-derived patterns (preflight markers + decision log), marker exceptions, trusted decision-log writers, compound-command masking defense, and exact reason selection. Consumes an interpreted command and returns the block decision shape or null — the final precedence fold stays with the gate evaluator.
+  - path: command-constraint-policy.js
+    role: facade
+    summary: Owns constraint-pattern and gate-verb matching, observation lookup, age-bounded allowance expiry, ordinary observation staleness, side-effect-import hard blocking, gate-verb remediation, and constraint-versus-gate-verb severity. Consumes an interpreted command/context and returns the existing decision shape or null — the final precedence fold stays with the gate evaluator.
   - path: hint-registry.js
     role: facade
     summary: Single source of truth for context-injection hints (slug-keyed entries).

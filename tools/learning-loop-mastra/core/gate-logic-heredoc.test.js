@@ -2,11 +2,10 @@ import assert from "node:assert";
 import { afterEach, describe, test } from "vitest";
 import {
   applyPromotedRules,
-  matchConstraintPattern,
-  matchGateVerb,
   safeStripHeredocBodies,
   stripHeredocBodies,
 } from "./gate-logic.js";
+import { matchConstraintPattern, matchGateVerb } from "./command-constraint-policy.js";
 
 // ─── stripHeredocBodies: heredoc data-blanking for the bash gate ─────────────
 //

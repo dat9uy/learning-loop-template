@@ -105,7 +105,7 @@ describe("hint ↔ docs prose dedup invariant", () => {
   test("gate-verb-allowance hint and the bash-gate block message share the canonical incantation substrings", () => {
     const { text } = registry.findHintBySlug("gate-verb-allowance");
     const gateSrc = readFileSync(
-      resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/evaluate-bash-gate.js"),
+      resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/command-constraint-policy.js"),
       "utf8",
     );
     for (const shared of [

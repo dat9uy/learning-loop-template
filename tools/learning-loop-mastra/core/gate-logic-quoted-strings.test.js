@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { test } from "vitest";
-import { matchConstraintPattern } from "./gate-logic.js";
+import { matchConstraintPattern } from "./command-constraint-policy.js";
 
 // ─── echo-prose → exec-sink locks (matchConstraintPattern strips NO echo prose) ───
 //
