@@ -454,7 +454,12 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     const gateToolCode = fs.readFileSync(gateToolPath, 'utf8');
     const evaluatorPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'evaluate-bash-gate.js');
     const evaluatorCode = fs.readFileSync(evaluatorPath, 'utf8');
-    const checksRegardless = gateToolCode.includes('evaluateBashGate') && evaluatorCode.includes('checkObservationStaleness');
+    const policyPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'command-constraint-policy.js');
+    const policyCode = fs.readFileSync(policyPath, 'utf8');
+    const checksRegardless =
+      gateToolCode.includes('evaluateBashGate') &&
+      evaluatorCode.includes('evaluateCommandConstraintPolicy') &&
+      policyCode.includes('checkObservationStaleness');
     assert(hasStalenessCheck, 'MCP server has staleness check function');
     assert(checksRegardless, 'MCP server delegates to evaluator which checks staleness regardless of decision (F3 fix)');
   }

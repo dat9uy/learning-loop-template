@@ -5,15 +5,7 @@
  * @returns {{ decision: string, reason?: string, hard_block?: boolean, constraint_type?: string, rule_id?: string, pattern_type?: string }}
  */
 
-import {
-  matchConstraintPattern,
-  matchGateVerb,
-  checkObservationExists,
-  makeGateDecision,
-  findProjectRoot,
-  normalizeQuoteConcatenation,
-  loadGroundedPromotedRules,
-} from "./gate-logic.js";
+import { findProjectRoot, loadGroundedPromotedRules } from "./gate-logic.js";
 import { evaluateI3CommandPolicy } from "./promoted-rule-policy.js";
 import {
   evaluateProtectedShellWritePolicy,
@@ -21,9 +13,7 @@ import {
   DECISION_LOG_WRITE_PATTERNS,
   DECISION_LOG_WRITE_REASON,
 } from "./protected-shell-writes.js";
-import { readRuntimeObservations } from "./file-readers.js";
-import { checkObservationStaleness } from "./inbound-state.js";
-import { isObservationStaleByAge } from "./observation-staleness.js";
+import { evaluateCommandConstraintPolicy } from "./command-constraint-policy.js";
 
 // Legacy path-write pattern exports, forwarded from protected-shell-writes.js so
 // existing callers keep their import path unchanged. protected-shell-writes.js is
@@ -41,24 +31,7 @@ import { isObservationStaleByAge } from "./observation-staleness.js";
 // from protected-shell-writes.js directly.
 export { PATH_WRITE_PATTERNS, DECISION_LOG_WRITE_PATTERNS, DECISION_LOG_WRITE_REASON };
 
-// Self-remediating block reason for observation-gated gate-verb constraints.
-// Emits the exact 2-call incantation that records the allowance so the agent
-// copies two lines instead of discovering them. Verb is substituted from the
-// matched constraint; the timestamp is fresh at block time. The sentinel
-// source_ref is intentionally non-resolving (see field-glossary.js).
-function buildGateVerbRemediation(gateVerbMatch, { expired }) {
-  const lead = expired
-    ? `The recorded gate-verb observation has expired (gate-verb allowances are age-bounded). Record a fresh observation to unblock for 30 min:`
-    : `No active observation found. Record one to unblock for 30 min:`;
-  return (
-    `Constraint "${gateVerbMatch}" detected. ${lead}\n` +
-    `1) gate_mark_preflight({surface:"runtime-state"})\n` +
-    `2) runtime_state_record({affected_system:"${gateVerbMatch}", kind:"budget-state", id:"${gateVerbMatch}", durability:"ephemeral", source_ref:"local:meta-state:gate-verb-allowance", timestamp:"${new Date().toISOString()}"})\n` +
-    `id MUST equal affected_system. durability:"ephemeral" routes the allowance to the session-local substrate (gate-verb:* allowances are ephemeral, never committed). Allowance expires 30 min after timestamp.`
-  );
-}
-
-// fallow-ignore-next-line complexity -- four independent detection sections (constraint/gate-verb/path-write/promoted-rules) plus combine/precedence; the orchestrator seam is the canonical shape
+// fallow-ignore-next-line complexity -- orchestrates three delegated policy sections (command-constraint/path-write/promoted-rules) plus the final precedence fold; the orchestration seam is the canonical shape
 export function evaluateBashGate({ command, root }) {
   if (!command || typeof command !== "string") {
     return { decision: "ok" };
@@ -69,91 +42,14 @@ export function evaluateBashGate({ command, root }) {
   let constraintResult = null;
   let pathResult = null;
 
-  // Quote-concatenation normalization: fold adjacent-quote splits (`s''udo` →
-  // sudo, `rec''ords/` → records/) so the raw-text regex surfaces (constraint
-  // patterns, path-write patterns, promoted rules) see the joined form. The
-  // verb layer (matchGateVerb → classifyPolicyTokens) is a real tokenizer and
-  // already folds quotes, so it keeps the RAW command below.
-  const quoteSafe = normalizeQuoteConcatenation(command);
-
-  // --- Constraint pattern check ---
-  const constraintMatch = matchConstraintPattern(quoteSafe);
-  if (constraintMatch) {
-    const observations = readRuntimeObservations(resolvedRoot);
-    const observationStatus = checkObservationExists(constraintMatch, observations);
-
-    constraintResult = makeGateDecision(constraintMatch, observationStatus);
-
-    // Staleness check for non-hard-block decisions
-    if (!constraintResult.hard_block) {
-      const staleness = checkObservationStaleness(observations, resolvedRoot);
-      if (staleness.stale) {
-        constraintResult.inbound_gate = true;
-        if (constraintResult.decision === "ok") {
-          constraintResult.decision = "escalate";
-          constraintResult.reason = staleness.reason;
-          constraintResult.observation_id = staleness.observation_id;
-        }
-      }
-    }
-  }
-
-  // --- Gate-verb constraint check (executor + indirection verbs) ---
-  // Observation-gated, same decision shape as docker/sudo. Runs alongside
-  // matchConstraintPattern — either match escalates; the more severe wins
-  // (hard_block dominates).
-  const gateVerbMatch = matchGateVerb(command);
-  if (gateVerbMatch) {
-    const observations = readRuntimeObservations(resolvedRoot);
-    let observationStatus = checkObservationExists(gateVerbMatch, observations);
-    // Gate-verb observations are age-bounded: unlike the marker-mode
-    // staleness below (which only flips when a fresh operator marker
-    // post-dates the observation), a `gate-verb:<verb>` observation expires
-    // on age alone after OBSERVATION_STALENESS_WINDOW_MS (30 min). This is
-    // what makes the recorded allowance a bounded window rather than an
-    // indefinite one. Scoped to gate-verb constraints; the vnstock
-    // constraint path keeps marker-mode semantics.
-    let ageExpired = false;
-    if (
-      observationStatus.found &&
-      isObservationStaleByAge(observationStatus.observation, Date.now())
-    ) {
-      observationStatus = { found: false };
-      ageExpired = true;
-    }
-    const gateVerbResult = makeGateDecision(gateVerbMatch, observationStatus);
-    // Self-remediating reason: the observation_required gate-verb block
-    // (never recorded, or age-expired) carries the exact 2-call incantation
-    // that records the allowance, with the verb substituted and a fresh
-    // timestamp. The expired variant names the accurate cause.
-    if (gateVerbResult.observation_required) {
-      gateVerbResult.reason = buildGateVerbRemediation(gateVerbMatch, { expired: ageExpired });
-    }
-    // Staleness check, mirroring the constraint path — a stale observation
-    // must not yield a plain `ok` for gate-verbs any more than for
-    // docker/sudo constraints.
-    if (!gateVerbResult.hard_block) {
-      const staleness = checkObservationStaleness(observations, resolvedRoot);
-      if (staleness.stale) {
-        gateVerbResult.inbound_gate = true;
-        if (gateVerbResult.decision === "ok") {
-          gateVerbResult.decision = "escalate";
-          gateVerbResult.reason = staleness.reason;
-          gateVerbResult.observation_id = staleness.observation_id;
-        }
-      }
-    }
-    // Gate-verb result replaces the existing constraint result if it's
-    // stricter (hard_block) or if no constraint result exists yet.
-    if (!constraintResult || gateVerbResult.hard_block) {
-      constraintResult = gateVerbResult;
-    } else if (
-      constraintResult.decision === "ok" &&
-      gateVerbResult.decision !== "ok"
-    ) {
-      constraintResult = gateVerbResult;
-    }
-  }
+  // --- Constraint + gate-verb check: delegated to Command Constraint Policy ---
+  // Centralized in command-constraint-policy.js: constraint-pattern matching,
+  // gate-verb matching, observation lookup, age-bounded allowance expiry, ordinary
+  // observation staleness, side-effect-import hard blocking, gate-verb
+  // remediation, and constraint-versus-gate-verb severity. The policy returns
+  // the existing decision shape or null; the FINAL precedence fold (constraint vs
+  // path vs promoted-rule) stays THIS evaluator's job below.
+  constraintResult = evaluateCommandConstraintPolicy({ command, root: resolvedRoot });
 
   // --- Path-write detection: delegated to Protected Shell Writes policy ---
   // Centralized in protected-shell-writes.js: protected-path classification,

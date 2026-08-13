@@ -17,12 +17,10 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync } from "
 import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
 import { readRegistry, readFileIndex, toLegacyRuleView } from "./meta-state.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 import { isOpen } from "./stale-view.js";
-import { CONSTRAINT_PATTERNS, GATE_VERBS, INDIRECTION_VERBS } from "./pattern-config.js";
 import { readRuleIndex } from "./rule-index.js";
 import { stripEvidenceAnchor } from "./evidence-ref.js";
 import { evaluateI3CommandPolicy, evaluateI3PathPolicy, globMatch, isGlobScopeWhitelisted, isSafeRegexPattern, projectHasLearningLoopMcp } from "./promoted-rule-policy.js";
@@ -35,6 +33,23 @@ export {
   isGlobScopeWhitelisted,
   projectHasLearningLoopMcp,
 } from "./promoted-rule-policy.js";
+
+// One-way compatibility forwarding: constraint + gate-verb matching,
+// observation lookup, and decision shaping now live in
+// command-constraint-policy.js (sole owner). Existing callers importing these
+// from gate-logic keep working unchanged until they migrate to the policy (the
+// #162 gate-composition cutover). New callers must import from the policy
+// directly — no new caller may recreate the logic here.
+export {
+  // fallow-ignore-next-line unused-export -- temporary one-way forwarding for existing test callers until the #162 cutover
+  matchConstraintPattern,
+  // fallow-ignore-next-line unused-export -- temporary one-way forwarding for existing test callers until the #162 cutover
+  matchGateVerb,
+  // fallow-ignore-next-line unused-export -- temporary one-way forwarding for existing test callers until the #162 cutover
+  checkObservationExists,
+  // fallow-ignore-next-line unused-export -- temporary one-way forwarding for existing test callers until the #162 cutover
+  makeGateDecision,
+} from "./command-constraint-policy.js";
 
 // fallow-ignore-next-line unused-export -- preserve the long-standing named export for existing Core consumers
 export { stripEvidenceAnchor };
@@ -77,179 +92,9 @@ export {
   safeStripHeredocBodies,
   stripCliArgvPayload,
   applyInertSinkBlanking,
+  // fallow-ignore-next-line unused-export -- split verbs fold over gate-logic's public surface; currently only direct-from-blanking consumers remain, kept for the shared re-export API
   normalizeQuoteConcatenation,
 } from "./blanking.js";
-
-// Local bindings for the constraint functions below (matchConstraintPattern /
-// matchGateVerb / matchVerbAgainstGateList) and applyPromotedRules that
-// consume the blanking primitives at call time. `export { … } from` does
-// not create a local binding, so the plain import is required in addition
-// to the re-export.
-import {
-  splitSegments,
-  stripMessageFlags,
-  stripNodeEvalBody,
-  stripDataCommandQuotes,
-  stripEchoProse,
-  stripCliArgvPayload,
-  applyInertSinkBlanking,
-  safeStripHeredocBodies,
-  normalizeQuoteConcatenation,
-  BLANKABLE_HEREDOC_VERBS_PROMOTED,
-  BLANKABLE_HEREDOC_VERBS_CONSTRAINT,
-  BLANKABLE_HEREDOC_VERBS_GATEVERB,
-} from "./blanking.js";
-
-// Local verb basename normalization (PATH-qualified /bin/bash -> bash).
-function basename(p) {
-  if (typeof p !== "string") return p;
-  const i = p.lastIndexOf("/");
-  return i === -1 ? p : p.slice(i + 1);
-}
-
-/**
- * Match a command against constraint patterns.
- * Splits on ;, &, | and checks each segment independently.
- * Strips message flags, node-eval bodies, and pure-data-command pattern args
- * before matching to avoid false positives. Returns the first matching
- * constraint type, or null.
- *
- * Deliberately strips NO echo/printf prose, unlike both promoted-rule passes.
- * These are the first-class boundaries (docker, sudo, package-manager,
- * vendor-api, side-effect-import) and stay maximally conservative: `echo
- * "docker run" | bash` is caught here regardless of pipe target. Note the
- * converse — promoted rules such as rule-no-raw-stdout-vitest have no entry in
- * CONSTRAINT_PATTERNS, so this function is not a backstop for them. That is why
- * the per-segment blanking has to be non-bypassable on its own.
- */
-export function matchConstraintPattern(command) {
-  if (!command || typeof command !== "string") return null;
-
-  // Heredoc pre-pass: blank quoted-delimiter heredoc bodies for inert verbs
-  // (DATA_COMMANDS ∪ {cat, tee}) so `cat <<'EOF' … docker run … EOF` doesn't
-  // false-fire on the first-class docker/sudo/package-manager constraints.
-  // Executor verbs (bash/sh/python3) and node-family are NOT in this allowlist
-  // — their heredoc bodies execute, so they must stay visible.
-  const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_CONSTRAINT);
-  // Quote-concatenation normalization: fold adjacent-quote splits (`s''udo` →
-  // `sudo`) so the first-class constraint regexes (docker/sudo/package-manager/
-  // vendor-api) see the joined form, not the raw split text. The verb layer is
-  // already immune; this closes the same gap for the raw-text regex surface.
-  const quoteSafe = normalizeQuoteConcatenation(heredocSafe);
-
-  for (const segment of splitSegments(quoteSafe)) {
-    const stripped = stripMessageFlags(segment);
-    const nodeStripped = stripNodeEvalBody(stripped);
-    const dataStripped = stripDataCommandQuotes(nodeStripped);
-    for (const [type, pattern] of Object.entries(CONSTRAINT_PATTERNS)) {
-      if (pattern.test(dataStripped)) return type;
-    }
-  }
-  return null;
-}
-
-/**
- * Check if an active observation exists for the given constraint type.
- * Matches by `constraint_type` field. Archived observations are ignored.
- */
-export function checkObservationExists(constraintType, observations) {
-  if (!observations || !Array.isArray(observations)) {
-    return { found: false };
-  }
-  const match = observations.find(
-    (obs) =>
-      obs.status === "active" &&
-      (obs.constraint_type === constraintType || obs.constraint === constraintType)
-  );
-  return match ? { found: true, observation: match } : { found: false };
-}
-
-/**
- * Gate-verb constraint match. Walks the policy view (from
- * classifyPolicyTokens) and returns the FIRST gate-verb constraint_type
- * hit as a string (e.g. "gate-verb:bash") or null. Checks BOTH each
- * segment's verb AND each pipe-target verb, so `printf evil | bash` is
- * caught even though `bash` is the second verb.
- *
- * Indirection verbs (env, xargs) only match when followed by a gate-verb
- * arg; `env FOO=bar` alone is not indirection.
- *
- * Verb matching uses basename normalization so PATH-qualified `/bin/bash`
- * matches the `bash` entry. Command-prefixes (sudo/time/nice/nohup/command)
- * are skipped by classifyPolicyTokens, so `sudo bash` resolves verb=bash.
- */
-export function matchGateVerb(command) {
-  if (!command || typeof command !== "string") return null;
-  // Heredoc pre-pass BEFORE classifyPolicyTokens: a heredoc body line
-  // containing `| bash` must not fracture into a gate-verb block (a heredoc
-  // body is data, not a pipe to an executor). Node-family is INCLUDED here
-  // (mirrors the promoted-rule accepted bypass; node stdin-script data is
-  // data to the gate-verb layer).
-  const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_GATEVERB);
-  const view = classifyPolicyTokens(heredocSafe);
-
-  for (const seg of view.segments) {
-    // Indirection verbs (env, xargs) only match via the indirection
-    // predicate below — they must NOT match as direct gate-verbs. A bare
-    // `env FOO=bar` is just env-assignment plumbing, not indirection.
-    const isIndirection = INDIRECTION_VERBS.has(seg.verb);
-
-    if (!isIndirection) {
-      const match = matchVerbAgainstGateList(seg.verb, seg.args);
-      if (match) return `gate-verb:${match}`;
-    }
-
-    // Indirection predicate: env/xargs ONLY match when a following arg is
-    // itself a gate-verb. Scan ALL args — env-assignments (`FOO=bar`,
-    // lowercase included) and flag tokens (`-i`, `--`, `-0`, `-I{}`) may be
-    // interposed before the wrapped command, so checking only args[0]
-    // misses `env FOO=bar bash -c …` and `xargs -0 bash`.
-    if (isIndirection) {
-      for (const arg of seg.args) {
-        if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) continue; // env-assignment
-        if (arg.startsWith("-")) continue; // flag (incl. `--`)
-        const argMatch = matchVerbAgainstGateList(basename(arg), []);
-        if (argMatch) {
-          return `gate-verb:${seg.verb}`;
-        }
-      }
-    }
-  }
-  return null;
-}
-
-// Returns the matched verb key (e.g. "zsh", "node") if the verb matches a
-// gate-verb entry; null otherwise. `args` is the segment's arg list (after
-// the verb) — used for verb+flag entries (e.g. node -e, python -c).
-// Indirection entries never match here directly; they only match via the
-// indirection predicate in matchGateVerb.
-// Flag matching covers three real forms: detached (`node -e`), attached
-// value (`node --eval=…`), and single-char clusters (`perl -ne`, `node -pe`).
-function matchVerbAgainstGateList(verb, args) {
-  if (!verb) return null;
-  const key = basename(verb);
-  for (const entry of GATE_VERBS) {
-    if (entry.verb !== key) continue;
-    if (entry.indirection) continue; // matched via indirection predicate only
-    if (entry.flags === null) return key; // verb-only entry
-    const hasFlag = entry.flags.some((f) =>
-      args.some(
-        (a) =>
-          a === f ||
-          a.startsWith(f + "=") ||
-          // single-char short flag inside a cluster (`-e` in `-ne`, `-pe`)
-          (f.length === 2 &&
-            f[0] === "-" &&
-            a.length > 2 &&
-            a[0] === "-" &&
-            a[1] !== "-" &&
-            a.slice(1).includes(f[1])),
-      ),
-    );
-    if (hasFlag) return key;
-  }
-  return null;
-}
 
 export function evaluateBudget(budgetData) {
   if (!budgetData || typeof budgetData !== "object") {
@@ -264,40 +109,6 @@ export function evaluateBudget(budgetData) {
     external_system: budgetData.external_system || null,
     resource: budgetData.resource || null,
   };
-}
-
-/**
- * Make the final gate decision.
- * Returns { decision: "ok" | "block" | "escalate", ... }
- */
-export function makeGateDecision(constraintMatch, observationStatus) {
-  // Side-effect imports always block — importing triggers vendor auth which
-  // reactivates cleared devices. No observation or budget state can override.
-  if (constraintMatch === "side-effect-import") {
-    return {
-      decision: "block",
-      reason: `Importing vnstock_data triggers vendor authentication and may reactivate cleared devices. Use importlib.util.find_spec() for safe checks.`,
-      constraint_type: constraintMatch,
-      hard_block: true,
-    };
-  }
-
-  // No constraint matched → ok
-  if (!constraintMatch) {
-    return { decision: "ok" };
-  }
-
-  // Constraint matched but no active observation → block
-  if (!observationStatus?.found) {
-    return {
-      decision: "block",
-      reason: `Constraint "${constraintMatch}" detected. No active observation found. Record an observation before proceeding.`,
-      observation_required: true,
-      constraint_type: constraintMatch,
-    };
-  }
-
-  return { decision: "ok" };
 }
 
 /**
