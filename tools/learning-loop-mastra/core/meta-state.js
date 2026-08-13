@@ -39,16 +39,9 @@ import { isSchemaBranchSupported, readLoopVersion } from "./worktree-version.js"
 // on the index path) instead of feeding a false baseline. check-grounding.js
 // does not import this module, so this edge is acyclic.
 import { TERMINAL_HASH_REGEX } from "./check-grounding.js";
-// Canonical index key form delegates to gate-logic.js#stripEvidenceAnchor so the
-// index key never diverges from the path checkGrounding resolves. gate-logic.js
-// already imports from this module (readRegistry), so this adds a second edge of
-// the same pre-existing meta-state ↔ gate-logic cycle. Both modules use the
-// import only inside functions (no top-level cross-module binding use), so the
-// cycle is runtime-safe — see the identical suppression in check-grounding.js.
-// Breaking the cycle (extracting stripEvidenceAnchor into a shared path lib) is
-// out of scope for this migration.
-// fallow-ignore-next-line circular-dependency
-import { stripEvidenceAnchor } from "./gate-logic.js";
+// Canonical index key form delegates to the shared evidence-reference
+// primitive so the index key never diverges from the path grounding syntax.
+import { stripEvidenceAnchor } from "./evidence-ref.js";
 // universal `assertinvariant` primitive
 // applied to every mutation op that owns an invariant the agent depends on
 // (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch).

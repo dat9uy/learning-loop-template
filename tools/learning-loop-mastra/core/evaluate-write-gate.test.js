@@ -300,6 +300,7 @@ test("promoted rule matching file path → escalate", () => {
     promoted_at: new Date().toISOString(),
     promoted_by: "test",
   });
+  writeFileSync(join(root, "test-rule-contract.js"), "export const ruleContract = true;\n");
   writeFileSync(join(root, "meta-state.jsonl"), rule + "\n");
   const result = evaluateWriteGate({ filePath: "tools/forbidden/secret.ts", root });
   assert.strictEqual(result.decision, "escalate");

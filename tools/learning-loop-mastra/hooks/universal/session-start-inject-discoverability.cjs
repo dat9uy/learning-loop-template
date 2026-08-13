@@ -178,13 +178,13 @@ function loadCoreHints() {
       throw new Error("forced core-hints loader failure (SESSION_START_FORCE_HINTS_FAIL=1)");
     }
     const { buildDiscoverabilityPointers, buildProcessPointers, buildHintIndex } = require("../../core/loop-introspect.js");
-    const { loadPromotedRules } = require("../../core/gate-logic.js");
+    const { loadGroundedPromotedRules } = require("../../core/gate-logic.js");
     // Session start is a warm-injection site: only startup-tier pointers are
     // auto-injected; on-demand rows stay discoverable via hint_index and are
     // fetched in full via loop_get_instruction. Full text is never written
     // to the sidecar. rulesById merges rule-derived process slugs into the
     // index so it is the complete discovery surface.
-    const rulesById = new Map(loadPromotedRules(process.cwd()).map((r) => [r.id, r]));
+    const rulesById = new Map(loadGroundedPromotedRules(process.cwd()).map((r) => [r.id, r]));
     return {
       discoverability_hints: buildDiscoverabilityPointers({ tier: "startup" }),
       discoverability_hints_source: "core",

@@ -13,19 +13,24 @@ const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
  * `meta-260615T1915Z-node-e-strip-bypass-risk`).
  */
 
-import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync, statSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
 import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
 import { classifyCommand } from "./command-classification.js";
-import { readRegistry, metaStateRuleEntrySchema, readFileIndex, toLegacyRuleView } from "./meta-state.js";
+import { readRegistry, readFileIndex, toLegacyRuleView } from "./meta-state.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 import { isOpen } from "./stale-view.js";
 import { CONSTRAINT_PATTERNS, GATE_VERBS, INDIRECTION_VERBS } from "./pattern-config.js";
+import { readRuleIndex } from "./rule-index.js";
+import { stripEvidenceAnchor } from "./evidence-ref.js";
+
+// fallow-ignore-next-line unused-export -- preserve the long-standing named export for existing Core consumers
+export { stripEvidenceAnchor };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -526,97 +531,55 @@ export function projectHasLearningLoopMcp(root) {
   }
 }
 
-/** Cache for promoted rules: { root -> { rules, mtime, size } } */
+/**
+ * One-way compatibility adapter for callers that still consume the old
+ * `enforcement` field. The Rule index owns reading, history collapse,
+ * validation, and I3 grounding; this adapter only applies the existing
+ * project-scope predicate and creates the legacy view.
+ */
 const promotedRulesCache = new Map();
+const groundedPromotedRulesCache = new Map();
 
 /**
- * Load active I2/I3 Rules from meta-state.jsonl and expose the temporary
- * legacy projection required by existing gate/hint callers.
- * Uses (mtime, size) tuple for cache invalidation (RT Finding 6).
+ * Temporary compatibility adapter for callers that still consume the old
+ * loader. Action-boundary and delivery consumers must use the grounded
+ * adapter below while callers migrate.
  */
+// fallow-ignore-next-line unused-export -- temporary one-way compatibility seam while legacy callers migrate
 export function loadPromotedRules(root) {
-  const path = join(root, "meta-state.jsonl");
-  if (!existsSync(path)) return [];
+  const index = readRuleIndex(root, { includeUnresolvedI3: true });
+  return loadPromotedRulesView(root, index, promotedRulesCache);
+}
 
-  const stats = statSync(path);
-  const mtime = stats.mtime.getTime();
-  const size = stats.size;
+/** Read the validated, grounded Rule projection for action and delivery use. */
+export function loadGroundedPromotedRules(root) {
+  const index = readRuleIndex(root);
+  return loadPromotedRulesView(root, index, groundedPromotedRulesCache);
+}
 
-  const cached = promotedRulesCache.get(root);
-  if (cached && cached.mtime === mtime && cached.size === size) {
-    return cached.rules;
-  }
+function loadPromotedRulesView(root, index, cache) {
+  const cached = cache.get(root);
+  if (cached && cached.index === index) return cached.rules;
 
-  let entries = [];
-  let raw;
-  try {
-    raw = readFileSync(path, "utf8");
-  } catch {
-    return [];
-  }
-  entries = raw.split("\n").flatMap((line, index) => {
-    if (line.trim() === "") return [];
-    try {
-      const parsed = JSON.parse(line);
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        console.warn(`Rule registry line ${index + 1}: non-object JSON, skipping.`);
-        return [];
-      }
-      return [parsed];
-    } catch (error) {
-      console.warn(`Rule registry line ${index + 1}: malformed JSON, skipping. ${error.message}`);
-      return [];
-    }
-  });
-
-  // Only first-class entry_kind="rule" entries are accepted.
-  // Legacy finding entries with promoted_to_rule were removed; all promoted
-  // rules are now standalone rule entries.
-  //
-  // dedupe to max-version per id BEFORE
-  // filtering by status. Without this dedupe, a rule that has been
-  // deactivated (status: inactive on the new max-version line) would ALSO
-  // show its prior active v0 line in the filter result, falsely reporting
-  // the rule as active. The projection in core/read-registry-cache.js is
-  // the canonical dedupe path; loadPromotedRules reads the raw file and
-  // must mirror the projection locally (same algorithm, no full-rewrite).
-  const seen = new Map();
-  for (const entry of entries) {
-    if (entry.entry_kind !== "rule") continue;
-    const prior = seen.get(entry.id);
-    if (!prior) { seen.set(entry.id, entry); continue; }
-    const priorV = prior.version ?? 0;
-    const nextV = entry.version ?? 0;
-    if (nextV > priorV) { seen.set(entry.id, entry); continue; }
-    if (nextV === priorV) {
-      const priorT = prior.created_at ?? "";
-      const nextT = entry.created_at ?? "";
-      if (nextT > priorT) seen.set(entry.id, entry);
-    }
-  }
-  let rules = Array.from(seen.values()).filter((e) => e.status === "active");
-
-  // Schema validation: a malformed rule entry (typo, missing field,
-  // invalid pattern_type) would crash applyPromotedRules. Validate
-  // each entry and warn-and-skip on invalid. This closes the gap that
-  // direct file appends (bypassing writeEntry's safeParse) would otherwise
-  // create (review finding F-3).
-  rules = rules.map((r) => {
-    const validation = metaStateRuleEntrySchema.safeParse(r);
-    if (!validation.success) {
+  for (const diagnostic of index.diagnostics) {
+    if (diagnostic.code === "malformed_registry_line") {
       console.warn(
-        `Rule ${r.id ?? "<unknown>"}: schema validation failed, skipping. ` +
-          `Errors: ${validation.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+        `Rule registry line ${diagnostic.line}: malformed JSON, skipping. ${diagnostic.message}`,
       );
-      return null;
+    } else if (diagnostic.code === "invalid_rule") {
+      console.warn(
+        `Rule ${diagnostic.rule_id ?? "<unknown>"}: schema validation failed, skipping. ` +
+          `Errors: ${diagnostic.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ")}`,
+      );
+    } else if (diagnostic.code === "grounding_unresolved") {
+      console.warn(
+        `Rule ${diagnostic.rule_id ?? "<unknown>"}: I3 evidence grounding unresolved ` +
+          `(${diagnostic.grounding.reason ?? "unknown"}).`,
+      );
     }
-    // `version` is registry metadata rather than a Rule-schema field. Keep it
-    // on the compatibility projection so callers that inspect the latest
-    // version still observe the append-only history number.
-    return r.version === undefined ? validation.data : { ...validation.data, version: r.version };
-  }).filter(Boolean);
+  }
 
-  rules = rules.filter((r) => {
+  const rules = [...index.i2, ...index.i3].filter((r) => {
     const predicate = r.scope_predicate;
     if (!predicate || predicate === "none") return true;
     if (predicate === "project_has_learning_loop_mcp") {
@@ -625,12 +588,8 @@ export function loadPromotedRules(root) {
     console.warn(`Rule ${r.id}: unknown scope_predicate "${predicate}"`);
     return true;
   });
-
-  // Existing gate/hint callers still consume `enforcement`. Keep that view
-  // one-way and local to this legacy loader; new callers should consume the
-  // canonical Rule records from the registry directly.
   const legacyRules = rules.map(toLegacyRuleView);
-  promotedRulesCache.set(root, { rules: legacyRules, mtime, size });
+  cache.set(root, { index, rules: legacyRules });
   return legacyRules;
 }
 
@@ -658,21 +617,6 @@ export function loadPromotedRules(root) {
  * meta-260607T1625Z-gate-line-suffix-not-stripped-from-evidence-code-ref
  * for the gate-bug this helper closes.
  */
-export function stripEvidenceAnchor(codeRef) {
-  if (typeof codeRef !== "string") return codeRef;
-  // Strip #anchor suffix first (identifier chars: word, dot, dollar, dash, underscore, space)
-  // so a compound `path:start-end#anchor` reduces to `path:start-end` before the next step.
-  let stripped = codeRef.replace(/#[\w$.\s-]+$/, "");
-  // Strip :line or :start-end range suffix (digits only — keeps Windows drive letters safe)
-  stripped = stripped.replace(/:\d+(?:-\d+)?$/, "");
-  // Strip dotted JSON key-path suffix (e.g., `package.json:simple-git-hooks.pre-commit`).
-  // Requires at least one dot to distinguish a key-path from a single token; version-like
-  // suffixes (`:1.0.0`) also match (digits are word chars) but collapsing them to the bare
-  // file path is benign — version literals carry no grounding meaning.
-  stripped = stripped.replace(/:[\w-]+(?:\.[\w-]+)+$/, "");
-  return stripped;
-}
-
 // Build the machine-readable `recovery` list for an orphan-evidence rejection.
 // Each step names the tool + args the agent should run next and why — the
 // remediation that the structured rejection otherwise hides (finding

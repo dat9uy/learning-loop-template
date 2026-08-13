@@ -1,6 +1,6 @@
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
@@ -12,6 +12,8 @@ function setupFixture() {
   const root = mkdtempSync(join(tmpdir(), "loop-describe-"));
   process.env.GATE_ROOT = root;
   writeFileSync(join(root, "meta-state.jsonl"), "", "utf8");
+  mkdirSync(join(root, "tools/learning-loop-mastra/core"), { recursive: true });
+  writeFileSync(join(root, "tools/learning-loop-mastra/core/gate-logic.js"), "export const contract = true;\n");
   return root;
 }
 

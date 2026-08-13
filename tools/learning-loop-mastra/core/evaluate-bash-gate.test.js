@@ -281,6 +281,7 @@ test("promoted regex rule matching command → escalate", () => {
     promoted_at: new Date().toISOString(),
     promoted_by: "test",
   });
+  writeFileSync(join(root, "test-rule-contract.js"), "export const ruleContract = true;\n");
   writeFileSync(join(root, "meta-state.jsonl"), rule + "\n");
   const result = evaluateBashGate({ command: "docker run ubuntu", root });
   assert.strictEqual(result.decision, "escalate");
@@ -309,6 +310,7 @@ function writeNoRawStdoutRule(root) {
     promoted_at: new Date().toISOString(),
     promoted_by: "test",
   });
+  writeFileSync(join(root, "test-rule-contract.js"), "export const ruleContract = true;\n");
   writeFileSync(join(root, "meta-state.jsonl"), rule + "\n");
 }
 

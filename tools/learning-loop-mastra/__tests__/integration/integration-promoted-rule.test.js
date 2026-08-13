@@ -203,6 +203,7 @@ describe("integration: promoted rule end-to-end", () => {
     process.env.GATE_ROOT = tempDir;
     assert.strictEqual(resolveRoot(), tempDir);
     try {
+      writeFileSync(join(tempDir, "test-rule-contract.js"), "export const contract = true;\n");
       const report = await metaStateReportTool.handler({
         category: "loop-anti-pattern",
         subtype: "new-artifact-type",

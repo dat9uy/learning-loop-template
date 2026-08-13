@@ -5,7 +5,7 @@ import { isOpen } from "../../core/stale-view.js";
 import { canonicalIndexKey, upsertFileIndexEntry } from "../../core/meta-state.js";
 import { computeFileHash } from "../../core/check-grounding.js";
 import { resolveSafePath, PathContainmentError } from "../../core/path-containment.js";
-import { stripEvidenceAnchor } from "../../core/gate-logic.js";
+import { stripEvidenceAnchor } from "../../core/evidence-ref.js";
 import { replyWithLog, loadEntry, appendGateLog } from "../lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

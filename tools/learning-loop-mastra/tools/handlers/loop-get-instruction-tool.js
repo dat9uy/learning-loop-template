@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { listHints, findHintBySlug, buildProcessView, resolveHintText } from "../../core/hint-registry.js";
-import { loadPromotedRules } from "../../core/gate-logic.js";
+import { loadGroundedPromotedRules } from "../../core/gate-logic.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 /**
@@ -82,7 +82,7 @@ export const loopGetInstructionTool = {
     const keys = Array.isArray(key) ? key : [key];
     // One rule load per call, resolved through the canonical root (GATE_ROOT
     // override in tests) — never from process.cwd().
-    const rulesById = new Map(loadPromotedRules(resolveRoot()).map((r) => [r.id, r]));
+    const rulesById = new Map(loadGroundedPromotedRules(resolveRoot()).map((r) => [r.id, r]));
     const view = buildProcessView({ rulesById });
     const discoverability = listHints({ kind: "discoverability" });
     const results = [];

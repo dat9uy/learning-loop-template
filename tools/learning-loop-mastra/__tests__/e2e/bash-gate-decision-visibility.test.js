@@ -62,6 +62,7 @@ await test("block decision: exit 0 + permissionDecision deny envelope agent can 
 });
 
 await test("escalate decision: exit 0 + permissionDecision deny envelope agent can read", () => {
+  writeFileSync(join(root, "test-rule-contract.js"), "export const contract = true;\n");
   const rule = {
     entry_kind: "rule",
     id: "rule-test-escalate",
@@ -130,6 +131,7 @@ await test("formatHookDecision omits permissionDecision for ok decisions", () =>
 const NO_RAW_STDOUT_PATTERN = "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b";
 
 function writeNoRawStdoutRule(root) {
+  writeFileSync(join(root, "test-rule-contract.js"), "export const contract = true;\n");
   const rule = {
     entry_kind: "rule",
     id: "rule-no-raw-stdout-vitest",

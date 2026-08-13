@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 import { isOpen, isStaleView } from "./stale-view.js";
-import { stripEvidenceAnchor } from "./gate-logic.js";
+import { stripEvidenceAnchor } from "./evidence-ref.js";
 
 /**
  * Source-of-truth enums. Export so introspection layers (e.g. core/loop-introspect.js

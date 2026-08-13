@@ -12,7 +12,7 @@ import {
   findProjectRoot,
   inferSurface,
   readPreflightMarker,
-  loadPromotedRules,
+  loadGroundedPromotedRules,
   applyPromotedRules,
 } from "./gate-logic.js";
 import { SURFACES, getAllCoordinationPaths, getAllSurfacePaths } from "./surfaces.js";
@@ -423,7 +423,7 @@ function blockResult(rule, filePath) {
 }
 
 function applyPromotedRulesCheck(relPath, resolvedRoot) {
-  const promotedRules = loadPromotedRules(resolvedRoot);
+  const promotedRules = loadGroundedPromotedRules(resolvedRoot);
   const promotedCheck = applyPromotedRules(null, relPath, promotedRules);
   if (promotedCheck.decision === "escalate") return promotedCheck;
   return { decision: "ok" };

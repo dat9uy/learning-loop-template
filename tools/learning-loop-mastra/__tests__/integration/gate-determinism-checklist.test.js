@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { describe, test } from "vitest";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -32,6 +32,12 @@ async function importLoopIntrospect() {
 async function importCheckGrounding() {
   const groundingPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/check-grounding.js")).href;
   return await import(groundingPath);
+}
+
+function writeResolutionEvidence(root) {
+  const evidencePath = join(root, "tools/learning-loop-mastra/core/gate-logic.js");
+  mkdirSync(join(root, "tools/learning-loop-mastra/core"), { recursive: true });
+  writeFileSync(evidencePath, "export function checkResolutionEvidence() {}\n");
 }
 
 describe("checkResolutionEvidence", () => {
@@ -600,6 +606,7 @@ describe("applyPromotedRules determinism-checklist", () => {
 describe("meta_state_resolve consultation", () => {
   test("returns resolution_evidence_required when rule is unsatisfied", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    writeResolutionEvidence(tempRoot);
     const core = await importCore(tempRoot);
     const targetId = core.generateId("target-finding");
     const blockingId = core.generateId("mcp-client-loading-missing");
@@ -679,6 +686,7 @@ describe("meta_state_resolve consultation", () => {
 
   test("allows resolution when rule is satisfied", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    writeResolutionEvidence(tempRoot);
     const core = await importCore(tempRoot);
     const targetId = core.generateId("target-finding");
     await core.writeEntry(tempRoot, {
@@ -736,6 +744,7 @@ describe("meta_state_resolve consultation", () => {
 
   test("does not block when rule targets a different id", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    writeResolutionEvidence(tempRoot);
     const core = await importCore(tempRoot);
     const targetId = core.generateId("target-finding");
     const otherId = core.generateId("other-finding");
@@ -796,12 +805,13 @@ describe("meta_state_resolve consultation", () => {
 describe("listPromotedRules filter", () => {
   test("excludes determinism-checklist rules", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    writeFileSync(join(tempRoot, "test-rule-contract.js"), "export const contract = true;\n");
     const regexRule = {
       id: "rule-regex",
       entry_kind: "rule",
       origin: "meta-test-origin",
       internalization_level: "I3",
-      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
+      evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "test",
       description: "Test regex rule for listPromotedRules filter regression coverage",
@@ -814,7 +824,7 @@ describe("listPromotedRules filter", () => {
       entry_kind: "rule",
       origin: "meta-test-origin",
       internalization_level: "I3",
-      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#checkResolutionEvidence",
+      evidence_code_ref: "test-rule-contract.js",
       pattern_type: "determinism-checklist",
       pattern: "test-session-id",
       description: "Test resolution rule for listPromotedRules filter regression coverage",

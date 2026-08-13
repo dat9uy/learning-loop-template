@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { writeGateOverride } from "../../core/gate-override.js";
-import { loadPromotedRules } from "../../core/gate-logic.js";
+import { loadGroundedPromotedRules } from "../../core/gate-logic.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const schemaShape = {
@@ -18,7 +18,7 @@ export const gateOverrideTool = {
   handler: async (raw) => {
     const { rule_id, ttl_seconds, operator_note } = inputSchema.parse(raw);
     const root = resolveRoot();
-    const rules = loadPromotedRules(root);
+    const rules = loadGroundedPromotedRules(root);
     if (!rules.find((r) => r.id === rule_id)) {
       return {
         content: [{ type: "text", text: JSON.stringify({ error: `unknown rule_id: ${rule_id}` }) }],

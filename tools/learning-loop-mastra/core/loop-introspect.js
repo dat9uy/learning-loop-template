@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readRegistry, META_STATE_FINDING_CATEGORIES, readFileIndex, canonicalIndexKey, toLegacyRuleView } from "./meta-state.js";
-import { loadPromotedRules } from "./gate-logic.js";
+import { loadGroundedPromotedRules } from "./gate-logic.js";
 import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
 import { isOpen, isStaleView, computeCurrentHashes } from "./stale-view.js";
 import {
@@ -177,7 +177,7 @@ function resolveRuleMap(rulesById) {
   if (rulesById) return rulesById;
   const projectRoot = process.cwd();
   const ruleMap = new Map();
-  for (const r of loadPromotedRules(projectRoot)) ruleMap.set(r.id, r);
+  for (const r of loadGroundedPromotedRules(projectRoot)) ruleMap.set(r.id, r);
   return ruleMap;
 }
 
@@ -557,7 +557,7 @@ export function listAllFindings(root, { categories } = {}) {
  * legacy view required by existing gate/hint consumers.
  */
 export function listPromotedRules(root) {
-  const rules = loadPromotedRules(root);
+  const rules = loadGroundedPromotedRules(root);
   return rules
     .filter((r) => r.pattern_type !== "determinism-checklist")
     .map((r) => ({
