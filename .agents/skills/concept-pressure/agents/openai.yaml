@@ -1,0 +1,4 @@
+interface:
+  display_name: "Concept Pressure"
+  short_description: "Evaluate new L1 vocabulary and I3 meaning"
+  default_prompt: "Use $concept-pressure to evaluate this proposed L1 term, value, state, or field before accepting it."

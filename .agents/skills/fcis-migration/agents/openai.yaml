@@ -1,0 +1,4 @@
+interface:
+  display_name: "FCIS Migration"
+  short_description: "Plan migrations around a pure functional core"
+  default_prompt: "Use $fcis-migration to plan this migration while preserving the Functional Core / Imperative Shell invariant."
