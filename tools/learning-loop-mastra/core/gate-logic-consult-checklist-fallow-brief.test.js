@@ -11,7 +11,7 @@ const RULE_ID = "rule-fallow-brief-on-gate-failure";
 await test("agent-checklist rule schema is valid for rule-fallow-brief-on-gate-failure (1-item checklist)", () => {
   // The description below is a custom value chosen for clarity in this test;
   // it does NOT match the auto-generated form that meta_state_promote_rule
-  // would produce (which uses `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`).
+  // would produce (which uses the canonical I2/I3 Rule description format).
   // This test exercises the schema independently of the tool, so any string
   // that satisfies metaStateRuleEntrySchema#description is acceptable here.
   // Mirrors gate-logic-agent-checklist-tool-integration.test.js:19-37 pattern.
@@ -19,7 +19,7 @@ await test("agent-checklist rule schema is valid for rule-fallow-brief-on-gate-f
     entry_kind: "rule",
     id: RULE_ID,
     origin: "meta-260712T0730Z-fallow-mcp-runtime-needs-format-json",
-    enforcement: "agent",
+    internalization_level: "I2",
     pattern_type: "agent-checklist",
     pattern: JSON.stringify({
       version: 1,

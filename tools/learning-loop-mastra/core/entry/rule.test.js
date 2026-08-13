@@ -7,7 +7,7 @@ const FIXTURE = {
   id: "rule-test-rule",
   entry_kind: "rule",
   origin: "meta-test-finding",
-  enforcement: "gate",
+  internalization_level: "I3",
   pattern_type: "regex",
   pattern: "^git push",
   scope_predicate: "none",
@@ -17,6 +17,7 @@ const FIXTURE = {
   status: "active",
   promoted_at: "2026-06-27T00:00:00Z",
   promoted_by: "operator",
+  evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
   created_at: "2026-06-27T00:00:00Z",
 };
 

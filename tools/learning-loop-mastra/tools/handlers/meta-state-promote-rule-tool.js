@@ -3,9 +3,8 @@ import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import {
   readRegistry,
-  writeEntry,
+  writeRuleWithOriginCitationAtomic,
   updateEntry,
-  appendCitationEntryAtomic,
 } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
@@ -13,13 +12,14 @@ import { matchesCliTransport } from "../../core/cli-self-match.js";
 
 export const metaStatePromoteRuleTool = {
   name: "meta_state_promote_rule",
-  description: "Promote a loop-anti-pattern finding to an active gate or agent rule. Writes a new entry_kind:\"rule\" entry AND emits a citation row `{source: rule, target: finding, rationale:\"origin\"}` (the bespoke `origin` field was collapsed into the citation log; the field stays inert-historical on disk but is no longer written). Resets the finding status to `open`, and accepts agent-checklist `hint_text`/`hint_suggestion`/`hint_slug`/`hint_order`.",
+  description: "Promote a loop-anti-pattern finding to an active I2 or I3 Rule. Writes a new entry_kind:\"rule\" entry AND emits a citation row `{source: rule, target: finding, rationale:\"origin\"}`. I2 Rules are delivered for agent judgment; I3 Rules are enforced at an action boundary and require evidence_code_ref. Resets the finding status to `open`.",
   schema: {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
-    enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced (canonical: gate or agent)"),
+    internalization_level: z.enum(["I2", "I3"]).describe("Canonical Rule contract: I2 is delivered for agent judgment; I3 is enforced at an action boundary"),
     pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language (determinism-checklist is a resolve consult-gate, not a command-path match)"),
     pattern: z.string().describe("Pattern string (regex body, glob path, or finding id for determinism-checklist; agent-checklist requires a JSON blob {version, items:[{id, description}]})"),
+    evidence_code_ref: z.string().min(1).optional().describe("Required for I3 Rules; code location that grounds the deterministic consumer"),
     scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional project scope predicate"),
     // optional tool/surface scope that
     // narrows the rule's firing surface without regex hand-curation. Parallel
@@ -34,7 +34,7 @@ export const metaStatePromoteRuleTool = {
     }).optional().describe("Optional scope-narrowing block; persisted on the rule entry"),
     // Rule-derived process hints. Required when pattern_type === "agent-checklist"
     // (the rule owns the SessionStart-injected prose). Optional otherwise —
-    // gate-enforced rules don't need injection prose. The hint-renderer
+    // I3 action-boundary Rules don't need injection prose. The hint-renderer
     // treats missing hint_text on an agent-checklist rule as skip+warn.
     hint_text: z.string().min(20).optional()
       .describe("Agent-checklist hint text (min 20 chars); required for agent-checklist."),
@@ -53,8 +53,10 @@ export const metaStatePromoteRuleTool = {
     sample_commands: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample commands to test against (for regex preview)"),
     sample_paths: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample paths to test against (for glob preview)"),
   },
-  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, applies_to, hint_text, hint_order, hint_suggestion, hint_slug, preview, sample_commands, sample_paths }) => {
+  handler: async ({ id, rule_id, internalization_level, pattern_type, pattern, evidence_code_ref, scope_predicate, applies_to, hint_text, hint_order, hint_suggestion, hint_slug, preview, sample_commands, sample_paths }) => {
     const root = resolveRoot();
+    const resolvedInternalizationLevel = internalization_level;
+    const resolvedEvidenceCodeRef = evidence_code_ref;
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
 
@@ -256,7 +258,7 @@ export const metaStatePromoteRuleTool = {
         rule_id,
         pattern,
         message:
-          "Pattern matches a canonical CLI invocation shape; promoting this rule would intercept the loop's own CLI transport (`node bin/loop.mjs ...`) and brick every record operation that flows through the CLI. Pick a different pattern (e.g. narrow to a specific tool call), or use `enforcement: 'agent'` for advisory rules.",
+          "Pattern matches a canonical CLI invocation shape; promoting this rule would intercept the loop's own CLI transport (`node bin/loop.mjs ...`) and brick every record operation that flows through the CLI. Pick a different pattern (e.g. narrow to a specific tool call), or use `internalization_level: 'I2'` for an agent-judgment Rule.",
       };
       appendGateLog(root, {
         timestamp: new Date().toISOString(),
@@ -344,6 +346,19 @@ export const metaStatePromoteRuleTool = {
       }
     }
 
+    if (!preview && resolvedInternalizationLevel === "I3" && (typeof resolvedEvidenceCodeRef !== "string" || resolvedEvidenceCodeRef.trim().length === 0)) {
+      const result = {
+        promoted: false,
+        reason: "evidence_code_ref_required_for_i3",
+        id,
+        rule_id,
+        internalization_level: resolvedInternalizationLevel,
+        message: "I3 Rules require a non-empty evidence_code_ref pointing at the enforcing implementation.",
+      };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_promote_rule", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
     // Write a new entry_kind: "rule" entry (not a mutated finding). The
     // on-record `origin` field is removed from the write path — the canonical edge
     // (rule → finding) is now a citation row appended via
@@ -351,9 +366,10 @@ export const metaStatePromoteRuleTool = {
     const ruleEntry = {
       id: rule_id,
       entry_kind: "rule",
-      enforcement,
+      internalization_level: resolvedInternalizationLevel,
       pattern_type,
       pattern,
+      ...(resolvedInternalizationLevel === "I3" && { evidence_code_ref: resolvedEvidenceCodeRef }),
       ...(scope_predicate && scope_predicate !== "none" && { scope_predicate }),
       ...(pattern_type === "determinism-checklist" && { applies_to_resolution: pattern }),
       ...(applies_to && { applies_to }),
@@ -361,29 +377,15 @@ export const metaStatePromoteRuleTool = {
       ...(hint_suggestion && { hint_suggestion }),
       ...(hint_order !== undefined && { hint_order }),
       ...(hint_slug && { hint_slug }),
-      description: `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`,
+      description: `${resolvedInternalizationLevel === "I3" ? "Action-boundary Rule" : "Delivered Rule"}: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`,
       status: "active",
       promoted_at: now,
       promoted_by: "operator",
     };
 
-    await writeEntry(root, ruleEntry);
-
-    // Emit the origin citation row. `source: rule, target:
-    // finding, rationale:"origin"` is the canonical promotion edge.
-    // Read sites source from `citations_inverse`. The on-record `origin`
-    // field stays `.optional()` (inert-historical) but is no longer
-    // written or indexed.
-    appendCitationEntryAtomic(root, {
-      id: `citation-origin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      entry_kind: "citation",
-      source: rule_id,
-      target: id,
-      rationale: "origin",
-      recorded_at: now,
-      recorded_by: "operator",
-      status: "active",
-    });
+    // Core owns the locked Rule + origin-citation transaction. The on-record
+    // `origin` field stays inert-historical and is not written or indexed.
+    await writeRuleWithOriginCitationAtomic(root, ruleEntry, id);
 
     // the no-op short-circuit makes this
     // pre-call guard valuable. Previously this code unconditionally called
@@ -416,7 +418,7 @@ export const metaStatePromoteRuleTool = {
       rule_id,
       rule_entry_id: rule_id,
       source_finding_id: id,
-      enforcement,
+      internalization_level: resolvedInternalizationLevel,
       pattern_type,
       pattern,
     };

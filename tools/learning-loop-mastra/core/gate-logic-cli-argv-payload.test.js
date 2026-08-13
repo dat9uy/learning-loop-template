@@ -40,7 +40,7 @@ const VITEST_RULE = {
   id: "rule-no-raw-stdout-vitest",
   entry_kind: "rule",
   status: "active",
-  enforcement: "gate",
+  internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
   pattern_type: "regex",
   // Live rule pattern (meta-state v2, refined to close the head loophole).
   pattern: "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b",

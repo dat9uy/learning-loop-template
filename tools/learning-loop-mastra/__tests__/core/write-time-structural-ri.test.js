@@ -85,7 +85,8 @@ function makeRule(origin = "meta-f1") {
     id: "rule-r1",
     entry_kind: "rule",
     origin,
-    enforcement: "gate",
+    internalization_level: "I3",
+    evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
     pattern_type: "regex",
     pattern: "^git push",
     description: "Phase 4 RI test rule — minimum 20 chars for schema.",
@@ -167,6 +168,7 @@ test("writeEntry RI-EXEMPTS applies_to_resolution (no advisory)", async () => {
   // Update rule with applies_to_resolution pointing at a non-existent pattern.
   const result = await updateEntry(root, "rule-r1", {
     applies_to_resolution: "test-session-123",
+    supersedes: "rule-r0",
   });
   assert.strictEqual(result, true, "applies_to_resolution is RI-exempt");
   assert.strictEqual(structuralRiWarnings(root).length, 0,
@@ -180,6 +182,7 @@ test("writeEntry accepts `*` wildcard for applies_to_resolution (no advisory)", 
   await writeEntry(root, makeRule("meta-f1"));
   const result = await updateEntry(root, "rule-r1", {
     applies_to_resolution: "*",
+    supersedes: "rule-r0",
   });
   assert.strictEqual(result, true);
   assert.strictEqual(structuralRiWarnings(root).length, 0);

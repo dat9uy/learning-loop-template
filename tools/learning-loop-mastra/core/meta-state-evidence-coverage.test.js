@@ -77,7 +77,7 @@ test("T-3: 3 of 4 union branches expose evidence_code_ref top-level", () => {
     entry_kind: "rule",
     id: "rule-test-evidence-coverage",
     origin: "meta-260607T0008Z-dual-field-schema-risk",
-    enforcement: "agent",
+    internalization_level: "I2",
     pattern_type: "regex",
     pattern: "test",
     description: "A test rule for evidence coverage test",

@@ -45,7 +45,8 @@ function makeRule(overrides = {}) {
   return {
     id: "rule-r1",
     entry_kind: "rule",
-    enforcement: "gate",
+    internalization_level: "I3",
+    evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
     pattern_type: "regex",
     pattern: "^git push",
     description: "Characterization test rule fixture used by Phase 1 oracle.",

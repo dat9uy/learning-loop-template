@@ -293,7 +293,7 @@ test("promoted rule matching file path → escalate", () => {
     entry_kind: "rule",
     origin: "meta-test-origin",
     status: "active",
-    enforcement: "gate",
+    internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
     pattern_type: "glob",
     pattern: "tools/forbidden/**",
     description: "Test rule blocking tools/forbidden/** paths",

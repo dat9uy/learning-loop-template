@@ -91,6 +91,64 @@ describe("meta_state_batch", () => {
     assert.match(tombstoned.archived_reason, /^deleted:/);
   });
 
+  it("Rule updates validate I2/I3 obligations and atomically retain supersession citations", async () => {
+    const targetRule = {
+      id: "rule-batch-material-target",
+      entry_kind: "rule",
+      internalization_level: "I3",
+      evidence_code_ref: "test-rule-contract.js",
+      pattern_type: "regex",
+      pattern: "batch-target",
+      description: "Target Rule for batch supersession coverage.",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+    };
+    const sourceRule = {
+      id: "rule-batch-material-source",
+      entry_kind: "rule",
+      internalization_level: "I3",
+      evidence_code_ref: "test-rule-contract.js",
+      pattern_type: "regex",
+      pattern: "batch-source",
+      description: "Source Rule for batch supersession coverage.",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+    };
+    let result = JSON.parse((await metaStateBatchTool.handler({
+      operations: [
+        { op: "write", entry: targetRule },
+        { op: "write", entry: sourceRule },
+      ],
+    })).content[0].text);
+    assert.equal(result.applied, 2);
+
+    result = JSON.parse((await metaStateBatchTool.handler({
+      operations: [{ op: "update", id: sourceRule.id, pattern: "batch-source-changed" }],
+    })).content[0].text);
+    assert.equal(result.applied, 0);
+    assert.equal(result.failed_at, 0);
+    assert.equal(result.reason, "supersedes_required");
+    assert.equal(readRegistry(root).find((entry) => entry.id === sourceRule.id).version, 0);
+
+    result = JSON.parse((await metaStateBatchTool.handler({
+      operations: [{
+        op: "update",
+        id: sourceRule.id,
+        pattern: "batch-source-changed",
+        supersedes: targetRule.id,
+      }],
+    })).content[0].text);
+    assert.equal(result.applied, 1);
+    assert.equal(readRegistry(root).find((entry) => entry.id === sourceRule.id).version, 1);
+    const citations = readFileSync(join(root, "citations.jsonl"), "utf8").trim().split("\n").filter(Boolean).map(JSON.parse);
+    assert.ok(citations.some((citation) =>
+      citation.source === sourceRule.id
+      && citation.target === targetRule.id
+      && citation.rationale === "supersedes"));
+  });
+
   it("archive op supported", async () => {
     const ops = [
       {

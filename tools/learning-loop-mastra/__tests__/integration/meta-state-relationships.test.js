@@ -16,7 +16,8 @@ function seedOriginCitationFixture(tempRoot) {
   const rule = {
     id: "rule-promoted-from-finding",
     entry_kind: "rule",
-    enforcement: "gate",
+    internalization_level: "I3",
+    evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
     pattern_type: "regex",
     pattern: "loop-anti-pattern",
     description: "A rule promoted from a finding to gate the loop.",

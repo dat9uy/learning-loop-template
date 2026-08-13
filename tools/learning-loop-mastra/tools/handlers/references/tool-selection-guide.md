@@ -30,7 +30,7 @@ definition (DRY).
 | Re-hash a cited path's code after a refactor (re-grounds all anchored findings) | `meta_state_refresh_file_index` |
 | Query the registry (filterable) | `meta_state_list` |
 | Update an existing entry (with CAS) | `meta_state_patch` |
-| Promote a finding into a gate-enforced rule | `meta_state_promote_rule` |
+| Promote a finding into an I2/I3 Rule | `meta_state_promote_rule` |
 | Aggregate drift across the registry | `meta_state_query_drift` |
 | Archive stale findings (structural fix for size overruns) | `meta_state_archive` |
 | Atomic batch CRUD (cap 500 ops) | `meta_state_batch` |

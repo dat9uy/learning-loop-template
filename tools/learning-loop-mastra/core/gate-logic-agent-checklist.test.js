@@ -8,7 +8,7 @@ await test("agent-checklist rule loads through schema and is a no-op for applyPr
     entry_kind: "rule",
     id: "rule-runtime-agnostic-features",
     origin: "meta-20260615T0000Z-agnostic",
-    enforcement: "agent",
+    internalization_level: "I2",
     pattern_type: "agent-checklist",
     pattern: JSON.stringify({ version: 1, items: [{ id: "shim-not-fork", description: "Use shim-not-fork and cross-surface helpers" }] }),
     description: "New features must follow the runtime-agnostic checklist (shim-not-fork + cross-surface helpers).",

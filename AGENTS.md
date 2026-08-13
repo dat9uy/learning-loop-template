@@ -67,7 +67,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 |---|---|---|
 | `finding` | A loop-self-diagnostic observation. No live TTL (`expires_at` is vestigial); `stale` is a derived view, not a status. Close findings with `meta_state_resolve` — the only closure to offer (`meta_state_supersede` is an internal resolve flavor that also emits a change-log citation row; not an option to offer). `accepted` is a standing trade-off (`meta_state_accept`). | open → accepted \| resolved \| archived |
 | `change-log` | An immutable audit record of a system change. No TTL. | Forever |
-| `rule` | A promoted invariant the loop enforces. Two enforcement classes: `gate` (hard-block) and `agent` (consult). | Forever (until superseded) |
+| `rule` | A promoted invariant. `I2` is deterministically delivered for agent judgment; `I3` is deterministically consumed at an action boundary and requires a grounded `evidence_code_ref`. | Forever (until superseded) |
 | `loop-design` | A deferred design that will create or modify rules, schemas, or tools. | Active → inactive (when shipped) → archived |
 
 **The product surface (decisions, experiments, risks, observations, capability records, vendor records, claim records, index entries, resource budgets) is unbound.** The Bridge 5 codegen engine has the ability to generate product-surface records; the loop has not committed to binding. The current `capability`, `index-entry`, `claim`, `resource-budget`, `observation` schemas are design exploration, not contracts. **All product-surface record CRUD is paused; no new product records are generated, validated, or migrated.** Legacy product records in `records/<vendor>/` are archived, not deleted.
@@ -172,7 +172,7 @@ The mutation region is wrapped in `flock` + an `ERR` trap that restores BOTH the
 
 Read-only, fail-open (any internal error → warning line, exit 0). Common case < 1s, worst case ≤ ~5s (3s probe + 2s reachability). Wired for `.claude` only alongside the merge-driver preflight hook (§4); `.factory` and `.mastracode` deferred to follow-up (the `.factory` adapter is hardcoded to the inject-* hooks, so a non-trivial extension is required before the preflight can dispatch through it).
 
-**Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to skip local verification or bypass the pre-commit/commit-msg hooks under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk (the full gate still runs on CI regardless). A promoted gate rule detecting the bypass itself is the mitigation (proposed via `meta_state_promote_rule` for operator decision).
+**Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to skip local verification or bypass the pre-commit/commit-msg hooks under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk (the full gate still runs on CI regardless). An I3 Rule detecting the bypass itself is the mitigation (proposed via `meta_state_promote_rule` for operator decision).
 
 ---
 

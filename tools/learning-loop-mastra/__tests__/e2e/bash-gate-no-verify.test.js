@@ -42,7 +42,7 @@ function writeRule() {
     JSON.stringify({
       entry_kind: "rule",
       id: RULE_ID,
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: PATTERN,
       description: "Deny git hook bypass flags and destructive hooksPath mutations.",

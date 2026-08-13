@@ -114,7 +114,7 @@ describe("meta_state_resolve change-log immutability", () => {
         id: "rule-test-resolve-rejected",
         entry_kind: "rule",
         origin: "meta-260602T0000Z-test-rule",
-        enforcement: "gate",
+        internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
         pattern_type: "glob",
         pattern: "test/**",
         description: "Test rule that must not be resolved via meta_state_resolve.",

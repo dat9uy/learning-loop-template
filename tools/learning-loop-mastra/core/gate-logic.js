@@ -20,7 +20,7 @@ import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
 import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
 import { classifyCommand } from "./command-classification.js";
-import { readRegistry, metaStateRuleEntrySchema, readFileIndex } from "./meta-state.js";
+import { readRegistry, metaStateRuleEntrySchema, readFileIndex, toLegacyRuleView } from "./meta-state.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
@@ -530,7 +530,8 @@ export function projectHasLearningLoopMcp(root) {
 const promotedRulesCache = new Map();
 
 /**
- * Load active gate-enforced promoted rules from meta-state.jsonl.
+ * Load active I2/I3 Rules from meta-state.jsonl and expose the temporary
+ * legacy projection required by existing gate/hint callers.
  * Uses (mtime, size) tuple for cache invalidation (RT Finding 6).
  */
 export function loadPromotedRules(root) {
@@ -547,13 +548,26 @@ export function loadPromotedRules(root) {
   }
 
   let entries = [];
+  let raw;
   try {
-    const raw = readFileSync(path, "utf8");
-    const lines = raw.split("\n").filter((line) => line.trim() !== "");
-    entries = lines.map((line) => JSON.parse(line));
+    raw = readFileSync(path, "utf8");
   } catch {
     return [];
   }
+  entries = raw.split("\n").flatMap((line, index) => {
+    if (line.trim() === "") return [];
+    try {
+      const parsed = JSON.parse(line);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        console.warn(`Rule registry line ${index + 1}: non-object JSON, skipping.`);
+        return [];
+      }
+      return [parsed];
+    } catch (error) {
+      console.warn(`Rule registry line ${index + 1}: malformed JSON, skipping. ${error.message}`);
+      return [];
+    }
+  });
 
   // Only first-class entry_kind="rule" entries are accepted.
   // Legacy finding entries with promoted_to_rule were removed; all promoted
@@ -587,17 +601,20 @@ export function loadPromotedRules(root) {
   // each entry and warn-and-skip on invalid. This closes the gap that
   // direct file appends (bypassing writeEntry's safeParse) would otherwise
   // create (review finding F-3).
-  rules = rules.filter((r) => {
+  rules = rules.map((r) => {
     const validation = metaStateRuleEntrySchema.safeParse(r);
     if (!validation.success) {
       console.warn(
         `Rule ${r.id ?? "<unknown>"}: schema validation failed, skipping. ` +
           `Errors: ${validation.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
       );
-      return false;
+      return null;
     }
-    return true;
-  });
+    // `version` is registry metadata rather than a Rule-schema field. Keep it
+    // on the compatibility projection so callers that inspect the latest
+    // version still observe the append-only history number.
+    return r.version === undefined ? validation.data : { ...validation.data, version: r.version };
+  }).filter(Boolean);
 
   rules = rules.filter((r) => {
     const predicate = r.scope_predicate;
@@ -609,8 +626,12 @@ export function loadPromotedRules(root) {
     return true;
   });
 
-  promotedRulesCache.set(root, { rules, mtime, size });
-  return rules;
+  // Existing gate/hint callers still consume `enforcement`. Keep that view
+  // one-way and local to this legacy loader; new callers should consume the
+  // canonical Rule records from the registry directly.
+  const legacyRules = rules.map(toLegacyRuleView);
+  promotedRulesCache.set(root, { rules: legacyRules, mtime, size });
+  return legacyRules;
 }
 
 /**
@@ -914,7 +935,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
       continue;
     }
 
-    if (rule.enforcement !== "gate") continue;
+    if (rule.internalization_level !== "I3") continue;
     if (overrideSet.has(rule.id)) {
       console.warn(`Rule ${rule.id}: skipped via gate override (${override.operator_note ?? "no note"})`);
       continue;

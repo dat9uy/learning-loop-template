@@ -13,7 +13,7 @@ const inputSchema = z.object(schemaShape);
 
 export const gateOverrideTool = {
   name: "gate_override",
-  description: "Override a promoted gate rule for the current session. The override is TTL'd, audited in runtime-state.jsonl, and applies only to regex/glob rules enforced by the bash gate. Requires a non-empty operator_note for the audit trail.",
+  description: "Override a promoted I3 action-boundary Rule for the current session. The override is TTL'd, audited in runtime-state.jsonl, and applies only to regex/glob Rules enforced by the bash gate. Requires a non-empty operator_note for the audit trail.",
   schema: schemaShape,
   handler: async (raw) => {
     const { rule_id, ttl_seconds, operator_note } = inputSchema.parse(raw);

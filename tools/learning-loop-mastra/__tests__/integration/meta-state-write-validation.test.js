@@ -52,7 +52,7 @@ function makeValidRule(id) {
     // the ref resolves and no advisory is emitted (a real promotion always
     // follows the finding).
     origin: "meta-260607T1201Z-test-finding",
-    enforcement: "agent",
+    internalization_level: "I2",
     pattern_type: "regex",
     pattern: "test",
     description: "A valid rule for write validation test",

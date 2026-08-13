@@ -2,7 +2,7 @@ import { test } from "vitest";
 import assert from "node:assert/strict";
 import { metaStatePromoteRuleTool } from "../../tools/handlers/meta-state-promote-rule-tool.js";
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
-import { readRegistry } from "../../core/meta-state.js";
+import { readRegistry, writeEntry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -39,7 +39,7 @@ test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-entry-kind",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "new\\s+schema",
     });
@@ -56,7 +56,9 @@ test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)
     // rationale:"origin"). The field stays schema-optional (inert-historical)
     // but is undefined on newly-promoted rules.
     assert.equal(ruleEntry.origin, undefined);
-    assert.equal(ruleEntry.enforcement, "gate");
+    assert.equal(ruleEntry.internalization_level, "I3");
+    assert.equal(ruleEntry.version, 0, "newly promoted Rules start at version 0");
+    assert.equal(ruleEntry.enforcement, undefined, "canonical registry rows do not persist the legacy classification");
 
     const citation = entries.find(
       (e) => e.entry_kind === "citation" && e.source === "rule-test-entry-kind" && e.target === reportText.id,
@@ -76,7 +78,63 @@ test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)
   }
 });
 
-test("meta_state_promote_rule rejects 'tool' enforcement enum", async () => {
+test("meta_state_promote_rule accepts the canonical I2 contract without the legacy discriminator", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "i2-contract",
+      severity: "warning",
+      affected_system: "meta",
+      description: "Canonical I2 promotion fixture with an authoritative Rule description.",
+    });
+    const source = JSON.parse(report.content[0].text);
+    const result = await metaStatePromoteRuleTool.handler({
+      id: source.id,
+      rule_id: "rule-test-canonical-i2",
+      internalization_level: "I2",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "i2", description: "Deliver this obligation for agent judgment" }] }),
+      hint_text: "Canonical I2 delivery prose for the agent session-start surface.",
+      hint_suggestion: "Deliver the canonical I2 Rule before the first agentic step.",
+    });
+    assert.equal(JSON.parse(result.content[0].text).promoted, true);
+    const rule = readRegistry(tempDir).find((entry) => entry.id === "rule-test-canonical-i2");
+    assert.equal(rule.internalization_level, "I2");
+    assert.equal(rule.enforcement, undefined);
+  } finally {
+    teardown();
+  }
+});
+
+test("meta_state_promote_rule rejects a canonical I3 Rule without evidence_code_ref", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "i3-contract",
+      severity: "warning",
+      affected_system: "meta",
+      description: "Canonical I3 promotion fixture that must name its evidence.",
+    });
+    const source = JSON.parse(report.content[0].text);
+    const result = await metaStatePromoteRuleTool.handler({
+      id: source.id,
+      rule_id: "rule-test-canonical-i3-no-evidence",
+      internalization_level: "I3",
+      pattern_type: "regex",
+      pattern: "dangerous-action",
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, false);
+    assert.equal(text.reason, "evidence_code_ref_required_for_i3");
+    assert.equal(readRegistry(tempDir).some((entry) => entry.id === "rule-test-canonical-i3-no-evidence"), false);
+  } finally {
+    teardown();
+  }
+});
+
+test("meta_state_promote_rule rejects an invalid internalization level", async () => {
   const tempDir = setup();
   try {
     const report = await metaStateReportTool.handler({
@@ -95,14 +153,14 @@ test("meta_state_promote_rule rejects 'tool' enforcement enum", async () => {
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-tool",
-        enforcement: "tool", // INVALID
+        internalization_level: "tool", // INVALID
         pattern_type: "regex",
         pattern: "test",
       });
-      assert.fail("Should have rejected 'tool' enforcement");
+      assert.fail("Should have rejected an invalid internalization level");
     } catch (err) {
       // Expected: zod validation error or tool rejects it
-      assert.ok(err.message.includes("tool") || err.message.includes("validation") || err.message.includes("enforcement"));
+      assert.ok(err.message.includes("tool") || err.message.includes("validation") || err.message.includes("internalization_level"));
     }
   } finally {
     teardown();
@@ -124,7 +182,7 @@ test("meta_state_promote_rule accepts pattern_type=determinism-checklist", async
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-resolution-evidence",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "determinism-checklist",
       pattern: "test-session-123",
     });
@@ -163,7 +221,7 @@ test("meta_state_promote_rule accepts applies_to.tools and persists on rule entr
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-applies-to-tools",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "regex",
       pattern: "^export\\s+function\\s+\\w+\\s*\\(",
       applies_to: appliesTo,
@@ -197,9 +255,21 @@ test("meta_state_patch can set applies_to on an existing rule entry (RED→GREEN
     await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-patch-applies-to",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "regex",
       pattern: "^export\\s+function\\s+\\w+\\s*\\(",
+    });
+
+    await writeEntry(tempDir, {
+      id: "rule-test-patch-applies-to-prior",
+      entry_kind: "rule",
+      internalization_level: "I2",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "prior", description: "Prior Rule for patch lineage" }] }),
+      description: "Prior Rule for the material applies_to patch lineage.",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
     });
 
     const { metaStatePatchTool } = await import("../../tools/handlers/meta-state-patch-tool.js");
@@ -207,7 +277,7 @@ test("meta_state_patch can set applies_to on an existing rule entry (RED→GREEN
     const patchResult = await metaStatePatchTool.handler({
       id: "rule-test-patch-applies-to",
       entry_kind: "rule",
-      patch: { applies_to: appliesTo },
+      patch: { applies_to: appliesTo, supersedes: "rule-test-patch-applies-to-prior" },
     });
     const patchText = JSON.parse(patchResult.content[0].text);
     assert.equal(patchText.patched, true, "patch must succeed");
@@ -244,7 +314,7 @@ test("meta_state_promote_rule keeps origin finding status as 'open' (RED→GREEN
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-gap-3-status",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "test-pattern",
     });
@@ -288,7 +358,7 @@ test("preview:true on agent-checklist without hint_text reaches the preview bran
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-preview-no-hint",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
       preview: true,
@@ -317,7 +387,7 @@ test("activation on agent-checklist without hint_text is still rejected (gate in
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-activation-needs-hint",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
     });
@@ -344,7 +414,7 @@ test("activation on agent-checklist with malformed pattern JSON is rejected with
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-malformed-checklist-pattern",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: "[not-json",
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
@@ -380,7 +450,7 @@ test("activation on agent-checklist with wrong-shape pattern JSON is rejected", 
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-wrong-shape-checklist-pattern",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1 }),
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
@@ -409,7 +479,7 @@ test("activation on agent-checklist with well-formed pattern JSON promotes", asy
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-well-formed-checklist-pattern",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
@@ -440,7 +510,7 @@ test("activation on agent-checklist without hint_suggestion is rejected (mirror 
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-needs-hint-suggestion",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
@@ -469,7 +539,7 @@ test("activation on agent-checklist with multi-line hint_suggestion is rejected 
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-multiline-suggestion",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
@@ -498,7 +568,7 @@ test("activation on agent-checklist with hint_slug that collides with a standalo
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-collision-standalone",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
@@ -528,7 +598,7 @@ test("activation on agent-checklist persists hint_order / hint_suggestion / hint
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-persists-hint-meta",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",

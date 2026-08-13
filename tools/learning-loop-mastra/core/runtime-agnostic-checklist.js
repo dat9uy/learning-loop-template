@@ -49,7 +49,7 @@ function loadText(root, relPath) {
  *   while, template literals in cross-surface calls, array literals,
  *   raw templates, path.resolve, etc.) are NOT closed by this preprocessor.
  *   The preprocessor eliminates false positives, not bypasses. The audit
- *   remains best-effort; the rule's `enforcement: "agent"` (the agent
+ *   remains best-effort; the rule's `internalization_level: "I2"` (the agent
  *   itself) is the canonical check.
  */
 export function stripCommentsAndStrings(text) {
@@ -250,7 +250,7 @@ function manifestDeclaredShimNames(manifest) {
  * `stripCommentsAndStrings`). A `.claude` reference inside a `//` or
  * `/* *\/` comment no longer triggers the predicate.
  *
- * The canonical check is the agent itself (the rule's `enforcement: "agent"`).
+ * The canonical check is the agent itself (the rule's `internalization_level: "I2"`).
  * The regex is a regression guard for the most common patterns, not a
  * complete validator.
  */

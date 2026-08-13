@@ -33,7 +33,7 @@ const VITEST_RULE = {
   id: "rule-no-raw-stdout-vitest",
   entry_kind: "rule",
   status: "active",
-  enforcement: "gate",
+  internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
   pattern_type: "regex",
   pattern: "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b",
 };
@@ -42,7 +42,7 @@ const ARTIFACT_RULE = {
   id: "rule-no-new-artifact-types",
   entry_kind: "rule",
   status: "active",
-  enforcement: "gate",
+  internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
   pattern_type: "regex",
   pattern:
     "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
@@ -126,7 +126,7 @@ describe("promoted rules (A): quote-concat bypass shapes now escalate", () => {
       id: "rule-no-verify-bypass-denied",
       entry_kind: "rule",
       status: "active",
-      enforcement: "gate",
+      internalization_level: "I3", evidence_code_ref: "test-rule-contract.js",
       pattern_type: "regex",
       pattern: "git\\s+commit[^|;&]*--no-verify",
     };

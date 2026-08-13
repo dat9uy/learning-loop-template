@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   readRegistry,
   updateEntry,
-  appendCitationEntryAtomic,
   buildPatchSchemaFor,
   PATCH_KINDS,
   IMMUTABLE_PATCH_FIELDS,
@@ -106,7 +105,8 @@ export const metaStatePatchTool = {
 
     // `supersedes` on a rule patch is the rule→rule supersession edge.
     // Strip it from the patch (the on-record field is inert-historical;
-    // the live edge is a citation row) and emit the citation post-write.
+    // the live edge is a citation row). Core updateEntry appends the citation
+    // inside the same locked mutation and rolls back on citation failure.
     // `origin` on a rule patch is rejected outright — the canonical
     // promotion edge is the citation emitted by `meta_state_promote_rule`.
     let supersedesEmitted = null;
@@ -203,13 +203,13 @@ export const metaStatePatchTool = {
       : currentVersion;
     const patchWithCAS = { ...effectivePatch, _expected_version: effectiveExpectedVersion };
 
-    const updateResult = await updateEntry(root, id, patchWithCAS);
+    const updateResult = await updateEntry(root, id, patchWithCAS, {
+      ...(entry_kind === "rule" && supersedesEmitted ? { ruleSupersedes: supersedesEmitted } : {}),
+    });
 
-    // CAS / validation guards fire BEFORE any citation is emitted. A
-    // version_mismatch means the supersession never landed, so writing a
-    // `supersedes` citation here would pollute citations_inverse/cited_by
-    // for the target rule with a lineage that does not exist. Mirror the
-    // ordering in meta_state_supersede: reject first, emit only on success.
+    // CAS / validation guards fire before Core can append a supersession
+    // citation. A version_mismatch therefore cannot pollute
+    // citations_inverse/cited_by with a lineage that did not land.
     if (updateResult === "version_mismatch") {
       const freshEntries = readRegistry(root);
       const fresh = freshEntries.find((e) => e.id === id);
@@ -225,29 +225,20 @@ export const metaStatePatchTool = {
       return reject(root, { patched: false, reason: "validation_failed", id });
     }
 
+    if (updateResult === "supersedes_required") {
+      return reject(root, {
+        patched: false,
+        reason: "supersedes_required",
+        id,
+        entry_kind,
+        message: "Material Rule changes require a non-empty `supersedes` Rule id so the append-only refinement retains explicit lineage.",
+      });
+    }
+
     if (updateResult !== true) {
       throw new Error(
         `meta_state_patch: unexpected updateEntry result for ${id}: ${JSON.stringify(updateResult)}`
       );
-    }
-
-    // Emit the rule→rule supersedes citation only after the patch lands.
-    // Atomic append + cache invalidation (handled by
-    // appendCitationEntryAtomic). The citation follows the locked
-    // updateEntry; O_APPEND keeps the byte-level write safe, and a
-    // mismatched CAS above has already early-returned.
-    if (supersedesEmitted) {
-      const now = new Date().toISOString();
-      appendCitationEntryAtomic(root, {
-        id: `citation-rule-supersedes-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-        entry_kind: "citation",
-        source: id,
-        target: supersedesEmitted,
-        rationale: "supersedes",
-        recorded_at: now,
-        recorded_by: "operator",
-        status: "active",
-      });
     }
 
     const updatedEntries = readRegistry(root);

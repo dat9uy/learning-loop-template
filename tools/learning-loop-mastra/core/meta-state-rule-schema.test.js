@@ -8,13 +8,14 @@ import {
 const validRule = {
   id: "rule-no-new-artifact-types",
   origin: "meta-260602T0000Z-escape-hatch-abuse-meta-taxonomy-proposal",
-  enforcement: "gate",
+  internalization_level: "I3",
   pattern_type: "regex",
   pattern: "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
-  description: "Gate-enforced rule: blocks attempts to create new schema/artifact/directory/convention types without explicit operator approval. The rule's pattern was refined 2026-06-06 to require a context qualifier.",
+  description: "Action-boundary Rule: blocks attempts to create new schema/artifact/directory/convention types without explicit operator approval. The rule's pattern was refined 2026-06-06 to require a context qualifier.",
   status: "active",
   promoted_at: "2026-06-01T22:00:13.387Z",
   promoted_by: "operator",
+  evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
 };
 
 test("metaStateRuleEntrySchema accepts minimal valid rule entry", () => {
@@ -37,11 +38,10 @@ test("metaStateRuleEntrySchema rejects description shorter than 20 chars", () =>
   assert.equal(metaStateRuleEntrySchema.safeParse(bad).success, false);
 });
 
-test("metaStateRuleEntrySchema accepts optional fields (scope_predicate, evidence_code_ref, code_fingerprint, refined_at, refined_by, refinement_reason, supersedes, applies_to_resolution)", () => {
+test("metaStateRuleEntrySchema accepts optional fields (scope_predicate, code_fingerprint, refined_at, refined_by, refinement_reason, supersedes, applies_to_resolution)", () => {
   const rule = {
     ...validRule,
     scope_predicate: "project_has_learning_loop_mcp",
-    evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#loadPromotedRules",
     code_fingerprint: "sha256:" + "a".repeat(64),
     refined_at: "2026-06-05T19:25:15.567Z",
     refined_by: "operator",
@@ -68,11 +68,39 @@ const validChecklistPattern = JSON.stringify({
 });
 const checklistRule = {
   ...validRule,
-  enforcement: "agent",
+  internalization_level: "I2",
   pattern_type: "agent-checklist",
   pattern: validChecklistPattern,
   hint_text: "A sufficiently long process hint for the agent-checklist rule.",
 };
+
+test("metaStateRuleEntrySchema accepts I2 Rules with authoritative descriptions", () => {
+  const result = metaStateRuleEntrySchema.safeParse({
+    ...checklistRule,
+    evidence_code_ref: undefined,
+  });
+  assert.equal(result.success, true, JSON.stringify(result.error?.format()));
+});
+
+test("metaStateRuleEntrySchema rejects I3 Rules without an evidence code reference", () => {
+  const bad = { ...validRule, evidence_code_ref: undefined };
+  const result = metaStateRuleEntrySchema.safeParse(bad);
+  assert.equal(result.success, false);
+  assert.match(
+    result.error.issues.map((i) => i.message).join("; "),
+    /evidence_code_ref/,
+  );
+});
+
+test("metaStateRuleEntrySchema rejects whitespace-only I3 evidence", () => {
+  const bad = { ...validRule, evidence_code_ref: "   " };
+  assert.equal(metaStateRuleEntrySchema.safeParse(bad).success, false);
+});
+
+test("metaStateRuleEntrySchema rejects the legacy enforcement discriminator", () => {
+  const bad = { ...validRule, internalization_level: undefined, enforcement: "gate" };
+  assert.equal(metaStateRuleEntrySchema.safeParse(bad).success, false);
+});
 
 test("agent-checklist rule accepts canonical JSON {version, items[]} pattern", () => {
   const result = metaStateRuleEntrySchema.safeParse(checklistRule);

@@ -28,7 +28,7 @@ describe("rule-derived process hints", () => {
     const ok = ruleSchema.safeParse({
       id: "rule-test-hint-text-ok",
       origin: "meta-test",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
       description: "Test rule with hint_text — must validate the new field.",
@@ -42,7 +42,7 @@ describe("rule-derived process hints", () => {
     const withoutHint = ruleSchema.safeParse({
       id: "rule-test-hint-text-missing",
       origin: "meta-test",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
       description: "Test rule without hint_text — must still validate (optional).",
@@ -57,7 +57,7 @@ describe("rule-derived process hints", () => {
     const result = ruleSchema.safeParse({
       id: "rule-test-short-hint",
       origin: "meta-test",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
       description: "Short hint_text must fail validation.",
@@ -74,7 +74,7 @@ describe("rule-derived process hints", () => {
     const result = ruleSchema.safeParse({
       id: "rule-test-hint-meta-ok",
       origin: "meta-test",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
       description: "Test rule with hint metadata — must validate the new fields.",
@@ -93,7 +93,7 @@ describe("rule-derived process hints", () => {
     const result = ruleSchema.safeParse({
       id: "rule-test-suggestion-newline",
       origin: "meta-test",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
       description: "Multi-line hint_suggestion must fail validation.",
@@ -110,7 +110,7 @@ describe("rule-derived process hints", () => {
     const result = ruleSchema.safeParse({
       id: "rule-test-suggestion-oversize",
       origin: "meta-test",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
       description: "Oversize hint_suggestion must fail validation.",
@@ -127,7 +127,7 @@ describe("rule-derived process hints", () => {
     const result = ruleSchema.safeParse({
       id: "rule-test-bad-slug",
       origin: "meta-test",
-      enforcement: "agent",
+      internalization_level: "I2",
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
       description: "Invalid hint_slug must fail validation.",
@@ -145,10 +145,11 @@ describe("rule-derived process hints", () => {
     const result = ruleSchema.safeParse({
       id: "rule-test-gate-no-hint",
       origin: "meta-test",
-      enforcement: "gate",
+      internalization_level: "I3",
+      evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
       pattern_type: "regex",
       pattern: "x",
-      description: "Gate-enforced rule without any hint metadata must still validate.",
+      description: "I3 action-boundary Rule without any hint metadata must still validate.",
       status: "active",
       promoted_at: "2026-01-01T00:00:00.000Z",
       promoted_by: "operator",

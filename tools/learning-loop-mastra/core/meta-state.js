@@ -213,6 +213,13 @@ function restorePreBatchContent(path, preBatchContent) {
   }
 }
 
+function restoreMutationSnapshot(root, snapshots) {
+  for (const [path, content] of snapshots) {
+    restorePreBatchContent(path, content);
+  }
+  invalidateCache(root);
+}
+
 function appendRegistryEntryAtomic(root, entry) {
   // True-append (no read-all → full rewrite).
   // The previous implementation read the whole file, pushed, and full-rewrote;
@@ -282,6 +289,32 @@ export function appendCitationEntryAtomic(root, entry) {
   // other two directions throw.
   trueAppendAtomicRaw(root, path, entry);
   invalidateCache(root);
+}
+
+function makeRuleSupersessionCitation(source, target) {
+  return {
+    id: `citation-rule-supersedes-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    entry_kind: "citation",
+    source,
+    target,
+    rationale: "supersedes",
+    recorded_at: new Date().toISOString(),
+    recorded_by: "operator",
+    status: "active",
+  };
+}
+
+function makeRuleOriginCitation(source, target) {
+  return {
+    id: `citation-origin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    entry_kind: "citation",
+    source,
+    target,
+    rationale: "origin",
+    recorded_at: new Date().toISOString(),
+    recorded_by: "operator",
+    status: "active",
+  };
 }
 
 // The `lifecycle-status-stale-mechanism` loop-design collapses the finding
@@ -618,7 +651,7 @@ export function agentChecklistPatternProblems(pattern) {
 }
 
 /**
- * Rule branch object schema (unrefined base) — promoted gate/agent rules
+ * Rule branch object schema (unrefined base) — promoted I2/I3 Rules
  * with their own lifecycle. Kept refinement-free so buildPatchSchemaFor can
  * derive via .omit()/.partial() (zod 4 forbids .omit on refined objects).
  * The exported metaStateRuleEntrySchema adds the cross-field pattern-shape
@@ -631,7 +664,7 @@ const metaStateRuleEntryObject = z.object({
     .describe("Inert-historical: Finding id that originated this rule. The on-record field is retired; the canonical promotion edge is the origin citation row emitted by meta_state_promote_rule."),
   supersedes: z.string().optional()
     .describe("Prior rule id refined by this rule (inert-historical; the on-record field collapsed into a rule→rule citation row)"),
-  enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced"),
+  internalization_level: z.enum(["I2", "I3"]).describe("Internalization level: I2 is delivered for agent judgment; I3 is enforced at an action boundary"),
   pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language"),
   pattern: z.string().describe("The pattern (regex body, glob path, or session_id)"),
   scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional()
@@ -645,7 +678,7 @@ const metaStateRuleEntryObject = z.object({
     .describe("Rule lifecycle; inactive rules are not enforced; archived tombstones are appended by deleteEntry"),
   promoted_at: z.string().describe("ISO timestamp"),
   promoted_by: z.string().describe("Operator id"),
-  evidence_code_ref: z.string().optional()
+  evidence_code_ref: z.string().min(1).regex(/\S/).optional()
     .describe("Code reference; SP2 grounding still applies"),
   evidence_journal: z.string().optional()
     .describe("Journal path; see field_glossary.evidence_journal"),
@@ -660,12 +693,12 @@ const metaStateRuleEntryObject = z.object({
   // entries; the meta_state_promote_rule tool REQUIRES this on creation (actionable
   // rejection), and the hint-renderer resolves `text` from `rule.hint_text`
   // at SessionStart render time. Optional on the schema because non-
-  // agent-checklist rules (gate-enforced) don't need injection prose;
+  // I3 action-boundary Rules don't need injection prose;
   // the hint-renderer treats a missing rule hint as a skip-with-warning.
   hint_text: z.string().min(20).optional()
     .describe("Agent-checklist process hint text; required when promoted as agent-checklist"),
   // Agent-checklist rule hint metadata. All three fields are optional on the
-  // schema (gate-enforced rules don't need them, and patch updates may
+  // schema (I3 Rules don't need them, and patch updates may
   // add/remove them incrementally); the tool layer requires `hint_suggestion`
   // for agent-checklist promotion AND patch-create so the view in
   // hint-registry.js can read it unconditionally.
@@ -701,12 +734,46 @@ const metaStateRuleEntryObject = z.object({
  * reuse (zod 4 superRefine preserves the ZodObject API).
  */
 export const metaStateRuleEntrySchema = metaStateRuleEntryObject.superRefine((rule, ctx) => {
+  if (rule.internalization_level === "I2" && typeof rule.description !== "string") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["description"],
+      message: "I2 Rules require an authoritative description for delivery",
+    });
+  }
+  if (rule.internalization_level === "I3" && (typeof rule.evidence_code_ref !== "string" || rule.evidence_code_ref.trim().length === 0)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["evidence_code_ref"],
+      message: "I3 Rules require a non-empty evidence_code_ref",
+    });
+  }
   if (rule.pattern_type === "agent-checklist" && typeof rule.pattern === "string") {
     for (const problem of agentChecklistPatternProblems(rule.pattern)) {
       ctx.addIssue({ code: "custom", path: ["pattern"], message: problem });
     }
   }
 });
+
+/**
+ * Temporary one-way view for callers that still consume the pre-I2/I3 Rule
+ * classification. Canonical Rule records carry only internalization_level;
+ * this projection exposes the old `enforcement` spelling without making it a
+ * second source of truth. New callers must consume the canonical Rule shape.
+ */
+export function toLegacyRuleView(rule) {
+  if (!rule || rule.entry_kind !== "rule") return rule;
+  const enforcement = rule.internalization_level === "I3"
+    ? "gate"
+    : rule.internalization_level === "I2"
+      ? "agent"
+      : undefined;
+  if (!enforcement) return rule;
+  return {
+    ...rule,
+    enforcement,
+  };
+}
 
 /**
  * Loop-design branch schema — deferred design notes with their own lifecycle.
@@ -861,6 +928,28 @@ function auditImmutableFieldTransition(root, entryId, cleanPatch, existingEntry)
  * guard is the enforcement; the schema is permissive.
  */
 export const PATCH_KINDS = ["finding", "change-log", "rule", "loop-design"];
+
+// These fields alter what a Rule requires or where it applies. A version that
+// changes one of them must name the prior Rule it supersedes, so append-only
+// refinement cannot silently rewrite an obligation under the same id.
+const RULE_MATERIAL_FIELDS = Object.freeze([
+  "internalization_level",
+  "pattern_type",
+  "pattern",
+  "description",
+  "evidence_code_ref",
+  "scope_predicate",
+  "applies_to_resolution",
+  "applies_to",
+  "hint_text",
+  "hint_suggestion",
+  "hint_order",
+  "hint_slug",
+]);
+
+function ruleHasMaterialChange(before, after) {
+  return RULE_MATERIAL_FIELDS.some((field) => !entriesEqual(before[field], after[field]));
+}
 
 /**
  * Derive a per-kind patch schema from the 4 per-kind source-of-truth
@@ -1373,6 +1462,38 @@ export function writeEntry(root, entry) {
 }
 
 /**
+ * Append a new Rule and its required origin citation as one locked mutation.
+ * A failed citation append restores both append-only streams, so promotion
+ * cannot leave an authoritative Rule without its finding lineage.
+ */
+export function writeRuleWithOriginCitationAtomic(root, ruleEntry, findingId) {
+  return enqueue(root, () =>
+    withRegistryLock(root, async () => {
+      const registryPath = getRegistryPath(root);
+      const citationsPath = getCitationsPath(root);
+      const preRegistryContent = existsSync(registryPath) ? readFileSync(registryPath, "utf8") : "";
+      const preCitationsContent = existsSync(citationsPath) ? readFileSync(citationsPath, "utf8") : "";
+      const data = await prepareWriteEntry(root, ruleEntry, {
+        reasonCode: "rule_promotion_identity_precondition_failed",
+      });
+      if (data.entry_kind !== "rule") throw new Error("rule_promotion_requires_rule_entry");
+      trueAppendAtomicRaw(root, registryPath, { ...data, version: data.version ?? 0 });
+      try {
+        appendCitationEntryAtomic(root, makeRuleOriginCitation(data.id, findingId));
+      } catch (error) {
+        restoreMutationSnapshot(root, [
+          [registryPath, preRegistryContent],
+          [citationsPath, preCitationsContent],
+        ]);
+        throw error;
+      }
+      invalidateCache(root);
+      return data;
+    })
+  );
+}
+
+/**
  * Shared write-path prologue for append-style mutation ops (writeEntry,
  * writeEntryIfAbsent). Runs INSIDE the caller's registry lock and returns the
  * schema-validated entry on success; throws on any failure.
@@ -1423,6 +1544,12 @@ async function prepareWriteEntry(root, entry, { requireRecurrenceKey = false, re
   const validation = metaStateEntrySchema.safeParse(entry);
   if (!validation.success) {
     throw new InvalidEntryError(validation.error);
+  }
+  if (
+    validation.data.entry_kind === "rule"
+    && readRegistry(root).some((existing) => existing.entry_kind === "rule" && existing.id === validation.data.id)
+  ) {
+    throw new Error(`rule_id_exists: Rule ${validation.data.id} already exists; refine it with updateEntry instead`);
   }
   // Write-time structural RI (WARN-ONLY — id-existence). Tombstones count as
   // present (liveness out of scope); kind-match is NOT checked (Set<string>,
@@ -1510,12 +1637,17 @@ export function writeEntryIfAbsent(root, entry) {
  *   - `null` if the entry id was not found
  *   - `"version_mismatch"` if CAS check fails
  *   - `"validation_failed"` if the patch fails schema validation
+ *   - `"supersedes_required"` if a material Rule change lacks a supersession relation
  *   - `"immutable_field"` if the wrapper rejects the patch
  */
-export function updateEntry(root, id, patch) {
+export function updateEntry(root, id, patch, options = {}) {
   return enqueue(root, () =>
     withRegistryLock(root, async () => {
       const entries = readRegistry(root);
+      const registryPath = getRegistryPath(root);
+      const citationsPath = getCitationsPath(root);
+      const preRegistryContent = existsSync(registryPath) ? readFileSync(registryPath, "utf8") : "";
+      const preCitationsContent = existsSync(citationsPath) ? readFileSync(citationsPath, "utf8") : "";
       let found = false;
       let currentVersion = 0;
       let existingEntry = null;
@@ -1589,11 +1721,34 @@ export function updateEntry(root, id, patch) {
       delete cleanPatch.__proto__;    // .strict() does NOT reject __proto__ via JSON.parse
       delete cleanPatch.constructor;  // defense-in-depth
       delete cleanPatch.entry_kind;   // identity invariant — never patchable
+      let ruleSupersedes = options.ruleSupersedes;
+      if (existingEntry.entry_kind === "rule" && Object.prototype.hasOwnProperty.call(cleanPatch, "supersedes")) {
+        if (ruleSupersedes !== undefined && ruleSupersedes !== cleanPatch.supersedes) return "validation_failed";
+        ruleSupersedes = cleanPatch.supersedes;
+        delete cleanPatch.supersedes;
+      }
 
       // Precondition: applyDefaults before canonicalize so legacy
       // entries lacking schema-defaulted fields canonicalize identically to
       // post-default reads.
-      const patched = withDefaults({ ...existingEntry, ...cleanPatch });
+      let patched = withDefaults({ ...existingEntry, ...cleanPatch });
+
+      // Rule patches must preserve the discriminated I2/I3 contract across
+      // versions. The partial patch schema validates field shape; this full
+      // validation validates the resulting Rule obligation before appending
+      // it, including the I3 evidence requirement.
+      if (existingEntry.entry_kind === "rule") {
+        const ruleValidation = metaStateRuleEntrySchema.safeParse(patched);
+        if (!ruleValidation.success) return "validation_failed";
+        patched = { ...ruleValidation.data, version: existingEntry.version ?? 0 };
+
+        if (
+          ruleHasMaterialChange(existingEntry, patched)
+          && (typeof ruleSupersedes !== "string" || ruleSupersedes.trim().length === 0)
+        ) {
+          return "supersedes_required";
+        }
+      }
 
       // NO-OP SHORT-CIRCUIT. Resolves
       // meta-260715T2311Z-gratuitous-mutations (a no-op update previously
@@ -1632,7 +1787,18 @@ export function updateEntry(root, id, patch) {
       // path with immutable fields; record the transition in the gate log so
       // it is never silent. Warn-only — never rejects (mirrors warnStructuralRI).
       auditImmutableFieldTransition(root, id, cleanPatch, existingEntry);
-      trueAppendAtomicRaw(root, getRegistryPath(root), newEntry);
+      trueAppendAtomicRaw(root, registryPath, newEntry);
+      if (existingEntry.entry_kind === "rule" && ruleSupersedes) {
+        try {
+          appendCitationEntryAtomic(root, makeRuleSupersessionCitation(id, ruleSupersedes));
+        } catch (error) {
+          restoreMutationSnapshot(root, [
+            [registryPath, preRegistryContent],
+            [citationsPath, preCitationsContent],
+          ]);
+          throw error;
+        }
+      }
       invalidateCache(root);
       return true;
     })
@@ -2151,7 +2317,9 @@ export function metaStateBatch(root, operations, envelope) {
   return enqueue(root, async () =>
     withRegistryLock(root, async () => {
       const path = getRegistryPath(root);
+      const citationsPath = getCitationsPath(root);
       const preBatchContent = existsSync(path) ? readFileSync(path, "utf8") : "";
+      const preCitationsContent = existsSync(citationsPath) ? readFileSync(citationsPath, "utf8") : "";
 
       const entries = readRegistry(root);
       // In-batch existence accumulator for write-time structural RI. Seeded
@@ -2173,6 +2341,7 @@ export function metaStateBatch(root, operations, envelope) {
       // creates-then-patches an entry in the same batch would fail at the
       // lookup step.
       const pendingMetaStateAppends = [];
+      const pendingRuleSupersessionCitations = [];
       // change-log writes (op:"write" with entry_kind=change-log) — true-append
       // to change-log.jsonl after all validations succeed. Queueing prevents
       // orphan change-logs on mid-batch failure.
@@ -2225,6 +2394,12 @@ export function metaStateBatch(root, operations, envelope) {
                   .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
                   .join("; ");
                 throw new Error(`validation_failed: ${detail}`);
+              }
+              if (
+                validation.data.entry_kind === "rule"
+                && entries.some((existing) => existing.entry_kind === "rule" && existing.id === validation.data.id)
+              ) {
+                throw new Error(`rule_id_exists: Rule ${validation.data.id} already exists; refine it with an update operation`);
               }
               // Per-op structural RI (WARN-ONLY — id-existence) against the
               // in-batch existence accumulator, which includes ids written by
@@ -2300,7 +2475,23 @@ export function metaStateBatch(root, operations, envelope) {
               delete cleanPatch.__proto__;
               delete cleanPatch.constructor;
               delete cleanPatch.entry_kind;
-              const patched = withDefaults({ ...existingEntry, ...cleanPatch });
+              let ruleSupersedes = null;
+              if (existingEntry.entry_kind === "rule" && Object.prototype.hasOwnProperty.call(cleanPatch, "supersedes")) {
+                ruleSupersedes = cleanPatch.supersedes;
+                delete cleanPatch.supersedes;
+              }
+              let patched = withDefaults({ ...existingEntry, ...cleanPatch });
+              if (existingEntry.entry_kind === "rule") {
+                const ruleValidation = metaStateRuleEntrySchema.safeParse(patched);
+                if (!ruleValidation.success) throw new Error("validation_failed");
+                patched = { ...ruleValidation.data, version: existingEntry.version ?? 0 };
+                if (
+                  ruleHasMaterialChange(existingEntry, patched)
+                  && (typeof ruleSupersedes !== "string" || ruleSupersedes.trim().length === 0)
+                ) {
+                  throw new Error("supersedes_required");
+                }
+              }
               // Update-time structural RI (WARN-ONLY — changed-only), mirroring
               // the updateEntry boundary. Validates ONLY cross-ref fields the
               // patch introduces or repoints, against the in-batch existence
@@ -2322,6 +2513,9 @@ export function metaStateBatch(root, operations, envelope) {
                   version: (existingEntry.version ?? 0) + 1,
                 };
                 pendingMetaStateAppends.push(newEntry);
+                if (existingEntry.entry_kind === "rule" && ruleSupersedes) {
+                  pendingRuleSupersessionCitations.push(makeRuleSupersessionCitation(existingEntry.id, ruleSupersedes));
+                }
                 // Replace the in-memory entries[] entry so subsequent ops
                 // see the new max-version (the projection picks the
                 // max-version line per id).
@@ -2445,9 +2639,23 @@ export function metaStateBatch(root, operations, envelope) {
           trueAppendAtomicRaw(root, path, entry);
         }
       } catch (err) {
-        restorePreBatchContent(path, preBatchContent);
-        invalidateCache(root);
+        restoreMutationSnapshot(root, [[path, preBatchContent]]);
         return { applied: 0, failed_at: null, reason: "append_failed", error: err.message };
+      }
+
+      // Rule supersession citations are part of the same semantic mutation as
+      // their version append. Write them before change-log side effects so any
+      // citation failure can roll back the table and citation stream together.
+      try {
+        for (const citation of pendingRuleSupersessionCitations) {
+          appendCitationEntryAtomic(root, citation);
+        }
+      } catch (err) {
+        restoreMutationSnapshot(root, [
+          [path, preBatchContent],
+          [citationsPath, preCitationsContent],
+        ]);
+        return { applied: 0, failed_at: null, reason: "citation_append_failed", error: err.message };
       }
 
       // True-append change-log writes (op:"write") AFTER the table
@@ -2459,8 +2667,10 @@ export function metaStateBatch(root, operations, envelope) {
           appendChangeLogEntryAtomic(root, cl);
         }
       } catch (err) {
-        restorePreBatchContent(path, preBatchContent);
-        invalidateCache(root);
+        restoreMutationSnapshot(root, [
+          [path, preBatchContent],
+          [citationsPath, preCitationsContent],
+        ]);
         return { applied: 0, failed_at: null, reason: "change_log_append_failed", error: err.message };
       }
 
@@ -2471,12 +2681,14 @@ export function metaStateBatch(root, operations, envelope) {
         try {
           appendChangeLogEntryAtomic(root, autoEmitEntry);
         } catch (err) {
-          restorePreBatchContent(path, preBatchContent);
+          restoreMutationSnapshot(root, [
+            [path, preBatchContent],
+            [citationsPath, preCitationsContent],
+          ]);
           // Note: pendingChangeLogAppends already landed in change-log.jsonl.
           // We can't roll those back without a snapshot of that file too; the
           // assertWriteVisible check below detects this case via
           // `change_log_not_visible` and reports it as a structured failure.
-          invalidateCache(root);
           return { applied: 0, failed_at: null, reason: "auto_emit_append_failed", error: err.message };
         }
       }
@@ -2493,12 +2705,10 @@ export function metaStateBatch(root, operations, envelope) {
           (id) => !freshEntries.find((e) => e.id === id),
         );
         if (missing) {
-          if (preBatchContent) {
-            writeFileSync(path, preBatchContent, "utf8");
-          } else if (existsSync(path)) {
-            unlinkSync(path);
-          }
-          invalidateCache(root);
+          restoreMutationSnapshot(root, [
+            [path, preBatchContent],
+            [citationsPath, preCitationsContent],
+          ]);
           return { applied: 0, failed_at: null, reason: "change_log_not_visible", missing_id: missing };
         }
       }
