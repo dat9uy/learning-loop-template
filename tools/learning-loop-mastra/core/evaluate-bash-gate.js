@@ -49,6 +49,12 @@ export function evaluateBashGate({ command, root }) {
   // remediation, and constraint-versus-gate-verb severity. The policy returns
   // the existing decision shape or null; the FINAL precedence fold (constraint vs
   // path vs promoted-rule) stays THIS evaluator's job below.
+  //
+  // Caller-by-caller rollback/deletion (spec #161 point 5): these helpers stay
+  // forwarded from gate-logic.js to preserve existing importer paths until the #162
+  // gate-composition cutover routes every caller to the policy directly. Rollback
+  // point: any constraint, remediation, severity, or root-resolution mismatch keeps the
+  // prior inline branch here active. New callers must use the policy directly.
   constraintResult = evaluateCommandConstraintPolicy({ command, root: resolvedRoot });
 
   // --- Path-write detection: delegated to Protected Shell Writes policy ---
