@@ -17,17 +17,24 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync } from "
 import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { SURFACES } from "./surfaces.js";
 import { classifyPolicyTokens, resolveVerbIndex } from "./shell-parse.js";
-import { interpretCommand } from "./command-interpretation.js";
 import { readRegistry, readFileIndex, toLegacyRuleView } from "./meta-state.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
-import { readGateOverride } from "./gate-override.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 import { isOpen } from "./stale-view.js";
 import { CONSTRAINT_PATTERNS, GATE_VERBS, INDIRECTION_VERBS } from "./pattern-config.js";
 import { readRuleIndex } from "./rule-index.js";
 import { stripEvidenceAnchor } from "./evidence-ref.js";
+import { evaluateI3CommandPolicy, evaluateI3PathPolicy, globMatch, isGlobScopeWhitelisted, isSafeRegexPattern, projectHasLearningLoopMcp } from "./promoted-rule-policy.js";
+
+// Re-export the primitives owned by promoted-rule-policy.js so existing callers
+// keep their import path unchanged; gate-logic imports them above for local use.
+export {
+  globMatch,
+  isSafeRegexPattern,
+  isGlobScopeWhitelisted,
+  projectHasLearningLoopMcp,
+} from "./promoted-rule-policy.js";
 
 // fallow-ignore-next-line unused-export -- preserve the long-standing named export for existing Core consumers
 export { stripEvidenceAnchor };
@@ -41,26 +48,6 @@ const WRITE_PATH_PATTERNS = {
   'records-index': ['records/index/**', 'records/*/index/**'],
   'records-capabilities': ['records/capabilities/**', 'records/*/capabilities/**'],
 };
-
-function expandBraces(pattern) {
-  const match = pattern.match(/^(.*?)\{([^}]+)\}(.*)$/);
-  if (!match) return [pattern];
-  const [, pre, options, post] = match;
-  return options.split(',').flatMap((opt) => expandBraces(pre + opt.trim() + post));
-}
-
-export function globMatch(pattern, filePath) {
-  const patterns = expandBraces(pattern);
-  return patterns.some((p) => {
-    const regexStr = p
-      .replace(/\./g, '\\.')
-      .replace(/\*\*/g, '⟨GLOBSTAR⟩')
-      .replace(/\*/g, '[^/]*')
-      .replace(/⟨GLOBSTAR⟩/g, '.*');
-    const regex = new RegExp(`^${regexStr}$`);
-    return regex.test(filePath);
-  });
-}
 
 function pathMatchesObservation(observation, filePath) {
   if (observation.constraint_type !== 'write-path') return false;
@@ -398,138 +385,11 @@ export function inferSurface(filePath) {
   return null;
 }
 
-// ─── Promoted Rules (meta-state as rule registry) ───
-
-/** Whitelist for glob patterns to prevent path traversal. */
-const GLOB_SCOPE_WHITELIST = [
-  "product/",
-  "docs/",
-  "plans/",
-  "tools/",
-  "meta-state.jsonl",
-  ...SURFACES.map((s) => `${s}/`),
-];
-
-/**
- * Simple regex safety check to prevent ReDoS.
- * Rejects patterns where a group with an inner quantifier is itself
- * quantified (star height > 1). This is the canonical ReDoS pattern
- * (e.g., `(a+)+`, `(a*)*`, `(a+)?`).
- *
- * The check distinguishes three cases:
- *  1. A quantifier on a group that previously contained a quantifier
- *     (e.g., `(a+)+`) — REJECT.
- *  2. A quantifier at the top level (depth 0) on a non-group token
- *     (e.g., `\s+` in `(verb)\s+(noun)`) — ALLOW. Multiple top-level
- *     quantifiers in different alternatives are not nested.
- *  3. A quantifier inside a group that previously had a quantifier
- *     (e.g., `(a+)+` with the `+` inside the group) — REJECT.
- *
- * This is a lightweight replacement for the safe-regex package.
- */
-// fallow-ignore-next-line complexity -- single-pass character state machine (depth/groupHadQuantifier/inCharClass/escaped); the 3 documented nested-quantifier cases are load-bearing
-export function isSafeRegexPattern(pattern) {
-  if (!pattern || typeof pattern !== "string") return false;
-  if (pattern.length > 500) return false;
-
-  let depth = 0;
-  let groupHadQuantifier = new Array(50).fill(false);
-  let inCharClass = false;
-  let escaped = false;
-
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (inCharClass) {
-      if (ch === "]") inCharClass = false;
-      continue;
-    }
-    if (ch === "[") {
-      inCharClass = true;
-      continue;
-    }
-    if (ch === "(" && !inCharClass) {
-      depth++;
-      if (depth < groupHadQuantifier.length) {
-        groupHadQuantifier[depth] = false;
-      }
-      continue;
-    }
-    if (ch === ")" && !inCharClass) {
-      // Propagate: the group that just closed contained a quantifier,
-      // so the parent (real group, depth > 0) now conceptually contains
-      // a quantified subpattern. Propagation to depth 0 is a no-op
-      // (top-level quantifiers are not "nested" — they're in different
-      // alternatives or separated by non-group tokens).
-      if (depth < groupHadQuantifier.length && groupHadQuantifier[depth]) {
-        if (depth - 1 > 0 && depth - 1 < groupHadQuantifier.length) {
-          groupHadQuantifier[depth - 1] = true;
-        }
-      }
-      depth--;
-      continue;
-    }
-
-    const isQuantifier = ch === "*" || ch === "+" || ch === "?";
-    const isRangeQuantifier = ch === "{" && /^{\d+(,\d*)?}/.test(pattern.slice(i));
-
-    if ((isQuantifier || isRangeQuantifier) && !inCharClass) {
-      // Case 1: this quantifier quantifies a group (preceded by `)`)
-      // AND that group had a quantifier inside.
-      if (
-        i > 0 &&
-        pattern[i - 1] === ")" &&
-        depth + 1 < groupHadQuantifier.length &&
-        groupHadQuantifier[depth + 1]
-      ) {
-        return false;
-      }
-      // Case 3: this quantifier is inside a group at depth > 0, AND
-      // an enclosing group already had a quantifier. (Top-level
-      // quantifiers — depth 0 — are not checked here, per case 2.)
-      for (let d = 1; d <= depth && d < groupHadQuantifier.length; d++) {
-        if (groupHadQuantifier[d]) {
-          return false;
-        }
-      }
-      // Track the quantifier at the current depth (only for real groups).
-      if (depth > 0 && depth < groupHadQuantifier.length) {
-        groupHadQuantifier[depth] = true;
-      }
-    }
-  }
-
-  return true;
-}
-
-export function isGlobScopeWhitelisted(pattern) {
-  if (!pattern || typeof pattern !== "string") return false;
-  return GLOB_SCOPE_WHITELIST.some((prefix) => pattern.startsWith(prefix));
-}
-
-export function projectHasLearningLoopMcp(root) {
-  try {
-    const cfgPath = join(root, ".mcp.json");
-    if (!existsSync(cfgPath)) return false;
-    const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
-    return !!(
-      cfg.mcpServers &&
-      (cfg.mcpServers["learning-loop"] ||
-        cfg.mcpServers["learning-loop-mcp"] ||
-        cfg.mcpServers["learning-loop-mastra"])
-    );
-  } catch {
-    return false;
-  }
-}
+// ─── Promoted Rules (meta-state as rule registry) ───────────────────────────
+//
+// The I3 enforcement primitives (glob matching, regex safety, glob scope
+// whitelist, and the project-scope predicate) have moved to
+// `promoted-rule-policy.js`; gate-logic re-exports them unchanged above.
 
 /**
  * One-way compatibility adapter for callers that still consume the old
@@ -768,164 +628,23 @@ function evaluateOrphanCandidate(entry, root) {
   return null;
 }
 
-// ─── Promoted-rule provenance helpers ────────────────────────────────────────
+// ─── Promoted-rule caller seam ───────────────────────────────────────────────
 //
-// Event-source markers (frozen vocabulary). The evaluator is the ONLY
-// automatic-candidate producer; toolchain-failure capture is a separate explicit
-// source (its own branch in the recurrence tracker). `event_source` is a producer
-// marker, never user-supplied classification.
-const EVENT_SOURCE_BASH_GATE_EVALUATOR = "bash-gate-evaluator";
-
-// Provenance for a matched rule. Decision stays fail-closed:
-//   - a real executable match keeps `decision: "escalate"` with the classifier
-//     provenance filled (ordinary-rule-fire / executable);
-//   - a parser-proven inert-data match (the raw text carries a banned-looking
-//     shape but the whole match lies inside an inert region the gate blanked)
-//     is a SEPARATE non-permission telemetry event: `decision: "ok"` plus
-//     `event: "unexpected-match"`, never an allow override.
-// The interpretation interface never throws and keeps unknown provenance
-// visible. The caller adds the gate decision and telemetry envelope here; the
-// interpretation itself remains policy-neutral.
-function buildPromotedMatchResult(command, rule, facts = null) {
-  const base = {
-    decision: "escalate",
-    reason: `Promoted rule "${rule.id}" matched: ${rule.pattern}`,
-    rule_id: rule.id,
-    meta_state_id: rule.id,
-    pattern_type: rule.pattern_type,
-  };
-
-  const match_origin = facts?.match_origin ?? "unknown";
-  const candidate_kind = facts?.candidate_kind ?? "unclassified";
-
-  // Kill-switch guard: GATE_HEREDOC_BLANKER=0 short-circuits the heredoc
-  // blanker, so the gate evaluated the command un-blanked and the classifier's
-  // inert proof is UNSOUND for heredoc-derived spans. A match under the
-  // kill-switch must escalate as a visible command (a real executor shape is
-  // not inert data just because the kill-switch turned the blanker off).
-  if (process.env.GATE_HEREDOC_BLANKER === "0") {
-    if (command == null) return base;
-    return {
-      ...base,
-      event_source: EVENT_SOURCE_BASH_GATE_EVALUATOR,
-      match_origin,
-      candidate_kind,
-    };
-  }
-
-  if (match_origin === "inert-data" && candidate_kind === "unexpected-match") {
-    // Proven inert-data: the raw text does not actually violate (it is data),
-    // so the permission decision stays ok while a separate unexpected-match
-    // telemetry event is emitted. Never weakens a real executable match —
-    // `bash -c "vitest ..." | tail` classifies executable and escalates.
-    return {
-      decision: "ok",
-      reason: "inert-data match (unexpected-match telemetry)",
-      rule_id: rule.id,
-      meta_state_id: rule.id,
-      pattern_type: rule.pattern_type,
-      event: "unexpected-match",
-      event_source: EVENT_SOURCE_BASH_GATE_EVALUATOR,
-      match_origin,
-      candidate_kind,
-    };
-  }
-
-  // Real executable / mixed / unknown match: keep the escalate decision with the
-  // provenance filled. A rule that matched via a glob path (command == null)
-  // has no command provenance — omit the fields (absent, not guessed).
-  if (command == null) return base;
-  return {
-    ...base,
-    event_source: EVENT_SOURCE_BASH_GATE_EVALUATOR,
-    match_origin,
-    candidate_kind,
-  };
-}
-
-// fallow-ignore-next-line complexity -- per-rule match loop with strip helpers (heredoc/sinks/segments/message-flags/node-eval/data-quotes/cli-argv) + two-pass segment/full matching; extraction would scatter the match surface
+// Promoted Rule Policy now owns I3 ordering, scope predicates, overrides,
+// pattern safety, matching, provenance, telemetry, and result shaping in
+// `promoted-rule-policy.js`. The legacy `applyPromotedRules` export remains a
+// one-way compatibility adapter that forwards to the policy while the remaining
+// direct callers (tests) consume the new seam. New callers must not recreate the
+// policy; they use `evaluateI3CommandPolicy` / `evaluateI3PathPolicy`.
+//
+//   - any production caller using the subject-level policy: allowed
+//   - new callers recreating matching/reason/telemetry logic: forbidden
+// fallow-ignore-next-line unused-export -- temporary one-way compatibility adapter while legacy test callers migrate onto evaluateI3CommandPolicy / evaluateI3PathPolicy
 export function applyPromotedRules(command, filePath, rules, root = findProjectRoot()) {
-  const override = readGateOverride(root);
-  const overrideSet = override ? new Set(override.rule_ids) : new Set();
-  const interpretation = command != null ? interpretCommand(command) : null;
-
-  // Proven inert-data telemetry is deferred to AFTER the full rule loop: an
-  // `event: "unexpected-match"` marker is a non-permission telemetry event, so
-  // it must never short-circuit evaluation of later rules. If any LATER rule
-  // matches a real violation, that escalate wins and this pending marker is
-  // discarded. Only when the whole loop finds no real violation is the single
-  // (first) inert marker returned as `{decision:"ok", event:"unexpected-match"}`.
-  let pendingTelemetry = null;
-
-  for (const rule of rules) {
-    // Defense-in-depth: skip rules that should not have been loaded.
-    // loadPromotedRules already filters to entry_kind="rule" + status="active",
-    // but we double-check status here for safety.
-    if (rule.status !== "active") continue;
-
-    if (rule.pattern_type === "agent-checklist") {
-      // Design-time rule; no command/path matching. The audit lives in the
-      // check_runtime_agnostic MCP tool and the runtime-agnostic regression test.
-      // The rule loads; the gate ignores it.
-      continue;
-    }
-
-    if (rule.internalization_level !== "I3") continue;
-    if (overrideSet.has(rule.id)) {
-      console.warn(`Rule ${rule.id}: skipped via gate override (${override.operator_note ?? "no note"})`);
-      continue;
-    }
-
-    const { pattern_type, pattern, id: rule_id } = rule;
-    let matched = false;
-    let matchFacts = null;
-
-    try {
-      if (pattern_type === "determinism-checklist") {
-        // This pattern type is not a command-path match. The check happens in
-        // meta_state_resolve (the per-tool gate). Skip here silently — the
-        // bash gate always has `command` set, so a defensive warning would
-        // fire on every single Execute invocation (regression caught by
-        // gate-determinism-checklist.test.js#does NOT warn when...).
-        continue;
-      } else if (pattern_type === "regex" && command) {
-        if (!isSafeRegexPattern(pattern)) {
-          console.warn(`Rule ${rule_id}: regex pattern rejected by safety check`);
-          continue;
-        }
-        matchFacts = interpretation?.matchRule(rule) ?? {
-          matched: false,
-          supported: false,
-          match_origin: "unknown",
-          candidate_kind: "unclassified",
-          raw_match: null,
-        };
-        matched = matchFacts.matched;
-        if (!matched && process.env.GATE_HEREDOC_BLANKER !== "0" && matchFacts.candidate_kind === "unexpected-match") {
-          const prov = buildPromotedMatchResult(command, rule, matchFacts);
-          if (!pendingTelemetry) pendingTelemetry = prov;
-        }
-      } else if (pattern_type === "glob" && filePath) {
-        if (!isGlobScopeWhitelisted(pattern)) {
-          console.warn(`Rule ${rule_id}: glob pattern "${pattern}" rejected by scope whitelist`);
-          continue;
-        }
-        matched = globMatch(pattern, filePath);
-      }
-    } catch (err) {
-      console.warn(`Rule ${rule_id}: invalid pattern: ${err.message}`);
-      continue;
-    }
-
-    if (matched) {
-      return buildPromotedMatchResult(command, rule, matchFacts);
-    }
+  if (command != null) {
+    return evaluateI3CommandPolicy({ command, root, i3Rules: rules });
   }
-  // No rule produced a real violation. If the loop recorded a proven inert-data
-  // unexpected-match marker, surface it now (decision stays ok — it is a
-  // non-permission telemetry event). An ordinary no-match still returns ok.
-  if (pendingTelemetry) return pendingTelemetry;
-  return { decision: "ok" };
+  return evaluateI3PathPolicy({ filePath, root, i3Rules: rules });
 }
 
 // ─── Staleness helpers ───

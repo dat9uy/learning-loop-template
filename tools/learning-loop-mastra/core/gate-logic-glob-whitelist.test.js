@@ -39,6 +39,8 @@ await test("rejects empty string and non-string input", () => {
 });
 
 await test("GLOB_SCOPE_WHITELIST parameterizes on SURFACES: source derives prefixes from SURFACES.map", () => {
-  const src = readFileSync(join(__dirname, "gate-logic.js"), "utf8");
+  // The whitelist primitive is now owned by promoted-rule-policy.js; gate-logic
+  // re-exports it. Assert the derivation at the owner.
+  const src = readFileSync(join(__dirname, "promoted-rule-policy.js"), "utf8");
   assert.ok(src.includes("...SURFACES.map"), "GLOB_SCOPE_WHITELIST must derive prefixes from SURFACES.map(...)");
 });

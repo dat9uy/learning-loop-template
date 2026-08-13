@@ -10,11 +10,11 @@ import {
   matchGateVerb,
   checkObservationExists,
   makeGateDecision,
-  loadGroundedPromotedRules,
-  applyPromotedRules,
   findProjectRoot,
   normalizeQuoteConcatenation,
+  loadGroundedPromotedRules,
 } from "./gate-logic.js";
+import { evaluateI3CommandPolicy } from "./promoted-rule-policy.js";
 import { readRuntimeObservations } from "./file-readers.js";
 import { checkObservationStaleness } from "./inbound-state.js";
 import { isObservationStaleByAge } from "./observation-staleness.js";
@@ -327,8 +327,8 @@ export function evaluateBashGate({ command, root }) {
   // emitted when the final decision is ok — a real constraint (docker, path
   // write) still wins over the telemetry event. Real executable matches
   // escalate (provenance rides on the returned object).
-  const promotedRules = loadGroundedPromotedRules(resolvedRoot);
-  const promotedCheck = applyPromotedRules(command, null, promotedRules, resolvedRoot);
+  const i3Rules = loadGroundedPromotedRules(resolvedRoot).filter((r) => r.internalization_level === "I3");
+  const promotedCheck = evaluateI3CommandPolicy({ command, root: resolvedRoot, i3Rules });
   if (promotedCheck.decision === "escalate") {
     return promotedCheck;
   }
