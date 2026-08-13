@@ -1,12 +1,11 @@
 import assert from "node:assert";
 import { describe, test } from "vitest";
 import {
-  matchConstraintPattern,
-  makeGateDecision,
   loadPromotedRules,
   applyPromotedRules,
   isSafeRegexPattern,
 } from "../../core/gate-logic.js";
+import { matchConstraintPattern, makeGateDecision } from "../../core/command-constraint-policy.js";
 import { classifyPolicyTokens } from "../../core/shell-parse.js";
 import { mkdtempSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";

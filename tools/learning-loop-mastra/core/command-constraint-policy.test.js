@@ -24,6 +24,7 @@ import {
   makeGateDecision,
   checkObservationExists,
 } from "./command-constraint-policy.js";
+import { interpretCommand } from "./command-interpretation.js";
 
 function makeRoot() {
   return mkdtempSync(join(tmpdir(), "cmd-constraint-policy-test-"));
@@ -171,7 +172,34 @@ test("quote-concatenation split constraint (s''udo) still detected at policy sea
   assert.strictEqual(result.constraint_type, "sudo");
 });
 
-// ── forwarded helper compatibility (one-way adapter to the policy) ──
+test("policy evaluates the supplied opaque interpretation, not mismatched raw text", () => {
+  const root = makeRoot();
+  const interpretation = interpretCommand("ls -la");
+  const result = evaluateCommandConstraintPolicy({
+    command: "pip install vnstock",
+    interpretation,
+    root,
+  });
+  assert.strictEqual(result, null);
+});
+
+test("policy falls back to raw-command compatibility when interpretation is unavailable", () => {
+  const root = makeRoot();
+  const brokenInterpretation = {
+    matchConfiguredConstraints() {
+      throw new Error("interpretation seam unavailable");
+    },
+  };
+  const result = evaluateCommandConstraintPolicy({
+    command: "pip install vnstock",
+    interpretation: brokenInterpretation,
+    root,
+  });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.constraint_type, "package-manager");
+});
+
+// ── policy helper compatibility (one-way adapter to the policy) ──
 
 test("matchConstraintPattern / matchGateVerb / makeGateDecision / checkObservationExists are exported from the policy", () => {
   assert.strictEqual(typeof matchConstraintPattern, "function");

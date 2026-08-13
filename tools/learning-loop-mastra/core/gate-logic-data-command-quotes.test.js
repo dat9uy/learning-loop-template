@@ -8,9 +8,9 @@
 import assert from "node:assert";
 import { describe, test } from "vitest";
 import {
-  matchConstraintPattern,
   applyPromotedRules,
 } from "./gate-logic.js";
+import { matchConstraintPattern } from "./command-constraint-policy.js";
 
 const VITEST_RULE = {
   id: "rule-no-raw-stdout-vitest",

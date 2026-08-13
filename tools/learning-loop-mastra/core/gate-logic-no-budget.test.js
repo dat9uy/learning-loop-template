@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { test } from "vitest";
-import { makeGateDecision } from "./gate-logic.js";
+import { makeGateDecision } from "./command-constraint-policy.js";
 
 // ─── makeGateDecision: no budget parameter, budget escalation removed ───
 

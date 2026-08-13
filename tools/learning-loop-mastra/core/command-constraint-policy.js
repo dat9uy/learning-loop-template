@@ -9,41 +9,27 @@
 // the constraint, protected-path, and promoted-rule results).
 //
 // This is a gate/action-boundary policy, not a Rule authority, and it makes no
-// registry mutations. The `matchConstraintPattern` / `matchGateVerb` /
-// `checkObservationExists` / `makeGateDecision` helpers are forwarded by
-// gate-logic.js as one-way compatibility adapters for existing callers until the
-// #162 gate-composition cutover fully routes the Bash-gate path here.
+// registry mutations. The `checkObservationExists` / `makeGateDecision` helpers
+// remain here as the policy's small compatibility surface for existing Core
+// callers; command matching itself is delegated to the opaque interpretation.
 //
-// Note on the Command Interpretation seam: this policy mirrors the sibling
-// policies (protected-shell-writes, promoted-rule-policy) by consuming the
-// interpreted command (`{ command, root }`) rather than threading an
-// interpretation object. Constraint patterns and gate-verbs are NOT Rule
-// objects, so they are matched via the blanking/classifier primitives directly,
-// not via `matchRule`. Root defaulting, complete result objects, and exact
-// visible reasons are preserved.
+// The policy consumes the opaque Command Interpretation result plus resolved
+// context. It owns observation, expiry, staleness, remediation, severity, and
+// candidate shaping; the interpretation owns parser/blanking machinery and
+// returns only configured match facts. Root defaulting, complete result objects,
+// and exact visible reasons are preserved.
 
-import { classifyPolicyTokens } from "./shell-parse.js";
 import { CONSTRAINT_PATTERNS, GATE_VERBS, INDIRECTION_VERBS } from "./pattern-config.js";
 import { readRuntimeObservations } from "./file-readers.js";
 import { checkObservationStaleness } from "./inbound-state.js";
 import { isObservationStaleByAge } from "./observation-staleness.js";
-import {
-  splitSegments,
-  stripMessageFlags,
-  stripNodeEvalBody,
-  stripDataCommandQuotes,
-  safeStripHeredocBodies,
-  normalizeQuoteConcatenation,
-  BLANKABLE_HEREDOC_VERBS_CONSTRAINT,
-  BLANKABLE_HEREDOC_VERBS_GATEVERB,
-} from "./blanking.js";
+import { interpretCommand } from "./command-interpretation.js";
 
-// Local verb basename normalization (PATH-qualified /bin/bash -> bash).
-function basename(p) {
-  if (typeof p !== "string") return p;
-  const i = p.lastIndexOf("/");
-  return i === -1 ? p : p.slice(i + 1);
-}
+const CONSTRAINT_MATCH_CONFIG = Object.freeze({
+  constraintPatterns: CONSTRAINT_PATTERNS,
+  gateVerbs: GATE_VERBS,
+  indirectionVerbs: INDIRECTION_VERBS,
+});
 
 /**
  * Match a command against constraint patterns. Splits on ;, &, | and checks
@@ -53,29 +39,19 @@ function basename(p) {
  * the prior gate-logic owner (first-class docker/sudo/package-manager/
  * vendor-api/side-effect-import boundaries, maximally conservative).
  */
-// fallow-ignore-next-line unused-export -- one-way gateway for constraint-pattern matching; existing callers import it via the gate-logic re-export until the #162 cutover, and it is covered at both the policy and Bash-gate seams
+// fallow-ignore-next-line unused-export -- public policy seam retained for direct Core callers and focused classifier tests
 export function matchConstraintPattern(command) {
   if (!command || typeof command !== "string") return null;
-
-  const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_CONSTRAINT);
-  const quoteSafe = normalizeQuoteConcatenation(heredocSafe);
-
-  for (const segment of splitSegments(quoteSafe)) {
-    const stripped = stripMessageFlags(segment);
-    const nodeStripped = stripNodeEvalBody(stripped);
-    const dataStripped = stripDataCommandQuotes(nodeStripped);
-    for (const [type, pattern] of Object.entries(CONSTRAINT_PATTERNS)) {
-      if (pattern.test(dataStripped)) return type;
-    }
-  }
-  return null;
+  return interpretCommand(command)
+    .matchConfiguredConstraints(CONSTRAINT_MATCH_CONFIG)
+    .constraintMatch;
 }
 
 /**
  * Check if an active observation exists for the given constraint type.
  * Matches by `constraint_type` field. Archived observations are ignored.
  */
-// fallow-ignore-next-line unused-export -- one-way gateway for observation lookup; existing callers import it via the gate-logic re-export until the #162 cutover, and it is covered at both the policy and Bash-gate seams
+// fallow-ignore-next-line unused-export -- public policy seam retained for direct Core callers and focused observation tests
 export function checkObservationExists(constraintType, observations) {
   if (!observations || !Array.isArray(observations)) {
     return { found: false };
@@ -96,59 +72,12 @@ export function checkObservationExists(constraintType, observations) {
  * only match when followed by a gate-verb arg. Preserved verbatim from the
  * prior gate-logic owner.
  */
-// fallow-ignore-next-line unused-export complexity -- one-way gateway for the verb-layer gate-verb matcher; preserved verbatim from the prior owner, has no detached production consumer yet (imported via the gate-logic re-export) until the #162 cutover, and stays the canonical tokenizer view
+// fallow-ignore-next-line unused-export -- public policy seam retained for direct Core callers and focused verb-layer tests
 export function matchGateVerb(command) {
   if (!command || typeof command !== "string") return null;
-  const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_GATEVERB);
-  const view = classifyPolicyTokens(heredocSafe);
-
-  for (const seg of view.segments) {
-    const isIndirection = INDIRECTION_VERBS.has(seg.verb);
-
-    if (!isIndirection) {
-      const match = matchVerbAgainstGateList(seg.verb, seg.args);
-      if (match) return `gate-verb:${match}`;
-    }
-
-    if (isIndirection) {
-      for (const arg of seg.args) {
-        if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) continue;
-        if (arg.startsWith("-")) continue;
-        const argMatch = matchVerbAgainstGateList(basename(arg), []);
-        if (argMatch) {
-          return `gate-verb:${seg.verb}`;
-        }
-      }
-    }
-  }
-  return null;
-}
-
-// fallow-ignore-next-line complexity -- flag-matching covers detached/attached/single-char-cluster forms; the 3 documented matches are load-bearing gate-verb semantics preserved verbatim
-function matchVerbAgainstGateList(verb, args) {
-  if (!verb) return null;
-  const key = basename(verb);
-  for (const entry of GATE_VERBS) {
-    if (entry.verb !== key) continue;
-    if (entry.indirection) continue;
-    if (entry.flags === null) return key;
-    const hasFlag = entry.flags.some((f) =>
-      args.some(
-        // fallow-ignore-next-line complexity -- the flag-comparison predicate; the 3 documented match forms are load-bearing gate-verb semantics preserved verbatim
-        (a) =>
-          a === f ||
-          a.startsWith(f + "=") ||
-          (f.length === 2 &&
-            f[0] === "-" &&
-            a.length > 2 &&
-            a[0] === "-" &&
-            a[1] !== "-" &&
-            a.slice(1).includes(f[1])),
-      ),
-    );
-    if (hasFlag) return key;
-  }
-  return null;
+  return interpretCommand(command)
+    .matchConfiguredConstraints(CONSTRAINT_MATCH_CONFIG)
+    .gateVerbMatch;
 }
 
 /**
@@ -156,7 +85,7 @@ function matchVerbAgainstGateList(verb, args) {
  * owner, including the side-effect-import hard block (importing triggers vendor
  * auth which reactivates cleared devices; no observation/budget can override).
  */
-// fallow-ignore-next-line unused-export complexity -- one-way gateway for decision shaping; existing callers import it via the gate-logic re-export until the #162 cutover, and it is covered at the policy and Bash-gate seams
+// fallow-ignore-next-line unused-export complexity -- one-way gateway for decision shaping; existing direct Core callers still use this helper, and it is covered at the policy and Bash-gate seams
 export function makeGateDecision(constraintMatch, observationStatus) {
   if (constraintMatch === "side-effect-import") {
     return {
@@ -200,73 +129,89 @@ function buildGateVerbRemediation(gateVerbMatch, { expired }) {
   );
 }
 
-// fallow-ignore-next-line complexity -- four independent detection sections (constraint/gate-verb) plus combine/precedence; the policy seam is the canonical shape
-export function evaluateCommandConstraintPolicy({ command, root, now = Date.now() }) {
-  if (!command || typeof command !== "string") return null;
+function evaluateObservationCandidate(
+  constraintMatch,
+  observations,
+  root,
+  { now = Date.now(), ageBounded = false, remediation = false } = {},
+) {
+  let observationStatus = checkObservationExists(constraintMatch, observations);
+  let ageExpired = false;
 
-  let constraintResult = null;
+  if (
+    ageBounded &&
+    observationStatus.found &&
+    isObservationStaleByAge(observationStatus.observation, now)
+  ) {
+    observationStatus = { found: false };
+    ageExpired = true;
+  }
 
-  // Quote-concatenation normalization: fold adjacent-quote splits so the
-  // raw-text constraint regexes (docker/sudo/package-manager/vendor-api)
-  // see the joined form. The verb layer already folds quotes, so it keeps
-  // the RAW command below.
-  const quoteSafe = normalizeQuoteConcatenation(command);
+  const result = makeGateDecision(constraintMatch, observationStatus);
+  if (remediation && result.observation_required) {
+    result.reason = buildGateVerbRemediation(constraintMatch, { expired: ageExpired });
+  }
 
-  // --- Constraint pattern check ---
-  const constraintMatch = matchConstraintPattern(quoteSafe);
-  if (constraintMatch) {
-    const observations = readRuntimeObservations(root);
-    const observationStatus = checkObservationExists(constraintMatch, observations);
-
-    constraintResult = makeGateDecision(constraintMatch, observationStatus);
-
-    // Staleness check for non-hard-block decisions
-    if (!constraintResult.hard_block) {
-      const staleness = checkObservationStaleness(observations, root);
-      if (staleness.stale) {
-        constraintResult.inbound_gate = true;
-        if (constraintResult.decision === "ok") {
-          constraintResult.decision = "escalate";
-          constraintResult.reason = staleness.reason;
-          constraintResult.observation_id = staleness.observation_id;
-        }
+  if (!result.hard_block) {
+    const staleness = checkObservationStaleness(observations, root);
+    if (staleness.stale) {
+      result.inbound_gate = true;
+      if (result.decision === "ok") {
+        result.decision = "escalate";
+        result.reason = staleness.reason;
+        result.observation_id = staleness.observation_id;
       }
     }
   }
 
-  // --- Gate-verb constraint check (executor + indirection verbs) ---
-  // Observation-gated, same decision shape as docker/sudo. Runs alongside
-  // matchConstraintPattern — either match escalates; the more severe wins
-  // (hard_block dominates). Gate-verb observations are age-bounded (30 min):
-  // unlike marker-mode staleness, a gate-verb:<verb> observation expires on age
-  // alone. The vnstock constraint path keeps marker-mode semantics.
-  const gateVerbMatch = matchGateVerb(command);
+  return result;
+}
+
+// One-way compatibility adapter for the pre-interpretation caller shape. The
+// opaque interpretation is authoritative when it is available; a malformed or
+// unavailable interpretation falls back to a fresh raw-command interpretation so
+// an in-flight caller can keep the existing evaluator branch active. Delete this
+// fallback after the #162 composition cutover proves every caller supplies the
+// interpretation seam.
+function resolveConfiguredConstraintFacts(command, interpretation) {
+  if (interpretation && typeof interpretation.matchConfiguredConstraints === "function") {
+    try {
+      return interpretation.matchConfiguredConstraints(CONSTRAINT_MATCH_CONFIG);
+    } catch {
+      // Compatibility rollback below preserves the old caller contract.
+    }
+  }
+  if (typeof command !== "string") return { constraintMatch: null, gateVerbMatch: null };
+  return interpretCommand(command).matchConfiguredConstraints(CONSTRAINT_MATCH_CONFIG);
+}
+
+// fallow-ignore-next-line complexity -- two policy candidates plus the
+// constraint-versus-gate-verb severity fold are the single policy seam
+export function evaluateCommandConstraintPolicy({
+  command,
+  interpretation,
+  root,
+  now = Date.now(),
+}) {
+  const { constraintMatch, gateVerbMatch } = resolveConfiguredConstraintFacts(command, interpretation);
+  let constraintResult = null;
+
+  if (constraintMatch) {
+    constraintResult = evaluateObservationCandidate(
+      constraintMatch,
+      readRuntimeObservations(root),
+      root,
+    );
+  }
+
   if (gateVerbMatch) {
-    const observations = readRuntimeObservations(root);
-    let observationStatus = checkObservationExists(gateVerbMatch, observations);
-    let ageExpired = false;
-    if (
-      observationStatus.found &&
-      isObservationStaleByAge(observationStatus.observation, now)
-    ) {
-      observationStatus = { found: false };
-      ageExpired = true;
-    }
-    const gateVerbResult = makeGateDecision(gateVerbMatch, observationStatus);
-    if (gateVerbResult.observation_required) {
-      gateVerbResult.reason = buildGateVerbRemediation(gateVerbMatch, { expired: ageExpired });
-    }
-    if (!gateVerbResult.hard_block) {
-      const staleness = checkObservationStaleness(observations, root);
-      if (staleness.stale) {
-        gateVerbResult.inbound_gate = true;
-        if (gateVerbResult.decision === "ok") {
-          gateVerbResult.decision = "escalate";
-          gateVerbResult.reason = staleness.reason;
-          gateVerbResult.observation_id = staleness.observation_id;
-        }
-      }
-    }
+    const gateVerbResult = evaluateObservationCandidate(
+      gateVerbMatch,
+      readRuntimeObservations(root),
+      root,
+      { now, ageBounded: true, remediation: true },
+    );
+
     // Gate-verb result replaces the constraint result if it's stricter
     // (hard_block) or if no constraint result exists yet.
     if (!constraintResult || gateVerbResult.hard_block) {

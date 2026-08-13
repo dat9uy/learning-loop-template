@@ -2,15 +2,23 @@
 //
 // This is the small public seam for command meaning. The parser, blanking
 // views, quote handling, inert-span proof, and recurrence representation stay
-// behind it. A caller supplies an already selected Rule and receives facts
-// about matching and provenance; this module never loads Rules, consults
-// observations, chooses severity, or makes a gate decision.
+// behind it. A caller supplies an already selected Rule or a configured
+// classification request and receives facts about matching and provenance;
+// this module never loads Rules, consults observations, chooses severity, or
+// makes a gate decision.
 
 import { classifyCommand } from "./command-classification.js";
+import { classifyPolicyTokens } from "./shell-parse.js";
 import {
+  BLANKABLE_HEREDOC_VERBS_CONSTRAINT,
+  BLANKABLE_HEREDOC_VERBS_GATEVERB,
   BLANKABLE_HEREDOC_VERBS_PROMOTED,
   normalizeQuoteConcatenation,
   safeStripHeredocBodies,
+  splitSegments,
+  stripDataCommandQuotes,
+  stripMessageFlags,
+  stripNodeEvalBody,
 } from "./blanking.js";
 import { projectRecurrenceKey } from "./command-recurrence.js";
 
@@ -36,19 +44,105 @@ function commandText(command) {
   return typeof command === "string" ? command : "";
 }
 
+function basename(value) {
+  if (typeof value !== "string") return value;
+  const index = value.lastIndexOf("/");
+  return index === -1 ? value : value.slice(index + 1);
+}
+
+function matchConstraintPattern(command, patterns) {
+  const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_CONSTRAINT);
+  const quoteSafe = normalizeQuoteConcatenation(heredocSafe);
+
+  for (const segment of splitSegments(quoteSafe)) {
+    const stripped = stripMessageFlags(segment);
+    const nodeStripped = stripNodeEvalBody(stripped);
+    const dataStripped = stripDataCommandQuotes(nodeStripped);
+    for (const [type, pattern] of Object.entries(patterns ?? {})) {
+      pattern.lastIndex = 0;
+      if (pattern.test(dataStripped)) return type;
+    }
+  }
+  return null;
+}
+
+function matchVerbAgainstGateList(verb, args, gateVerbs) {
+  if (!verb) return null;
+  const key = basename(verb);
+  for (const entry of gateVerbs ?? []) {
+    if (entry.verb !== key || entry.indirection) continue;
+    if (entry.flags === null) return key;
+    const hasFlag = entry.flags.some((flag) =>
+      args.some(
+        (arg) =>
+          arg === flag ||
+          arg.startsWith(flag + "=") ||
+          (flag.length === 2 &&
+            flag[0] === "-" &&
+            arg.length > 2 &&
+            arg[0] === "-" &&
+            arg[1] !== "-" &&
+            arg.slice(1).includes(flag[1])),
+      ),
+    );
+    if (hasFlag) return key;
+  }
+  return null;
+}
+
+// fallow-ignore-next-line complexity -- preserves the load-bearing executor/indirection classifier, including flag forms and pipe-target handling
+function matchGateVerb(command, gateVerbs, indirectionVerbs) {
+  const heredocSafe = safeStripHeredocBodies(command, BLANKABLE_HEREDOC_VERBS_GATEVERB);
+  const view = classifyPolicyTokens(heredocSafe);
+
+  for (const segment of view.segments) {
+    const isIndirection = indirectionVerbs?.has(segment.verb);
+    if (!isIndirection) {
+      const match = matchVerbAgainstGateList(segment.verb, segment.args, gateVerbs);
+      if (match) return `gate-verb:${match}`;
+    }
+
+    if (isIndirection) {
+      for (const arg of segment.args) {
+        if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) continue;
+        if (arg.startsWith("-")) continue;
+        if (matchVerbAgainstGateList(basename(arg), [], gateVerbs)) {
+          return `gate-verb:${segment.verb}`;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function configuredConstraintFacts(interpretation, config = {}) {
+  const state = internalState(interpretation);
+  if (!state) return { constraintMatch: null, gateVerbMatch: null };
+  return {
+    constraintMatch: matchConstraintPattern(state.command, config.constraintPatterns),
+    gateVerbMatch: matchGateVerb(
+      state.command,
+      config.gateVerbs,
+      config.indirectionVerbs,
+    ),
+  };
+}
+
 /**
  * Create an opaque, request-local interpretation.
  *
  * The returned object intentionally has no data properties. Callers can only
- * ask the interface to match a supplied Rule. This keeps normalized strings,
- * token views, blanking primitives, and shell-AST concepts out of the seam.
+ * ask the interface for rule or configured-command facts. This keeps
+ * normalized strings, token views, blanking primitives, and shell-AST concepts
+ * out of the seam.
  *
  * @param {string|null|undefined} command
- * @returns {{matchRule: (rule: object) => object}}
+ * @returns {{matchRule: (rule: object) => object, matchConfiguredConstraints: (config: object) => {constraintMatch: string|null, gateVerbMatch: string|null}}}
  */
 export function interpretCommand(command) {
   const interpretation = Object.freeze({
     matchRule: (rule) => matchCommandRule(interpretation, rule),
+    matchConfiguredConstraints: (config) => configuredConstraintFacts(interpretation, config),
   });
   INTERNAL.set(interpretation, {
     command: commandText(command),

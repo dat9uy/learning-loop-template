@@ -11,7 +11,7 @@
 
 import assert from "node:assert";
 import { describe, test } from "vitest";
-import { matchGateVerb } from "./gate-logic.js";
+import { matchGateVerb } from "./command-constraint-policy.js";
 
 // ─── A. Direct executor bypass shapes — escalate without observation ───
 

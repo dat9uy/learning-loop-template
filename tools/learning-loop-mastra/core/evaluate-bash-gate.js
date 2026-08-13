@@ -14,6 +14,7 @@ import {
   DECISION_LOG_WRITE_REASON,
 } from "./protected-shell-writes.js";
 import { evaluateCommandConstraintPolicy } from "./command-constraint-policy.js";
+import { interpretCommand } from "./command-interpretation.js";
 
 // Legacy path-write pattern exports, forwarded from protected-shell-writes.js so
 // existing callers keep their import path unchanged. protected-shell-writes.js is
@@ -50,12 +51,17 @@ export function evaluateBashGate({ command, root }) {
   // the existing decision shape or null; the FINAL precedence fold (constraint vs
   // path vs promoted-rule) stays THIS evaluator's job below.
   //
-  // Caller-by-caller rollback/deletion (spec #161 point 5): these helpers stay
-  // forwarded from gate-logic.js to preserve existing importer paths until the #162
-  // gate-composition cutover routes every caller to the policy directly. Rollback
-  // point: any constraint, remediation, severity, or root-resolution mismatch keeps the
-  // prior inline branch here active. New callers must use the policy directly.
-  constraintResult = evaluateCommandConstraintPolicy({ command, root: resolvedRoot });
+  // Compatibility rollback (spec #161 point 5): command-constraint-policy.js
+  // accepts this opaque interpretation and falls back to its raw-command adapter
+  // if the interpretation seam is unavailable. Keep this caller on the stable
+  // policy seam until #162; remove that fallback only after every caller supplies
+  // an interpretation and the preservation suite remains green.
+  const interpretation = interpretCommand(command);
+  constraintResult = evaluateCommandConstraintPolicy({
+    command,
+    interpretation,
+    root: resolvedRoot,
+  });
 
   // --- Path-write detection: delegated to Protected Shell Writes policy ---
   // Centralized in protected-shell-writes.js: protected-path classification,

@@ -22,8 +22,8 @@ import assert from "node:assert";
 import { describe, test } from "vitest";
 import {
   applyPromotedRules,
-  matchConstraintPattern,
 } from "./gate-logic.js";
+import { matchConstraintPattern } from "./command-constraint-policy.js";
 import { evaluateBashGate } from "./evaluate-bash-gate.js";
 import { normalizeQuoteConcatenation } from "./blanking.js";
 

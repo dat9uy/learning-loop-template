@@ -30,8 +30,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   applyPromotedRules,
-  matchConstraintPattern,
 } from "./gate-logic.js";
+import { matchConstraintPattern } from "./command-constraint-policy.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HANDLERS_DIR = join(__dirname, "../tools/handlers");

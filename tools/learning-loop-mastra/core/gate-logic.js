@@ -34,23 +34,6 @@ export {
   projectHasLearningLoopMcp,
 } from "./promoted-rule-policy.js";
 
-// One-way compatibility forwarding: constraint + gate-verb matching,
-// observation lookup, and decision shaping now live in
-// command-constraint-policy.js (sole owner). Existing callers importing these
-// from gate-logic keep working unchanged until they migrate to the policy (the
-// #162 gate-composition cutover). New callers must import from the policy
-// directly — no new caller may recreate the logic here.
-export {
-  // fallow-ignore-next-line unused-export -- temporary one-way forwarding for existing test callers until the #162 cutover
-  matchConstraintPattern,
-  // fallow-ignore-next-line unused-export -- temporary one-way forwarding for existing test callers until the #162 cutover
-  matchGateVerb,
-  // fallow-ignore-next-line unused-export -- temporary one-way forwarding for existing test callers until the #162 cutover
-  checkObservationExists,
-  // fallow-ignore-next-line unused-export -- temporary one-way forwarding for existing test callers until the #162 cutover
-  makeGateDecision,
-} from "./command-constraint-policy.js";
-
 // fallow-ignore-next-line unused-export -- preserve the long-standing named export for existing Core consumers
 export { stripEvidenceAnchor };
 

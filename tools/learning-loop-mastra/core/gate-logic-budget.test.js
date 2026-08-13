@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import { test } from "vitest";
-import { evaluateBudget, makeGateDecision } from "./gate-logic.js";
+import { evaluateBudget } from "./gate-logic.js";
+import { makeGateDecision } from "./command-constraint-policy.js";
 
 // ─── evaluateBudget tests (utility function, no longer called by gate) ───
 
