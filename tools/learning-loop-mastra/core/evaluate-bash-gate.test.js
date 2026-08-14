@@ -1,11 +1,12 @@
 /**
- * TDD red tests for evaluateBashGate + PATH_WRITE_PATTERNS.
+ * TDD red tests for evaluateBashGate + protected-shell-writes constants.
  *
  * Signature contract (locked):
  *   evaluateBashGate({ command, root }) → { decision, reason?, hard_block?, constraint_type?, rule_id?, pattern_type? }
  *   PATH_WRITE_PATTERNS → RegExp[] (3 records + 2×SURFACES preflight + 4 state-file patterns)
  *
- * Tests import from ./evaluate-bash-gate.js (does not exist yet → ERR_MODULE_NOT_FOUND = intended TDD red).
+ * Path-write constants are imported from protected-shell-writes.js (sole owner
+ * of protected-path classification) per the #162 gate-composition cutover.
  */
 
 import { test } from "vitest";
@@ -14,12 +15,12 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
+import { evaluateBashGate } from "./evaluate-bash-gate.js";
 import {
-  evaluateBashGate,
   PATH_WRITE_PATTERNS,
   DECISION_LOG_WRITE_PATTERNS,
   DECISION_LOG_WRITE_REASON,
-} from "./evaluate-bash-gate.js";
+} from "./protected-shell-writes.js";
 import { SURFACES } from "./surfaces.js";
 
 // ── helpers ──

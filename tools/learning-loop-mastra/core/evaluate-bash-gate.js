@@ -7,30 +7,9 @@
 
 import { findProjectRoot, loadGroundedPromotedRules } from "./gate-logic.js";
 import { evaluateI3CommandPolicy } from "./promoted-rule-policy.js";
-import {
-  evaluateProtectedShellWritePolicy,
-  PATH_WRITE_PATTERNS,
-  DECISION_LOG_WRITE_PATTERNS,
-  DECISION_LOG_WRITE_REASON,
-} from "./protected-shell-writes.js";
+import { evaluateProtectedShellWritePolicy } from "./protected-shell-writes.js";
 import { evaluateCommandConstraintPolicy } from "./command-constraint-policy.js";
 import { interpretCommand } from "./command-interpretation.js";
-
-// Legacy path-write pattern exports, forwarded from protected-shell-writes.js so
-// existing callers keep their import path unchanged. protected-shell-writes.js is
-// the sole owner of protected-path classification; these are one-way forwarding
-// adapters.
-//
-// Caller-by-caller rollback/deletion (spec #160 point 5): the ONLY current
-// consumer of these forwarded symbols is core/evaluate-bash-gate.test.js (which
-// asserts against PATH_WRITE_PATTERNS / DECISION_LOG_WRITE_PATTERNS /
-// DECISION_LOG_WRITE_REASON). When the gate-composition cutover (#162) routes
-// that test — and any new caller — to protected-shell-writes.js, DELETE this
-// forwarding export block here and re-point the test's import at
-// protected-shell-writes.js. Rollback point: any test diverging on these
-// constants restores the prior inline path-write branch. New callers must import
-// from protected-shell-writes.js directly.
-export { PATH_WRITE_PATTERNS, DECISION_LOG_WRITE_PATTERNS, DECISION_LOG_WRITE_REASON };
 
 // fallow-ignore-next-line complexity -- orchestrates three delegated policy sections (command-constraint/path-write/promoted-rules) plus the final precedence fold; the orchestration seam is the canonical shape
 export function evaluateBashGate({ command, root }) {
