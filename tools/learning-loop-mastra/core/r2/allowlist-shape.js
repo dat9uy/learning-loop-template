@@ -15,15 +15,19 @@
 
 import { listRuntimes } from "../runtime-topology.js";
 
+function assertAllowedKeys(parsed, runtimeIds) {
+  const allowedKeys = new Set(["schema", "version", "universal", ...runtimeIds]);
+  for (const key of Object.keys(parsed)) {
+    if (!allowedKeys.has(key)) throw new Error(`r2_allowlist_invalid: unknown runtime "${key}"`);
+  }
+}
+
 export function validateR2AllowlistShape(parsed) {
   if (!parsed || typeof parsed !== "object") throw new Error("r2_allowlist_invalid: root must be an object");
   if (parsed.schema !== "r2-allowlist/v1") throw new Error('r2_allowlist_invalid: schema must be "r2-allowlist/v1"');
   if (typeof parsed.version !== "number") throw new Error("r2_allowlist_invalid: version must be a number");
   const runtimeIds = listRuntimes().map((runtime) => runtime.id);
-  const allowedKeys = new Set(["schema", "version", "universal", ...runtimeIds]);
-  for (const key of Object.keys(parsed)) {
-    if (!allowedKeys.has(key)) throw new Error(`r2_allowlist_invalid: unknown runtime "${key}"`);
-  }
+  assertAllowedKeys(parsed, runtimeIds);
   for (const runtime of runtimeIds) {
     const entry = parsed[runtime];
     if (!entry || typeof entry !== "object") throw new Error(`r2_allowlist_invalid: missing runtime "${runtime}"`);
