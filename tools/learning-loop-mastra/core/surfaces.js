@@ -1,18 +1,25 @@
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, appendFileSync, unlinkSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { listRuntimes } from "./runtime-topology.js";
 
 /**
- * Cross-surface helper — the single source of truth for runtime iteration.
+ * Cross-surface helper for storage fan-out and compatibility surfaces.
  *
- * To add a new runtime (e.g. Cursor, Aider), append one entry to SURFACES.
- * No other code changes are required: every helper in this module iterates
- * SURFACES, so existing call sites pick up the new runtime automatically.
+ * Runtime participation is catalogued by core/runtime-topology.js. The
+ * participant view below is derived from that catalog. SURFACES remains the
+ * transitional storage-fan-out view for existing callers until the retained
+ * runtime cleanup decides which project-local mirrors survive; it is not the
+ * participant catalog.
  *
  * Cross-surface atomicity: per-surface operations are atomic (write-temp +
  * rename for writes, single readFileSync for reads). Cross-surface
  * consistency is the caller's responsibility — there is no transaction
  * spanning surfaces.
  */
+export const PARTICIPANT_SURFACES = Object.freeze(listRuntimes().map((runtime) => runtime.surface));
+
+// Compatibility storage view. Do not add participant identity or runtime
+// configuration here; new shared validators must use Runtime Topology.
 export const SURFACES = Object.freeze([".claude", ".factory", ".mastracode", ".hermes"]);
 
 /**

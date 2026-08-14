@@ -80,6 +80,9 @@ files:
   - path: runtime-state.js
     role: facade
     summary: Shared runtime-state.jsonl helpers (append + fingerprint) shared by runtime_state_record and meta_state_dispatch_finding.
+  - path: runtime-topology.js
+    role: facade
+    summary: Protocol-neutral Runtime Topology catalog with runtime listing and identity lookup seams.
   - path: runtime-tracking.js
     role: facade
     summary: Operator per-surface tracking toggle (load/isSurfacePaused/set) against the `.loop/runtime-tracking.json` sidecar. Fail-closed on malformed sidecars; read-from-disk per call (no in-process cache).
@@ -178,8 +181,8 @@ files:
     role: primitive
     summary: Coerces string/bool inputs to strict boolean.
   - path: surfaces.js
-    role: primitive
-    summary: SURFACES constant + read/write helpers for multi-surface dirs.
+    role: facade
+    summary: Runtime Topology-derived participant view plus compatibility read/write helpers for multi-surface dirs.
   - path: constants.js
     role: primitive
     summary: Shared core constants (STALENESS_WINDOW_MS) — single source of truth to prevent cross-module drift.

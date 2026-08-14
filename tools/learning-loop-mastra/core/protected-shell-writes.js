@@ -17,8 +17,16 @@
 // added or removed.
 
 import { normalizeQuoteConcatenation } from "./blanking.js";
-import { SURFACES } from "./surfaces.js";
+import { PARTICIPANT_SURFACES, SURFACES } from "./surfaces.js";
 import { hasSurfacePreflightMarker } from "./runtime-tracking.js";
+
+// Active patterns come from Runtime Topology through PARTICIPANT_SURFACES.
+// SURFACES contributes only the transitional storage compatibility view so
+// existing protected paths remain fail-closed until the cleanup ticket removes
+// the retired runtime surfaces.
+export const PROTECTED_SURFACES = Object.freeze([
+  ...new Set([...PARTICIPANT_SURFACES, ...SURFACES]),
+]);
 
 // Escape regex metacharacters in a literal path segment. Surface names start
 // with ".", which is a regex metachar, so it must be escaped to match literally.
@@ -26,12 +34,13 @@ function escapeForRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Preflight-marker path-write patterns, derived from SURFACES so every runtime
+// Preflight-marker path-write patterns, derived from the participant catalog
+// plus the transitional storage view so every known runtime
 // surface's coordination/.loop-preflight-* redirect is detected without
 // hand-rolling per-surface regex literals. Two forms per surface: shell redirect
 // (`>`/`>>`) and `tee`. Built once at module load.
 function preflightMarkerPatterns() {
-  return SURFACES.flatMap((surface) => {
+  return PROTECTED_SURFACES.flatMap((surface) => {
     const seg = escapeForRegex(surface);
     return [
       new RegExp(`>{1,2}\\s*["']?\\.?\\/?${seg}\\/coordination\\/\\.loop-preflight-[^\\s"';&|]+["']?`),
@@ -40,7 +49,8 @@ function preflightMarkerPatterns() {
   });
 }
 
-// Decision-log path-write patterns, derived from SURFACES so every runtime
+// Decision-log path-write patterns, derived from the participant catalog plus
+// the transitional storage view so every known runtime
 // surface's coordination/.gate-decision.log redirect (`>`/`>>`), `tee` append,
 // AND non-redirect file-writing verbs (cp/mv/dd/install/rsync) are detected.
 // This is the trusted-producer boundary for the decision log: the ONLY
@@ -49,7 +59,7 @@ function preflightMarkerPatterns() {
 // never be able to append or overwrite a forged JSONL row carrying
 // `event_source:"bash-gate-evaluator"` + `candidate_kind:"unexpected-match"`.
 function decisionLogPathPatterns() {
-  return SURFACES.flatMap((surface) => {
+  return PROTECTED_SURFACES.flatMap((surface) => {
     const seg = escapeForRegex(surface);
     // The decision log is the trusted-producer boundary: the ONLY legitimate
     // writer is the bash-gate evaluator hook's `appendDecisionLog` node call,

@@ -177,6 +177,11 @@ test("contract.js runs as CLI with a runtime id", () => {
   assert.equal(typeof parsed.ok, "boolean");
 });
 
+test("validateAll defaults to the Runtime Topology participant set", () => {
+  const results = validateAll(undefined, PROJECT_ROOT);
+  assert.deepEqual(Object.keys(results), ["codex", "claude-code", "hermes"]);
+});
+
 // --- Group 2: pass mode (against real runtimes, 2 tests) ---
 
 test("claude-code passes all hard requirements (ok: true, missing: [])", () => {

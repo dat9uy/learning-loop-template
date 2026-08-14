@@ -10,9 +10,19 @@ import { existsSync, lstatSync, statSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 
-import { SURFACES } from "../learning-loop-mastra/core/surfaces.js";
+import { PARTICIPANT_SURFACES, SURFACES } from "../learning-loop-mastra/core/surfaces.js";
 
 export { SURFACES };
+
+// Storage fan-out is intentionally separate from Runtime Topology membership:
+// Codex participates in the loop before its project-local skill storage is
+// decided. Claude Code and Hermes are the retained mirror consumers; the
+// remaining entries are a temporary compatibility view for existing mirrors.
+const MIRROR_SURFACES = SURFACES.filter((surface) => PARTICIPANT_SURFACES.includes(surface));
+const MIRROR_SURFACE_SET = new Set(MIRROR_SURFACES);
+export const SKILL_SURFACES = Object.freeze(
+  SURFACES.filter((surface) => MIRROR_SURFACE_SET.has(surface) || !PARTICIPANT_SURFACES.includes(surface)),
+);
 
 /**
  * sha256 of a UTF-8 string, hex digest.
@@ -34,7 +44,7 @@ export function sha256(content) {
  */
 export function findDetectedSurface(name, entry, repoRoot) {
   if (!entry || typeof entry.hash !== "string" || entry.hash.length !== 64) return null;
-  for (const surface of SURFACES) {
+  for (const surface of SKILL_SURFACES) {
     const dir = join(repoRoot, surface, "skills", name);
     if (!existsSync(dir)) continue;
     let st;
@@ -67,7 +77,7 @@ export const EXTERNAL_POLICY = Object.freeze({
     sourceType: "npx-skills-cli",
     delivery: "npx-per-runtime+fanout-undetected",
     skillPath: "skills/mastra/SKILL.md",
-    targets: SURFACES, // [".claude", ".factory", ".mastracode"]
+    targets: SKILL_SURFACES,
     maturity: null,
     external: true,
     // hash: derived in normalizeManifest (not policy)
@@ -114,7 +124,7 @@ export const EXTERNAL_POLICY = Object.freeze({
  */
 function detectExternalHash(name, repoRoot) {
   let best = null;
-  for (const surface of SURFACES) {
+  for (const surface of SKILL_SURFACES) {
     const dir = join(repoRoot, surface, "skills", name);
     const skillMd = join(dir, "SKILL.md");
     if (!existsSync(skillMd)) continue;

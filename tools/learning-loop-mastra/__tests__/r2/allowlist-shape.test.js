@@ -56,6 +56,14 @@ describe("validateR2AllowlistShape", () => {
   test("rejects a non-array universal", () => {
     assert.throws(() => validateR2AllowlistShape({ ...VALID, universal: "not-array" }), /universal must be an array/);
   });
+
+  test("a topology-only runtime selects the catalog even with retained legacy keys", () => {
+    const mixed = {
+      ...VALID,
+      codex: { own: [".codex/**"], deny: [] },
+    };
+    assert.throws(() => validateR2AllowlistShape(mixed), /missing runtime "hermes"/);
+  });
 });
 
 // Hyphens are literal in regex, but escape defensively so the runtime name

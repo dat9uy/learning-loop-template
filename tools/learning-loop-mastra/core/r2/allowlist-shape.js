@@ -13,11 +13,23 @@
  * behavior-preserving.
  */
 
+import { listRuntimes } from "../runtime-topology.js";
+
+const LEGACY_RUNTIME_IDS = ["claude-code", "droid", "mastra-code"];
+
 export function validateR2AllowlistShape(parsed) {
   if (!parsed || typeof parsed !== "object") throw new Error("r2_allowlist_invalid: root must be an object");
   if (parsed.schema !== "r2-allowlist/v1") throw new Error('r2_allowlist_invalid: schema must be "r2-allowlist/v1"');
   if (typeof parsed.version !== "number") throw new Error("r2_allowlist_invalid: version must be a number");
-  for (const runtime of ["claude-code", "droid", "mastra-code"]) {
+  // Prefer the Runtime Topology participant set. A legacy-only allowlist is
+  // still accepted as a one-way compatibility view until the runtime cleanup
+  // migrates the committed sidecar; mixed/partial topology shapes validate
+  // against the new catalog and therefore fail closed on missing participants.
+  const topologyIds = listRuntimes().map((runtime) => runtime.id);
+  const topologyOnlyIds = topologyIds.filter((runtime) => !LEGACY_RUNTIME_IDS.includes(runtime));
+  const hasTopologyShape = topologyOnlyIds.some((runtime) => Object.prototype.hasOwnProperty.call(parsed, runtime));
+  const runtimeIds = hasTopologyShape ? topologyIds : LEGACY_RUNTIME_IDS;
+  for (const runtime of runtimeIds) {
     const entry = parsed[runtime];
     if (!entry || typeof entry !== "object") throw new Error(`r2_allowlist_invalid: missing runtime "${runtime}"`);
     if (!Array.isArray(entry.own)) throw new Error(`r2_allowlist_invalid: ${runtime}.own must be an array`);

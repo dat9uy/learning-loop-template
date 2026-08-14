@@ -14,14 +14,13 @@
  * Keeping the pin in `core/identity-pin.js` makes it unit-testable in
  * isolation without booting the MCP server.
  *
- * Allowed surfaces are sourced from `core/surfaces.js#SURFACES` (the single
- * source of truth for supported runtimes). `SURFACE_TO_RUNTIME` maps each
- * surface to its runtime id; adding a new runtime only requires extending
- * `SURFACES` and adding a mapping here.
+ * Active runtime identity is sourced from Runtime Topology. The legacy map is
+ * a one-way compatibility view for runtime surfaces that remain on disk until
+ * the supported-runtime cleanup removes them; it is not a participant catalog.
  *
  * Exports:
  *   - pinRuntimeIdAtBoot(): idempotent; reads LOOP_SURFACE once, validates,
- *     resolves the runtime via SURFACE_TO_RUNTIME, freezes the pin state.
+ *     resolves the runtime via Runtime Topology, freezes the pin state.
  *     Throws canonical errors from `mastra/identity-errors.json` on failure.
  *   - getPinnedRuntimeId(): returns the frozen `runtime`; throws if the pin
  *     was never initialized.
@@ -39,6 +38,7 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runtimeIdForSurface } from "./runtime-topology.js";
 import { SURFACES } from "./surfaces.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -46,11 +46,9 @@ const ERRORS = JSON.parse(
   readFileSync(join(__dirname, "..", "mastra", "identity-errors.json"), "utf8"),
 );
 
-const SURFACE_TO_RUNTIME = {
-  ".claude": "claude-code",
+const LEGACY_SURFACE_TO_RUNTIME = {
   ".factory": "droid",
   ".mastracode": "mastra-code",
-  ".hermes": "hermes",
 };
 
 let pinState = null;
@@ -74,14 +72,14 @@ export function pinRuntimeIdAtBoot() {
   if (!surface) {
     throw new Error(ERRORS.MISSING_LOOP_SURFACE);
   }
-  if (!SURFACES.includes(surface)) {
+  const runtime = runtimeIdForSurface(surface) ?? LEGACY_SURFACE_TO_RUNTIME[surface];
+  if (!runtime && !SURFACES.includes(surface)) {
     throw new Error(
       ERRORS.INVALID_LOOP_SURFACE
         .replace("{value}", surface)
         .replace("{allowed}", SURFACES.join(", ")),
     );
   }
-  const runtime = SURFACE_TO_RUNTIME[surface];
   if (!runtime) {
     throw new Error(ERRORS.MISSING_RUNTIME_MAPPING.replace("{surface}", surface));
   }
