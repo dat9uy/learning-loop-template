@@ -7,6 +7,7 @@ const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 
 const HOOK_PATH = path.resolve(__dirname, "..", "..", "hooks", "universal", "session-start-inject-discoverability.cjs");
+const PROCESS_HOOK_PATH = path.resolve(__dirname, "..", "..", "hooks", "universal", "session-start-inject-process-hints.cjs");
 const CONTEXT_PATH = path.resolve(__dirname, "..", "..", "..", "..", ".claude", "session-context.json");
 
 test("SessionStart hook writes discoverability hints to session-context.json", { timeout: 15000 }, async () => {
@@ -40,6 +41,10 @@ test("SessionStart hook writes discoverability hints to session-context.json", {
   assert.ok(
     typeof context.change_log_gap_hints?.gap_protocol_prompt === "string",
     "change_log_gap_hints.gap_protocol_prompt must be a string",
+  );
+  assert.ok(
+    context.i2_rule_delivery?.status === "complete" || context.i2_rule_delivery?.status === "degraded",
+    "sidecar must record the typed native I2 Rule Delivery result",
   );
 });
 
@@ -430,4 +435,27 @@ test("loadStaleDispatchHints — builder throws, returns EMPTY_STALE_DISPATCH", 
   } finally {
     try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
   }
+});
+
+test("companion SessionStart hook emits native I2 Rule partitions while preserving process pointers", { timeout: 15000 }, async () => {
+  const discoverability = spawn("node", [HOOK_PATH], {
+    env: { ...process.env, MASTRA_STORAGE_DRIVER: "memory" },
+  });
+  const discoverabilityCode = await new Promise((resolve) => discoverability.on("exit", resolve));
+  assert.strictEqual(discoverabilityCode, 0, "discoverability hook must seed the native delivery sidecar");
+
+  const child = spawn("node", [PROCESS_HOOK_PATH], {
+    env: { ...process.env, MASTRA_STORAGE_DRIVER: "memory" },
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (data) => { stdout += data; });
+  child.stderr.on("data", (data) => { stderr += data; });
+  const code = await new Promise((resolve) => child.on("exit", resolve));
+  assert.strictEqual(code, 0, `process hook must exit 0; stderr=${stderr}`);
+
+  const output = JSON.parse(stdout).hookSpecificOutput.additionalContext;
+  assert.ok(output.includes("Loop steering (pull)"), "legacy process pointer delivery must remain");
+  assert.ok(output.includes("--- native i2 rule delivery"), "native I2 delivery must reach the agent");
+  assert.ok(output.length <= 10000, `native + legacy SessionStart output must fit the cap; got ${output.length}`);
 });

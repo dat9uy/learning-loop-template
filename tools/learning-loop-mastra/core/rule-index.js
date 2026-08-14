@@ -123,7 +123,20 @@ function compareRuleOrder(left, right) {
 export function readRuleIndex(root, { includeUnresolvedI3 = false } = {}) {
   const registryPath = join(root, REGISTRY_FILENAME);
   const stats = readRegistryStats(registryPath);
-  if (!stats) return EMPTY_INDEX;
+  if (!stats) {
+    // A missing registry is a legitimate empty input for read-only callers;
+    // an existing path that cannot be stat'ed is an operational failure and
+    // must remain visible to delivery instead of becoming a clean empty index.
+    if (!existsSync(registryPath)) return EMPTY_INDEX;
+    return {
+      ...EMPTY_INDEX,
+      diagnostics: [{
+        code: "registry_read_failed",
+        rule_id: null,
+        message: "meta-state.jsonl could not be inspected",
+      }],
+    };
+  }
 
   const cached = indexCache.get(root);
   if (
@@ -136,7 +149,16 @@ export function readRuleIndex(root, { includeUnresolvedI3 = false } = {}) {
   }
 
   const parsed = parseRegistry(registryPath);
-  if (!parsed) return EMPTY_INDEX;
+  if (!parsed) {
+    return {
+      ...EMPTY_INDEX,
+      diagnostics: [{
+        code: "registry_read_failed",
+        rule_id: null,
+        message: "meta-state.jsonl could not be read",
+      }],
+    };
+  }
   const compiled = compileRuleIndex(parsed.entries);
   const { groundedI3, groundingDiagnostics, groundingSnapshot } = groundI3Rules(root, compiled.i3);
   const diagnostics = [...parsed.diagnostics, ...groundingDiagnostics, ...compiled.diagnostics];
@@ -175,8 +197,15 @@ function parseRegistry(registryPath) {
   let raw;
   try {
     raw = readFileSync(registryPath, "utf8");
-  } catch {
-    return null;
+  } catch (error) {
+    return {
+      entries: [],
+      diagnostics: [{
+        code: "registry_read_failed",
+        line: null,
+        message: error instanceof Error ? error.message : String(error),
+      }],
+    };
   }
 
   const entries = [];

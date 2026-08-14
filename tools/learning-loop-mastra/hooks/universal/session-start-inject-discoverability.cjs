@@ -397,7 +397,14 @@ function formatSessionSummary(core, stale_dispatch_hints, change_log_gap_hints, 
 // error fields are added.
 const orNull = (v) => v ?? null;
 
-function buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, injectedAt) {
+function buildContextPayload(
+  core,
+  registry,
+  stale_dispatch_hints,
+  change_log_gap_hints,
+  injectedAt,
+  i2_rule_delivery = null,
+) {
   return {
     discoverability_hints: core.discoverability_hints,
     discoverability_hints_source: core.discoverability_hints_source,
@@ -412,8 +419,58 @@ function buildContextPayload(core, registry, stale_dispatch_hints, change_log_ga
     registry_error: orNull(registry.registry_error),
     stale_dispatch_hints,
     change_log_gap_hints,
+    i2_rule_delivery: i2_rule_delivery ?? {
+      status: "unavailable",
+      channel: "native",
+      rules: [],
+      partitions: [],
+      provenance: [],
+      errors: [{ code: "delivery_not_run", message: "native I2 Rule Delivery did not run" }],
+      warnings: [],
+    },
     injected_at: injectedAt,
   };
+}
+
+/**
+ * Run the shared startup I2 Rule Delivery check (Stage 7 — temporary Hint
+ * compatibility: the legacy hint loaders above remain the injected surface;
+ * this leg only delivers natively and logs any delivery failures through the
+ * shared decision log). Fail-open: a delivery or logging regression must not
+ * block session start — the stderr line is the observability channel, and the
+ * typed result is surfaced for in-process tests. Uses the worktree-scoped
+ * session id (fallback tier) so recurrent delivery failures stay within the
+ * recurrence tracker's 24h fallback span.
+ */
+// fallow-ignore-next-line complexity -- CRAP inflated by the subprocess-coverage blind spot (hook runs as a spawned process; exercised by hook integration tests) plus the fail-open delivery branch
+function runStartupDeliveryCheck(root) {
+  try {
+    const { getSessionId } = require("../../core/worktree-session-id.js");
+    const { deliverRulesAtStartup } = require("../../core/rule-delivery-startup.js");
+    const result = deliverRulesAtStartup({
+      root,
+      sessionId: getSessionId(root),
+      sessionTier: "fallback",
+    });
+    if (result.status === "degraded") {
+      console.error(
+        `[session-start] i2 rule delivery DEGRADED: ${result.errors.length} failure(s) ` +
+          `(${result.errors.map((error) => `${error.code}${error.rule_id ? ":" + error.rule_id : ""}`).join(", ")}) — logged to the decision log`,
+      );
+    }
+    return result;
+  } catch (err) {
+    console.error(`[session-start] i2 rule delivery check failed (fail-open): ${err?.message ?? String(err)}`);
+    try {
+      const { logDeliveryFailure } = require("../../core/rule-delivery-logging.js");
+      logDeliveryFailure(root, {
+        ruleId: null,
+        errorCode: "startup_hook_failed",
+        message: err?.message ?? String(err),
+      });
+    } catch { /* the outer hook remains fail-open even if logging is unavailable */ }
+    return { status: "degraded", errors: [{ code: "startup_check_failed", message: String(err?.message ?? err) }] };
+  }
 }
 
 async function main() {
@@ -437,7 +494,20 @@ async function main() {
   const stale_dispatch_hints = loadStaleDispatchHints(registry.entries, dispatchIds, projectRoot);
   const change_log_gap_hints = loadChangeLogGapHints(projectRoot, registry.entries);
 
-  const contextPath = writeContext(projectRoot, buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, new Date().toISOString()));
+  // 3b. Native I2 Rule Delivery check (additive + fail-open): the full typed
+  // result is persisted in the sidecar. The companion process-hints hook
+  // emits its partitions to the agent, while this hook keeps the existing
+  // discoverability wire unchanged.
+  const i2_rule_delivery = runStartupDeliveryCheck(projectRoot);
+
+  const contextPath = writeContext(projectRoot, buildContextPayload(
+    core,
+    registry,
+    stale_dispatch_hints,
+    change_log_gap_hints,
+    new Date().toISOString(),
+    i2_rule_delivery,
+  ));
 
   // Inline delivery leg: surface discoverability hints to the agent as a
   // SessionStart system-reminder. process hints are injected by the companion
@@ -467,6 +537,7 @@ module.exports = {
   buildTransportBanner,
   buildConfiguredTransportBanner,
   buildAdditionalContext,
+  runStartupDeliveryCheck,
   // Exported so cli-write-hint-sketch-drift.test.cjs can cross-check the
   // one-line arg sketches against each write tool's actual schema required
   // keys — the drift guard the table comment above promises.
@@ -498,6 +569,15 @@ if (require.main === module) {
       registry_error: err.message,
       stale_dispatch_hints: EMPTY_STALE_DISPATCH,
       change_log_gap_hints: EMPTY_CHANGE_LOG_GAP,
+      i2_rule_delivery: {
+        status: "degraded",
+        channel: "native",
+        rules: [],
+        partitions: [],
+        provenance: [],
+        errors: [{ code: "fatal", message: err.message }],
+        warnings: [],
+      },
       injected_at: new Date().toISOString(),
     });
   } catch { /* ignore */ }

@@ -3,6 +3,11 @@ import { readRegistry, writeEntryIfAbsent } from "./meta-state.js";
 import { readJsonlFromAllSurfaces } from "./surfaces.js";
 import { normalizePrefixForKey } from "./command-recurrence.js";
 import { interpretCommand, requestRecurrenceKey } from "./command-interpretation.js";
+import {
+  DELIVERY_EVIDENCE_REF,
+  DELIVERY_FAILURE_EVENT,
+  DELIVERY_PRODUCER,
+} from "./rule-delivery-logging.js";
 
 const RECURRENCE_THRESHOLD_N = 3;
 const FALLBACK_TIER_SPAN_MS = 24 * 60 * 60 * 1000;
@@ -10,6 +15,13 @@ const CROSS_SESSION_THRESHOLD_N = 5;
 const CROSS_SESSION_MIN_REAL_SESSIONS = 2;
 const CROSS_SESSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const DECISION_LOG_FILE = ".gate-decision.log";
+
+// Rule Delivery failure provenance (see core/rule-delivery.js). Delivery
+// failures are logged under their own producer + event pair so they are
+// never mistaken for gate decisions or unexpected-match events.
+const DELIVERY_EVENT_SOURCE = DELIVERY_PRODUCER;
+const DELIVERY_EVENT_TYPE = DELIVERY_FAILURE_EVENT;
+const DELIVERY_AFFECTED_SYSTEM = "meta";
 
 /**
  * Promoted-rule recurrence eligibility. ONLY an explicit, evaluator-produced
@@ -34,13 +46,37 @@ function isUnexpectedMatchCandidate(entry) {
 }
 
 /**
+ * Rule Delivery failure eligibility: the distinct producer + event pair
+ * emitted by core/rule-delivery.js. Grouping is by producer (event_source),
+ * error code (command_prefix `delivery:<code>`), and Rule id (rule_id) — see
+ * findRecurrentGroups.
+ *
+ * @param {object} entry
+ * @returns {boolean}
+ */
+function isDeliveryFailureCandidate(entry) {
+  return (
+    entry?.event_source === DELIVERY_EVENT_SOURCE
+    && entry?.event === DELIVERY_EVENT_TYPE
+    && typeof entry?.error_code === "string"
+    && entry.error_code.length > 0
+  );
+}
+
+function recurrenceProducerScope(entry) {
+  if (!isDeliveryFailureCandidate(entry)) return "legacy";
+  return `${entry.event_source}::${entry.event}::${entry.error_code}`;
+}
+
+/**
  * Partition an entry into the recurrence grouping path. Toolchain-failure
  * rows (rule_id "toolchain-failure") keep the EXISTING toolchain grouping
  * semantics exactly — they are never filtered by promoted-rule candidate
  * logic. Every other rule_id requires the evaluator-produced
  * unexpected-match trio; a wrong producer marker (e.g. a
  * toolchain-failure-capture-sourced row carrying a promoted-rule rule_id),
- * missing provenance, or a contradictory pair is ineligible.
+ * missing provenance, or a contradictory pair is ineligible. Rule Delivery
+ * failure rows group under their own producer + event pair.
  *
  * @param {object} entry
  * @returns {boolean}
@@ -48,6 +84,7 @@ function isUnexpectedMatchCandidate(entry) {
 function isRecurrenceGroupableEntry(entry) {
   if (!entry?.rule_id) return false;
   if (entry.rule_id === "toolchain-failure") return true;
+  if (isDeliveryFailureCandidate(entry)) return true;
   return isUnexpectedMatchCandidate(entry);
 }
 
@@ -203,19 +240,7 @@ export function findRecurrentGroups(root, options = {}) {
   /** @type {Map<string, { rule_id: string, command_prefix_normalized: string, session_id: string, entries: Array }>} */
   const groups = new Map();
   for (const entry of allEntries) {
-    if (!isRecurrenceGroupableEntry(entry)) continue;
-    const sid = entry.session_id ?? "no-session";
-    // Clean cutover: never fire on no-session entries (historical backlog).
-    if (sid === "no-session") continue;
-    // Key normalization is the COARSER tracker-side pass (blankDataPayloadsForKey
-    // first, then the shared normalizePrefix pipeline), so all payload variants
-    // of one root-cause class under one rule hash to a single recurrence_key.
-    const normalized = normalizePrefixForKey(entry.command_prefix);
-    const key = `${entry.rule_id}::${normalized}::${sid}`;
-    if (!groups.has(key)) {
-      groups.set(key, { rule_id: entry.rule_id, command_prefix_normalized: normalized, session_id: sid, entries: [] });
-    }
-    groups.get(key).entries.push(entry);
+    addSessionEntry(groups, entry);
   }
 
   const recurrent = [];
@@ -227,10 +252,17 @@ export function findRecurrentGroups(root, options = {}) {
       rule_id: group.rule_id,
       command_prefix_normalized: group.command_prefix_normalized,
       session_id: group.session_id,
+      producer: group.producer,
+      event: group.event,
+      error_code: group.error_code,
       count: entries.length,
       first_ts: entries[0].ts,
       last_ts: entries[entries.length - 1].ts,
       sample_commands: privacySafeSample(entries),
+      // Rule Delivery failure marker — derived at grouping time from the raw
+      // entries so buildFinding can cite the delivery mechanism without the
+      // group carrying raw decision-log rows.
+      delivery_failure: entries.some(isDeliveryFailureCandidate),
     });
   }
 
@@ -240,6 +272,28 @@ export function findRecurrentGroups(root, options = {}) {
   recurrent.push(...findCrossSessionGroups(allEntries, recurrent));
 
   return recurrent;
+}
+
+function addSessionEntry(groups, entry) {
+  if (!isRecurrenceGroupableEntry(entry)) return;
+  const sessionId = entry.session_id;
+  if (!sessionId) return;
+  const normalized = normalizePrefixForKey(entry.command_prefix);
+  const key = `${recurrenceProducerScope(entry)}::${entry.rule_id}::${normalized}::${sessionId}`;
+  let group = groups.get(key);
+  if (!group) {
+    group = {
+      rule_id: entry.rule_id,
+      command_prefix_normalized: normalized,
+      session_id: sessionId,
+      producer: entry.event_source ?? null,
+      event: entry.event ?? null,
+      error_code: entry.error_code ?? null,
+      entries: [],
+    };
+    groups.set(key, group);
+  }
+  group.entries.push(entry);
 }
 
 /**
@@ -310,22 +364,31 @@ function groupCrossSessionEntries(allEntries, windowStart) {
   /** @type {Map<string, { rule_id: string, command_prefix_normalized: string, entries: Array, realSessions: Set<string> }>} */
   const crossGroups = new Map();
   for (const entry of allEntries) {
-    if (!entry.rule_id) continue;
-    const tsMs = new Date(entry.ts).getTime();
-    if (!Number.isFinite(tsMs) || tsMs < windowStart) continue;
-    const sid = entry.session_id ?? "no-session";
-    if (sid === "no-session") continue;
-    const normalized = normalizePrefixForKey(entry.command_prefix);
-    const key = `${entry.rule_id}::${normalized}`;
-    let cg = crossGroups.get(key);
-    if (!cg) {
-      cg = { rule_id: entry.rule_id, command_prefix_normalized: normalized, entries: [], realSessions: new Set() };
-      crossGroups.set(key, cg);
-    }
-    cg.entries.push(entry);
-    if (entry.session_id_tier === "real") cg.realSessions.add(sid);
+    addCrossSessionEntry(crossGroups, entry, windowStart);
   }
   return crossGroups;
+}
+
+function addCrossSessionEntry(crossGroups, entry, windowStart) {
+  const timestamp = new Date(entry.ts).getTime();
+  if (!entry.rule_id || !entry.session_id || !Number.isFinite(timestamp) || timestamp < windowStart) return;
+  const normalized = normalizePrefixForKey(entry.command_prefix);
+  const key = `${recurrenceProducerScope(entry)}::${entry.rule_id}::${normalized}`;
+  let group = crossGroups.get(key);
+  if (!group) {
+    group = {
+      rule_id: entry.rule_id,
+      command_prefix_normalized: normalized,
+      producer: entry.event_source ?? null,
+      event: entry.event ?? null,
+      error_code: entry.error_code ?? null,
+      entries: [],
+      realSessions: new Set(),
+    };
+    crossGroups.set(key, group);
+  }
+  group.entries.push(entry);
+  if (entry.session_id_tier === "real") group.realSessions.add(entry.session_id);
 }
 
 /**
@@ -349,12 +412,16 @@ function emitCrossSessionGroups(crossGroups, firedKeys) {
       rule_id: cg.rule_id,
       command_prefix_normalized: cg.command_prefix_normalized,
       session_id: latestRealSessionId(cg.entries),
+      producer: cg.producer,
+      event: cg.event,
+      error_code: cg.error_code,
       count: cg.entries.length,
       first_ts: cg.entries[0].ts,
       last_ts: cg.entries[cg.entries.length - 1].ts,
       sample_commands: privacySafeSample(cg.entries),
       sessions_crossing_threshold: cg.realSessions.size,
       cross_session_slow_burn: true,
+      delivery_failure: cg.entries.some(isDeliveryFailureCandidate),
     });
   }
   return crossSession;
@@ -392,10 +459,12 @@ function generateFindingId(ruleId) {
 }
 
 function recurrenceKeyFor(group) {
-  return requestRecurrenceKey(
+  const base = requestRecurrenceKey(
     interpretCommand(group.command_prefix_normalized),
     group.rule_id,
   );
+  if (group.producer !== DELIVERY_EVENT_SOURCE) return base;
+  return `${base}::${group.producer}::${group.event}::${group.error_code}`;
 }
 
 /**
@@ -462,14 +531,27 @@ function collapseFreshByKey(recurrent, existingKeys) {
   return Array.from(freshByKey.values());
 }
 
+/**
+ * True when a recurrence group is composed of Rule Delivery failure rows.
+ * The marker is set at grouping time (`findRecurrentGroups` /
+ * `emitCrossSessionGroups`) so findings cite the delivery mechanism without
+ * the group carrying raw decision-log rows.
+ */
+function isDeliveryFailureGroup(group) {
+  return group?.delivery_failure === true;
+}
+
 function buildFinding(group, ruleById) {
   const ruleRecord = ruleById.get(group.rule_id);
-  // evidence_code_ref resolution: rule record beats defaults; absent records
-  // fall back to the rule-class-specific capture hook (not the gate-logic
-  // detector). toolchain-failure has no rule record — its source is the
-  // PostToolUseFailure hook, so cite the hook as the referent.
+  // evidence_code_ref resolution: Rule Delivery failures cite the delivery
+  // mechanism (the failure is in delivery, not the Rule). rule record beats
+  // defaults; absent records fall back to the rule-class-specific capture hook
+  // (not the gate-logic detector). toolchain-failure has no rule record — its
+  // source is the PostToolUseFailure hook, so cite the hook as the referent.
   let evidenceCodeRef;
-  if (ruleRecord?.evidence_code_ref && typeof ruleRecord.evidence_code_ref === "string") {
+  if (isDeliveryFailureGroup(group)) {
+    evidenceCodeRef = DELIVERY_EVIDENCE_REF;
+  } else if (ruleRecord?.evidence_code_ref && typeof ruleRecord.evidence_code_ref === "string") {
     evidenceCodeRef = ruleRecord.evidence_code_ref;
   } else if (group.rule_id === "toolchain-failure") {
     evidenceCodeRef = "tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js";
@@ -477,8 +559,11 @@ function buildFinding(group, ruleById) {
     evidenceCodeRef = "tools/learning-loop-mastra/core/gate-logic.js";
   }
   const description =
-      `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) ` +
-      `(latest: ${group.session_id}) under rule ${group.rule_id}. ` +
+      (isDeliveryFailureGroup(group)
+        ? `Rule Delivery failed ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) `
+          + `(latest: ${group.session_id}) for rule ${group.rule_id}. `
+        : `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) `
+          + `(latest: ${group.session_id}) under rule ${group.rule_id}. `) +
       `First seen: ${group.first_ts}. Last seen: ${group.last_ts}.` +
       (group.cross_session_slow_burn
         ? ` (cross-session slow-burn: no single session reached the per-session threshold of ${RECURRENCE_THRESHOLD_N})`
@@ -488,7 +573,7 @@ function buildFinding(group, ruleById) {
     entry_kind: "finding",
     category: "gate-logic-bug",
     severity: "warning",
-    affected_system: "gate-logic",
+    affected_system: isDeliveryFailureGroup(group) ? DELIVERY_AFFECTED_SYSTEM : "gate-logic",
     subtype: "recurring-false-positive",
     recurrence_key: recurrenceKeyFor(group),
     description,
