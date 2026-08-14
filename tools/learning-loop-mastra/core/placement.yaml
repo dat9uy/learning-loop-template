@@ -23,6 +23,9 @@ files:
   - path: rule-index.js
     role: facade
     summary: Compiles the canonical active Rule registry into validated I2/I3 projections with I3 evidence grounding diagnostics.
+  - path: rule-delivery.js
+    role: facade
+    summary: Delivers every latest active I2 Rule from the compiled projection (Rule-id order, partition budgets, provenance, typed complete|degraded results), logs delivery failures through the shared decision log under a distinct producer+event pair, and provides the one-way legacy Hint envelope/ordering compatibility adapter for remaining Hint callers.
   - path: gate-override.js
     role: facade
     summary: Reads/validates .gate-override markers with TTL expiry.

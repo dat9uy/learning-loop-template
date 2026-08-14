@@ -3,6 +3,7 @@ import { readRegistry, writeEntryIfAbsent } from "./meta-state.js";
 import { readJsonlFromAllSurfaces } from "./surfaces.js";
 import { normalizePrefixForKey } from "./command-recurrence.js";
 import { interpretCommand, requestRecurrenceKey } from "./command-interpretation.js";
+import { DELIVERY_EVIDENCE_REF, DELIVERY_FAILURE_EVENT, DELIVERY_PRODUCER } from "./rule-delivery.js";
 
 const RECURRENCE_THRESHOLD_N = 3;
 const FALLBACK_TIER_SPAN_MS = 24 * 60 * 60 * 1000;
@@ -10,6 +11,13 @@ const CROSS_SESSION_THRESHOLD_N = 5;
 const CROSS_SESSION_MIN_REAL_SESSIONS = 2;
 const CROSS_SESSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const DECISION_LOG_FILE = ".gate-decision.log";
+
+// Rule Delivery failure provenance (see core/rule-delivery.js). Delivery
+// failures are logged under their own producer + event pair so they are
+// never mistaken for gate decisions or unexpected-match events.
+const DELIVERY_EVENT_SOURCE = DELIVERY_PRODUCER;
+const DELIVERY_EVENT_TYPE = DELIVERY_FAILURE_EVENT;
+const DELIVERY_AFFECTED_SYSTEM = "meta";
 
 /**
  * Promoted-rule recurrence eligibility. ONLY an explicit, evaluator-produced
@@ -34,13 +42,30 @@ function isUnexpectedMatchCandidate(entry) {
 }
 
 /**
+ * Rule Delivery failure eligibility: the distinct producer + event pair
+ * emitted by core/rule-delivery.js. Grouping is by producer (event_source),
+ * error code (command_prefix `delivery:<code>`), and Rule id (rule_id) — see
+ * findRecurrentGroups.
+ *
+ * @param {object} entry
+ * @returns {boolean}
+ */
+function isDeliveryFailureCandidate(entry) {
+  return (
+    entry?.event_source === DELIVERY_EVENT_SOURCE
+    && entry?.event === DELIVERY_EVENT_TYPE
+  );
+}
+
+/**
  * Partition an entry into the recurrence grouping path. Toolchain-failure
  * rows (rule_id "toolchain-failure") keep the EXISTING toolchain grouping
  * semantics exactly — they are never filtered by promoted-rule candidate
  * logic. Every other rule_id requires the evaluator-produced
  * unexpected-match trio; a wrong producer marker (e.g. a
  * toolchain-failure-capture-sourced row carrying a promoted-rule rule_id),
- * missing provenance, or a contradictory pair is ineligible.
+ * missing provenance, or a contradictory pair is ineligible. Rule Delivery
+ * failure rows group under their own producer + event pair.
  *
  * @param {object} entry
  * @returns {boolean}
@@ -48,6 +73,7 @@ function isUnexpectedMatchCandidate(entry) {
 function isRecurrenceGroupableEntry(entry) {
   if (!entry?.rule_id) return false;
   if (entry.rule_id === "toolchain-failure") return true;
+  if (isDeliveryFailureCandidate(entry)) return true;
   return isUnexpectedMatchCandidate(entry);
 }
 
@@ -231,6 +257,10 @@ export function findRecurrentGroups(root, options = {}) {
       first_ts: entries[0].ts,
       last_ts: entries[entries.length - 1].ts,
       sample_commands: privacySafeSample(entries),
+      // Rule Delivery failure marker — derived at grouping time from the raw
+      // entries so buildFinding can cite the delivery mechanism without the
+      // group carrying raw decision-log rows.
+      delivery_failure: entries.some(isDeliveryFailureCandidate),
     });
   }
 
@@ -355,6 +385,7 @@ function emitCrossSessionGroups(crossGroups, firedKeys) {
       sample_commands: privacySafeSample(cg.entries),
       sessions_crossing_threshold: cg.realSessions.size,
       cross_session_slow_burn: true,
+      delivery_failure: cg.entries.some(isDeliveryFailureCandidate),
     });
   }
   return crossSession;
@@ -462,14 +493,27 @@ function collapseFreshByKey(recurrent, existingKeys) {
   return Array.from(freshByKey.values());
 }
 
+/**
+ * True when a recurrence group is composed of Rule Delivery failure rows.
+ * The marker is set at grouping time (`findRecurrentGroups` /
+ * `emitCrossSessionGroups`) so findings cite the delivery mechanism without
+ * the group carrying raw decision-log rows.
+ */
+function isDeliveryFailureGroup(group) {
+  return group?.delivery_failure === true;
+}
+
 function buildFinding(group, ruleById) {
   const ruleRecord = ruleById.get(group.rule_id);
-  // evidence_code_ref resolution: rule record beats defaults; absent records
-  // fall back to the rule-class-specific capture hook (not the gate-logic
-  // detector). toolchain-failure has no rule record — its source is the
-  // PostToolUseFailure hook, so cite the hook as the referent.
+  // evidence_code_ref resolution: Rule Delivery failures cite the delivery
+  // mechanism (the failure is in delivery, not the Rule). rule record beats
+  // defaults; absent records fall back to the rule-class-specific capture hook
+  // (not the gate-logic detector). toolchain-failure has no rule record — its
+  // source is the PostToolUseFailure hook, so cite the hook as the referent.
   let evidenceCodeRef;
-  if (ruleRecord?.evidence_code_ref && typeof ruleRecord.evidence_code_ref === "string") {
+  if (isDeliveryFailureGroup(group)) {
+    evidenceCodeRef = DELIVERY_EVIDENCE_REF;
+  } else if (ruleRecord?.evidence_code_ref && typeof ruleRecord.evidence_code_ref === "string") {
     evidenceCodeRef = ruleRecord.evidence_code_ref;
   } else if (group.rule_id === "toolchain-failure") {
     evidenceCodeRef = "tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js";
@@ -477,8 +521,11 @@ function buildFinding(group, ruleById) {
     evidenceCodeRef = "tools/learning-loop-mastra/core/gate-logic.js";
   }
   const description =
-      `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) ` +
-      `(latest: ${group.session_id}) under rule ${group.rule_id}. ` +
+      (isDeliveryFailureGroup(group)
+        ? `Rule Delivery failed ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) `
+          + `(latest: ${group.session_id}) for rule ${group.rule_id}. `
+        : `Pattern recurred ${group.count} time(s) across ${group.sessions_crossing_threshold ?? 1} session(s) `
+          + `(latest: ${group.session_id}) under rule ${group.rule_id}. `) +
       `First seen: ${group.first_ts}. Last seen: ${group.last_ts}.` +
       (group.cross_session_slow_burn
         ? ` (cross-session slow-burn: no single session reached the per-session threshold of ${RECURRENCE_THRESHOLD_N})`
@@ -488,7 +535,7 @@ function buildFinding(group, ruleById) {
     entry_kind: "finding",
     category: "gate-logic-bug",
     severity: "warning",
-    affected_system: "gate-logic",
+    affected_system: isDeliveryFailureGroup(group) ? DELIVERY_AFFECTED_SYSTEM : "gate-logic",
     subtype: "recurring-false-positive",
     recurrence_key: recurrenceKeyFor(group),
     description,

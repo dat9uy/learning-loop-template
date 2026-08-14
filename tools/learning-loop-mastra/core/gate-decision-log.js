@@ -49,6 +49,7 @@ export function appendDecisionLog(root, entry) {
     ...(entry.match_origin !== undefined && { match_origin: entry.match_origin }),
     ...(entry.candidate_kind !== undefined && { candidate_kind: entry.candidate_kind }),
     ...(entry.event !== undefined && { event: entry.event }),
+    ...(entry.error_code !== undefined && { error_code: entry.error_code }),
   });
 
   if (line.includes("\n") || line.includes("\r")) {

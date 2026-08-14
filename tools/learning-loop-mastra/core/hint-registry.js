@@ -375,8 +375,12 @@ export function buildProcessView({ rulesById, warnings } = {}) {
  * by slug (id-derived). `created_at` is deliberately NOT a tie-break input —
  * rules are not guaranteed to carry it. The undefined-order tail preserves
  * the degraded-worktree case as a deterministic append-by-slug.
+ *
+ * Exported so the temporary Rule Delivery compatibility adapter
+ * (core/rule-delivery.js) reuses the exact legacy observed ordering instead
+ * of mirroring it.
  */
-function byOrderThenSlug(a, b) {
+export function byOrderThenSlug(a, b) {
   const ao = a.order === undefined ? Number.POSITIVE_INFINITY : a.order;
   const bo = b.order === undefined ? Number.POSITIVE_INFINITY : b.order;
   if (ao !== bo) return ao - bo;

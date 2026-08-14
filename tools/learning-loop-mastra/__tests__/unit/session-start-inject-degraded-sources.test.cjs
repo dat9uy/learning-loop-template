@@ -19,6 +19,7 @@ const {
   computeDegradedSources,
   formatSessionSummary,
   buildContextPayload,
+  runStartupDeliveryCheck,
 } = require("../../hooks/universal/session-start-inject-discoverability.cjs");
 
 const CORE_OK = {
@@ -93,5 +94,69 @@ describe("buildContextPayload", () => {
     const payload = buildContextPayload(core, registry, stale, gap, "t");
     assert.equal(payload.discoverability_hints_error, "boom");
     assert.equal(payload.registry_error, "reg-boom");
+  });
+});
+
+describe("runStartupDeliveryCheck", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const os = require("node:os");
+
+  function makeRoot(registryLines) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "session-start-delivery-"));
+    if (registryLines) {
+      fs.writeFileSync(path.join(root, "meta-state.jsonl"), registryLines.join("\n") + "\n");
+    }
+    return root;
+  }
+
+  function validRule() {
+    return JSON.stringify({
+      id: "rule-startup-fixture",
+      entry_kind: "rule",
+      internalization_level: "I2",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "check", description: "Check the fixture" }] }),
+      description: "An authoritative Rule description for the startup fixture.",
+      status: "active",
+      promoted_at: "2026-08-13T00:00:00.000Z",
+      promoted_by: "test",
+      version: 0,
+    });
+  }
+
+  test("complete delivery on a valid registry stays silent and fail-open", () => {
+    const root = makeRoot([validRule()]);
+    try {
+      const result = runStartupDeliveryCheck(root);
+      assert.equal(result.status, "complete");
+      assert.deepEqual(result.rules.map((rule) => rule.id), ["rule-startup-fixture"]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("degraded delivery returns the typed result without throwing (fail-open)", () => {
+    const root = makeRoot([
+      JSON.stringify({
+        id: "rule-bad",
+        entry_kind: "rule",
+        internalization_level: "I2",
+        pattern_type: "agent-checklist",
+        pattern: JSON.stringify({ version: 1, items: [] }),
+        description: "short",
+        status: "active",
+        promoted_at: "2026-08-13T00:00:00.000Z",
+        promoted_by: "test",
+        version: 0,
+      }),
+    ]);
+    try {
+      const result = runStartupDeliveryCheck(root);
+      assert.equal(result.status, "degraded");
+      assert.ok(result.errors.length >= 1);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });

@@ -416,6 +416,39 @@ function buildContextPayload(core, registry, stale_dispatch_hints, change_log_ga
   };
 }
 
+/**
+ * Run the shared startup I2 Rule Delivery check (Stage 7 — temporary Hint
+ * compatibility: the legacy hint loaders above remain the injected surface;
+ * this leg only delivers natively and logs any delivery failures through the
+ * shared decision log). Fail-open: a delivery or logging regression must not
+ * block session start — the stderr line is the observability channel, and the
+ * typed result is surfaced for in-process tests. Uses the worktree-scoped
+ * session id (fallback tier) so recurrent delivery failures stay within the
+ * recurrence tracker's 24h fallback span.
+ */
+// fallow-ignore-next-line complexity -- CRAP inflated by the subprocess-coverage blind spot (hook runs as a spawned process; exercised by hook integration tests) plus the fail-open delivery branch
+function runStartupDeliveryCheck(root) {
+  try {
+    const { getSessionId } = require("../../core/worktree-session-id.js");
+    const { deliverRulesAtStartup } = require("../../core/rule-delivery.js");
+    const result = deliverRulesAtStartup({
+      root,
+      sessionId: getSessionId(root),
+      sessionTier: "fallback",
+    });
+    if (result.status === "degraded") {
+      console.error(
+        `[session-start] i2 rule delivery DEGRADED: ${result.errors.length} failure(s) ` +
+          `(${result.errors.map((error) => `${error.code}${error.rule_id ? ":" + error.rule_id : ""}`).join(", ")}) — logged to the decision log`,
+      );
+    }
+    return result;
+  } catch (err) {
+    console.error(`[session-start] i2 rule delivery check failed (fail-open): ${err?.message ?? String(err)}`);
+    return { status: "degraded", errors: [{ code: "startup_check_failed", message: String(err?.message ?? err) }] };
+  }
+}
+
 async function main() {
   // Test hook: when SESSION_START_FORCE_FATAL=1, throw to exercise the
   // fatal-catch write path (the BOTH-write-sites invariant).
@@ -436,6 +469,12 @@ async function main() {
   // 3. Stale dispatch hints (Rec 10) + change-log gap hints (Rec 12).
   const stale_dispatch_hints = loadStaleDispatchHints(registry.entries, dispatchIds, projectRoot);
   const change_log_gap_hints = loadChangeLogGapHints(projectRoot, registry.entries);
+
+  // 3b. Native I2 Rule Delivery check (additive + fail-open): delivers the
+  // compiled I2 projection and logs delivery failures through the shared
+  // decision log. Does NOT change the injected hint surface — the legacy
+  // hint loaders above remain the wire contract for remaining callers.
+  runStartupDeliveryCheck(projectRoot);
 
   const contextPath = writeContext(projectRoot, buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, new Date().toISOString()));
 
@@ -467,6 +506,7 @@ module.exports = {
   buildTransportBanner,
   buildConfiguredTransportBanner,
   buildAdditionalContext,
+  runStartupDeliveryCheck,
   // Exported so cli-write-hint-sketch-drift.test.cjs can cross-check the
   // one-line arg sketches against each write tool's actual schema required
   // keys — the drift guard the table comment above promises.
