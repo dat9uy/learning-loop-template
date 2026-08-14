@@ -12,7 +12,7 @@ const { resolve } = require("node:path");
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const CLI_PATH = resolve(PROJECT_ROOT, "tools/scripts/hint-render.mjs");
 
-const CHANNELS = ["claude-session-start", "factory-session-start", "mcp-warm", "sidecar"];
+const CHANNELS = ["claude-session-start", "mcp-warm", "sidecar"];
 
 describe("hint-render.mjs CLI", () => {
   test("cli binary is executable and resolves", () => {

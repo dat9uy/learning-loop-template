@@ -19,6 +19,10 @@ function readLoopEnv(configPath) {
   return config.mcpServers?.["learning-loop"]?.env ?? {};
 }
 
+function readCodexConfig() {
+  return readFileSync(join(PROJECT_ROOT, ".codex", "config.toml"), "utf8");
+}
+
 // The 12 read tools (7 record reads + 5 stateless aux-read-ish handlers).
 const EXPECTED_READ_TOOLS = [
   "loop_describe",
@@ -35,17 +39,18 @@ const EXPECTED_READ_TOOLS = [
   "meta_state_relationship_validate",
 ];
 
-test("all wired runtimes pin LOOP_SURFACE (CLI is the single record surface)", () => {
-  // Every wired runtime pins its own surface; no runtime carries a
+test("all current runtimes pin their identity (CLI is the single record surface)", () => {
+  // Every current runtime pins its own identity; no runtime carries a
   // LOOP_*_VIA_CLI opt-out key — the CLI is unconditionally the record
   // transport and MCP carries only the residue.
   const claudeEnv = readLoopEnv(join(PROJECT_ROOT, ".mcp.json"));
-  const factoryEnv = readLoopEnv(join(PROJECT_ROOT, ".factory", "mcp.json"));
-  const mastracodeEnv = readLoopEnv(join(PROJECT_ROOT, ".mastracode", "mcp.json"));
+  const hermesEnv = readLoopEnv(join(PROJECT_ROOT, ".hermes", "mcp.json"));
+  const codexConfig = readCodexConfig();
 
   assert.strictEqual(claudeEnv.LOOP_SURFACE, ".claude");
-  assert.strictEqual(factoryEnv.LOOP_SURFACE, ".factory");
-  assert.strictEqual(mastracodeEnv.LOOP_SURFACE, ".mastracode");
+  assert.strictEqual(hermesEnv.LOOP_SURFACE, ".hermes");
+  assert.match(codexConfig, /RUNTIME_ID\s*=\s*"codex"/);
+  assert.match(codexConfig, /LOOP_SURFACE\s*=\s*"\.codex"/);
 });
 
 test("CLI read allowlist is the exact expected read contract", () => {

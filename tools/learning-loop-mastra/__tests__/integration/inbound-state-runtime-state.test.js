@@ -24,7 +24,7 @@ let root;
 beforeEach(() => {
   root = join(tmpdir(), `inbound-state-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(root, { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
 });
 
 afterEach(() => {
@@ -37,7 +37,7 @@ function ts(minutesAgo) {
 }
 
 function writeMarker(timestamp) {
-  const markerPath = join(root, ".factory", "coordination", ".last-operator-message");
+  const markerPath = join(root, ".hermes", "coordination", ".last-operator-message");
   writeFileSync(markerPath, JSON.stringify({ timestamp, prompt_snippet: "test" }), "utf8");
 }
 
@@ -178,7 +178,7 @@ await test("paused canonical sidecar drops legacy distinct-id active obs for sam
   // check on each is the ONLY thing that drops the legacy active observation,
   // because its affected_system is "vnstock". Removing that skip would
   // re-surface a paused surface as a stale-observation warning.
-  mkdirSync(join(root, ".factory"), { recursive: true });
+  mkdirSync(join(root, ".hermes"), { recursive: true });
   writeFileSync(
     join(root, "runtime-state.jsonl"),
     [

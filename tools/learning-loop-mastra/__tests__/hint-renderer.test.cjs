@@ -108,26 +108,6 @@ describe("hint renderer", () => {
     assert.ok(partitions[1].includes("pnpm test"), "standalone process rows still render");
   });
 
-  test("factory-session-start channel renders one block carrying every hint", () => {
-    const rulesById = realRulesById();
-    const { partitions, warnings } = renderer.renderHints({
-      channel: "factory-session-start",
-      charBudget: 999999,
-      rulesById,
-    });
-    assert.strictEqual(partitions.length, 1, "factory channel emits a single partition");
-    const text = partitions[0];
-    // Every registry entry's rendered text (standalone inline text or the
-    // rule's hint_text) must appear — a real per-hint coverage assertion,
-    // replacing the previous loop that asserted the same length check 5 times.
-    for (const e of registry.HINT_REGISTRY) {
-      const marker = renderedMarker(e, rulesById);
-      assert.ok(marker.length > 0, `no rendered text for ${e.slug}`);
-      assert.ok(text.includes(marker), `factory block must carry hint ${e.slug}`);
-    }
-    assert.deepStrictEqual(warnings, [], "no skips expected with the live registry");
-  });
-
   test("sidecar channel preserves session-context.json shape", () => {
     // The rule-derived rows are no longer in HINT_REGISTRY, so the mock
     // rulesById comes from the shared fixture (real rule ids + hint_slug
@@ -220,21 +200,16 @@ describe("hint renderer", () => {
     assert.strictEqual(slugs.size, expectedProvenanceLen, "provenance slugs must be unique (one per hint)");
   });
 
-  test("byte-identity: claude-session-start partition 0 ≠ factory-session-start body shape, but both carry same hints", () => {
+  test("claude-session-start carries every rendered hint", () => {
     const rulesById = realRulesById();
     const claude = renderer.renderHints({ channel: "claude-session-start", charBudget: STD_CHAR_BUDGET, rulesById });
-    const factory = renderer.renderHints({ channel: "factory-session-start", charBudget: 999999, rulesById });
-    // Different partitioning: claude is 2 partitions, factory is 1.
-    assert.notStrictEqual(claude.partitions.length, factory.partitions.length);
-    // Concatenation parity: EVERY hint (all 28) appears in both renders.
+    // Concatenation parity: every rendered hint appears in the retained
+    // Claude session-start projection.
     const claudeJoined = claude.partitions.join("\n");
-    const factoryJoined = factory.partitions.join("\n");
     for (const e of registry.HINT_REGISTRY) {
       const marker = renderedMarker(e, rulesById);
       assert.ok(claudeJoined.includes(marker),
         `claude concatenation must carry hint ${e.slug}`);
-      assert.ok(factoryJoined.includes(marker),
-        `factory concatenation must carry hint ${e.slug}`);
     }
   });
 

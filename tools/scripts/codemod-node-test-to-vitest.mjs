@@ -28,7 +28,7 @@
  * What is NOT touched:
  *   - `from "node:assert"` and `from "node:assert/strict"` — vitest doesn't
  *     break node:assert; the 200 importers stay.
- *   - `process.exit(...)` calls in .claude/coordination/ + .factory/hooks/
+ *   - `process.exit(...)` calls in runtime hook gate-test scripts
  *     gate-test scripts — handled separately by wrap-gate-tests.mjs.
  *   - All other imports (`node:fs`, `node:path`, etc.).
  *   - The English word "before"/"after" in comments and strings — only the

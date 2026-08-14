@@ -64,16 +64,16 @@ function makeEvent(ts, prefix, overrides = {}) {
 
 function writeEntries(entries) {
   const claudeLines = [];
-  const factoryLines = [];
+  const hermesLines = [];
   for (let i = 0; i < entries.length; i++) {
     const line = JSON.stringify(entries[i]);
     if (i % 2 === 0) claudeLines.push(line);
-    else factoryLines.push(line);
+    else hermesLines.push(line);
   }
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   if (claudeLines.length) writeFileSync(decisionLogPath(".claude"), claudeLines.join("\n") + "\n");
-  if (factoryLines.length) writeFileSync(decisionLogPath(".factory"), factoryLines.join("\n") + "\n");
+  if (hermesLines.length) writeFileSync(decisionLogPath(".hermes"), hermesLines.join("\n") + "\n");
 }
 
 await test("three ordinary-rule-fire events → telemetry only, zero emitted findings", async () => {
@@ -168,14 +168,14 @@ await test("cross-surface same-identity provenance disagreement fails closed (no
   const ts = [now - 5 * 60000, now - 3 * 60000, now - 1 * 60000];
   const mk = (t, prov) => makeEvent(t, INERT_VITEST, prov);
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   // Distinct per-identity timestamps (i-based disambiguation) so each
   // ts/prefix/rule/decision/session identity has ONE conflicting pair across
   // the two surfaces — the cross-surface reader dedupes by exact identity, so
   // an ms collision would otherwise collapse the three into one row whose
   // surface winner already won before the disagreement check runs.
   writeFileSync(decisionLogPath(".claude"), ts.map((t, i) => JSON.stringify(mk(t + i, UNEXPECTED))).join("\n") + "\n");
-  writeFileSync(decisionLogPath(".factory"), ts.map((t, i) => JSON.stringify(mk(t + i, ORDINARY))).join("\n") + "\n");
+  writeFileSync(decisionLogPath(".hermes"), ts.map((t, i) => JSON.stringify(mk(t + i, ORDINARY))).join("\n") + "\n");
   const result = await checkAndEmit(root);
   assert.strictEqual(result.findings_emitted, 0, "cross-surface provenance disagreement must fail closed");
 });

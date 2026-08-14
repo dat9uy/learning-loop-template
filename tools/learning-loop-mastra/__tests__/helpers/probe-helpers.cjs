@@ -27,7 +27,7 @@ async function defaultWriteFn(root, id, patch) {
  * @param {string} root — project root containing meta-state.jsonl
  * @param {object} opts
  * @param {string} opts.sessionId — idempotency key
- * @param {string} opts.runtime — CLI name (droid, claude, etc.)
+ * @param {string} opts.runtime — current runtime id (codex, claude-code, hermes, etc.)
  * @param {boolean} opts.gapOpen — true if the L1 gap is open
  * @param {function} [opts.writeFn] — async (root, id, patch) => result; defaults to updateEntry
  * @param {function} [opts.entryBuilder] — () => entry object for tryClaimSessionId; uses default if omitted
@@ -103,7 +103,7 @@ async function probeL1(root, { sessionId, runtime, gapOpen, writeFn = defaultWri
  * @param {string} root — project root containing meta-state.jsonl
  * @param {object} opts
  * @param {string} opts.sessionId — idempotency key
- * @param {string} opts.runtime — CLI name (droid, claude, etc.)
+ * @param {string} opts.runtime — current runtime id (codex, claude-code, hermes, etc.)
  * @param {boolean} opts.gapOpen — true if the L2 gap is open
  * @param {function} [opts.writeFn] — async (root, id, patch) => result; defaults to updateEntry
  * @param {function} [opts.entryBuilder] — () => entry object for tryClaimSessionId; uses default if omitted

@@ -4,7 +4,7 @@
  *
  * Positioning (operator decision 2026-07-17, code-review I1): this module is
  * the INSPECTION surface, not the injection path. Production injection runs
- * through core/loop-introspect.js builders (the .claude/.factory hooks and
+ * through core/loop-introspect.js builders (the .claude/.hermes hooks and
  * loop_describe consume those directly — they were never converted to
  * renderer clients). The renderer + tools/scripts/hint-render.mjs exist so
  * operators can preview registry content per channel and verify partition
@@ -15,8 +15,6 @@
  *
  *   - claude-session-start : 2 partitions (discoverability + process),
  *                            each under the 10k-char additionalContext cap.
- *   - factory-session-start: single block matching the legacy
- *                            .factory/hooks/loop-surface-inject.cjs shape.
  *   - mcp-warm             : structured JSON array of all 26 hints.
  *   - sidecar              : session-context.json payload (preserves the
  *                            buildContextPayload shape from the discoverability
@@ -26,7 +24,8 @@
  * across partitions, and every partition fits under the requested `charBudget`
  * unless a single hint exceeds it (then: own over-budget partition + warning).
  *
- * `.mastracode` is intentionally NOT a channel here (Validation 1: pull-only).
+ * Runtime-specific adapters are not renderer channels; this module only owns
+ * the retained Claude inspection shape and transport-neutral previews.
  */
 
 import { HINT_REGISTRY, listHints, buildProcessView, resolveHintText } from "./hint-registry.js";
@@ -134,26 +133,6 @@ function renderClaudeSessionStart(entries, charBudget, rulesById) {
 }
 
 /**
- * Channel: factory-session-start — single combined block. Matches the legacy
- * `.factory/hooks/loop-surface-inject.cjs` shape (counts header + both hint
- * sections in one stdout stream). The adapter layer is responsible for
- * prepending the counts header.
- */
-function renderFactorySessionStart(entries, _charBudget, rulesById) {
-  const warnings = [];
-  // Process partition comes from the merged view so the factory output
-  // carries standalone + rule-derived rows. Discoverability still comes
-  // from the static registry.
-  const discoverability = listHints({ kind: "discoverability" })
-    .map((e) => resolveEntryText(e, rulesById, warnings));
-  const process = buildProcessView({ rulesById, warnings })
-    .map((e) => resolveEntryText(e, rulesById, warnings));
-  const all = [...discoverability, ...process];
-  const { partitions, provenance } = greedyPartition(all, 999999, warnings);
-  return { partitions, provenance, warnings };
-}
-
-/**
  * Channel: sidecar — session-context.json payload. Preserves the
  * buildContextPayload shape from session-start-inject-discoverability.cjs.
  */
@@ -215,7 +194,6 @@ function renderMcpWarm(entries, _charBudget, rulesById) {
 
 const CHANNELS = {
   "claude-session-start": renderClaudeSessionStart,
-  "factory-session-start": renderFactorySessionStart,
   "sidecar": renderSidecar,
   "mcp-warm": renderMcpWarm,
 };

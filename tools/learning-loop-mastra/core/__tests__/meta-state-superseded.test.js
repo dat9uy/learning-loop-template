@@ -67,14 +67,14 @@ describe("Phase 3: 'superseded' status retired (collapsed into resolved + citati
       description: "Old version line carrying consolidated_into (inert-historical).",
       status: "resolved",
       consolidated_into: "meta-260606T0000Z-g8-subcommand-class-false-positive-supersede",
-      session_id: "droid-abc-123",
+      session_id: "hermes-abc-123",
       resolved_at: new Date().toISOString(),
       resolved_by: "operator",
       created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.consolidated_into, "meta-260606T0000Z-g8-subcommand-class-false-positive-supersede");
-    assert.strictEqual(result.data.session_id, "droid-abc-123");
+    assert.strictEqual(result.data.session_id, "hermes-abc-123");
   });
 
   // Test 3: change-log `consolidates` field is inert-historical — still

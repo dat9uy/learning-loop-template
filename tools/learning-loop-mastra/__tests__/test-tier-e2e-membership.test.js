@@ -33,7 +33,6 @@ const projectRoot = resolve(__dirname, "..", "..", "..");
 const SEARCH_DIRS = [
   "tools/learning-loop-mastra/__tests__",
   ".claude/coordination/__tests__",
-  ".factory/hooks/__tests__",
   "tools/scripts/__tests__",
 ];
 

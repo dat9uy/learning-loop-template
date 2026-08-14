@@ -55,21 +55,21 @@ the above messages — no tool call is served until the pin is set.
 
 ## LOOP_SURFACE Wiring via mcp.json `env` Field
 
-The operator-chosen approach (replacing the original shim-wiring plan): each
-runtime's MCP config sets `env.LOOP_SURFACE` on the `learning-loop` server
-entry, so the harness passes the surface to the spawned `server.js` where
-`pinRuntimeIdAtBoot()` reads it at boot.
+The current runtime set is Codex, Claude Code, and Hermes. Each transport
+identifies its runtime at boot; Codex uses native Initial Delivery while the
+retained MCP transports pass their surface to `server.js` where
+`pinRuntimeIdAtBoot()` reads it.
 
-| Runtime | MCP config | `env.LOOP_SURFACE` |
+| Runtime | Runtime configuration | Surface/identity |
 |---------|------------|-------------------|
-| Claude Code | `.mcp.json` | `.claude` |
-| Droid CLI | `.factory/mcp.json` | `.factory` |
-| Mastra Code | `.mastracode/mcp.json` | `.mastracode` |
+| Codex | `.codex/config.toml` | native Initial Delivery / `codex` |
+| Claude Code | `.mcp.json` | `.claude` / `claude-code` |
+| Hermes | `.hermes/mcp.json` | `.hermes` / `hermes` |
 
-The MCP stdio transport passes `env` to the spawned `server.js`, so no shell
-shim is required. The contract validator enforces this for Mastra Code via
-Req #10 (`mastracode-session-start-pins-loop-surface`); the Claude Code and
-Droid CLI env fields are locked by `__tests__/mcp-config.test.js`.
+The MCP stdio transport passes the identity to the spawned `server.js`, so no
+additional runtime alias is required. The contract validator checks the
+current native Codex delivery and the Claude/Hermes transport configuration;
+the exact fields are locked by `__tests__/mcp-config.test.js`.
 
 **Operator kill-switch:** to disable `LOOP_SURFACE` injection for a runtime,
 remove the `env` field from the relevant `mcp.json`. The MCP server will then
@@ -86,9 +86,9 @@ The R2 gate reads `.loop/r2-allowlist.json` (schema `r2-allowlist/v1`, version
 {
   "schema": "r2-allowlist/v1",
   "version": 1,
+  "codex":       { "own": ["..."], "deny": ["..."] },
   "claude-code": { "own": ["..."], "deny": ["..."] },
-  "droid":       { "own": ["..."], "deny": ["..."] },
-  "mastra-code": { "own": ["..."], "deny": ["..."] },
+  "hermes":      { "own": ["..."], "deny": ["..."] },
   "universal":   ["..."]
 }
 ```
@@ -105,19 +105,19 @@ The R2 gate reads `.loop/r2-allowlist.json` (schema `r2-allowlist/v1`, version
 {
   "schema": "r2-allowlist/v1",
   "version": 1,
+  "codex": {
+    "own": [".codex/**"],
+    "deny": [".claude/**", ".hermes/**", ".loop/r2-allowlist.json",
+             "runtime-state.jsonl", ".gate-override"]
+  },
   "claude-code": {
     "own": [".claude/**"],
-    "deny": [".factory/**", ".mastracode/**", ".loop/r2-allowlist.json",
+    "deny": [".codex/**", ".hermes/**", ".loop/r2-allowlist.json",
              "runtime-state.jsonl", ".gate-override"]
   },
-  "droid": {
-    "own": [".factory/**"],
-    "deny": [".claude/**", ".mastracode/**", ".loop/r2-allowlist.json",
-             "runtime-state.jsonl", ".gate-override"]
-  },
-  "mastra-code": {
-    "own": [".mastracode/**"],
-    "deny": [".claude/**", ".factory/**", ".loop/r2-allowlist.json",
+  "hermes": {
+    "own": [".hermes/**"],
+    "deny": [".codex/**", ".claude/**", ".loop/r2-allowlist.json",
              "runtime-state.jsonl", ".gate-override"]
   },
   "universal": ["records/**", "plans/**", "docs/**", "AGENTS.md",
@@ -129,9 +129,9 @@ The R2 gate reads `.loop/r2-allowlist.json` (schema `r2-allowlist/v1`, version
 
 | Surface | Owner runtime | Other runtimes |
 |---------|---------------|----------------|
+| `.codex/**` | codex | denied (in their `deny` list) |
 | `.claude/**` | claude-code | denied (in their `deny` list) |
-| `.factory/**` | droid | denied |
-| `.mastracode/**` | mastra-code | denied |
+| `.hermes/**` | hermes | denied |
 | `.loop/r2-allowlist.json` | nobody (bootstrap-deny) | use `update_r2_allowlist` |
 | `runtime-state.jsonl` | nobody (bootstrap-deny) | operator-controlled |
 | `.gate-override` | nobody (bootstrap-deny) | operator-controlled |
@@ -274,46 +274,33 @@ traceability:
   the LIM-3 caller-identity master-tracker row for `resolved_by` spoofing is
   deferred (LIM-3 was dropped from Plan 5-Lite; the `resolved_by` field is
   operator-supplied and not yet cryptographically authenticated).
-- **Surface-divergence follow-up (source files)** — **CLOSED** by
-  `plans/260702-1639-mastracode-surface-coverage/`. The five source files that
-  hard-coded the 2-surface list (`inbound-gate.js`, `mark-preflight-complete-tool.js`,
-  `evaluate-bash-gate.js` `PATH_WRITE_PATTERNS`, `runtime-agnostic-checklist.js`
-  `SHIM_DIRS`, and `gate-override.js` comments) now iterate `SURFACES` / derive
-  from it, covering `.mastracode`. The follow-up also reconciled the per-surface
-  `.cjs` shims byte-identical across all three surfaces (`.claude`, `.factory`,
-  `.mastracode`) and rewrote the `shims-in-sync` checklist item to enumerate the
-  real shim files and verify byte-identity across all surfaces (the prior
-  implementation could not find shims — it derived shim names from universal-hook
-  names, which do not match — and only compared two surfaces). A subsequent pass
-  derived every remaining ad-hoc surface-name regex/path literal across the
-  gate/core from `SURFACES` (`evaluate-bash-gate.js` `PATH_WRITE_PATTERNS`,
-  `evaluate-write-gate.js` `preflight-marker` block rule,
-  `runtime-state-record-tool.js` `hasPreflightMarker`, and the
-  `runtime-agnostic-checklist.js` auditors) so adding a 4th runtime requires
-  editing only `surfaces.js`. That pass closed a direct-write bypass: a write to
-  `.mastracode/coordination/.loop-preflight-*` previously matched no write-gate
-  rule and was allowed (the `preflight-marker` rule hard-coded `.claude`/
-  `.factory`); it is now blocked, consistent with the invariant that preflight
-  markers may only be created via `mark_preflight_complete`.
+- **Surface-divergence follow-up (source files)** — **CLOSED**. Runtime-aware
+  source files now derive retained mirror paths from `core/surfaces.js` rather
+  than maintaining independent surface lists. Codex is represented by its
+  native Initial Delivery path; Claude Code and Hermes are the retained mirror
+  consumers. The `shims-in-sync` checklist compares only manifest-declared shim
+  files, while Hermes adapters remain runtime-owned and are not byte-parity
+  shims. A direct write to any retained `.loop-preflight-*` path is blocked,
+  consistent with the invariant that preflight markers may only be created via
+  `mark_preflight_complete`.
 
 ## Troubleshooting: verify `LOOP_SURFACE` is set
 
 If the MCP server fails to start with `MISSING_LOOP_SURFACE`:
 
-1. Check the runtime's `mcp.json` has the `env.LOOP_SURFACE` field:
+1. Check the runtime's current identity configuration:
    ```bash
    node -e "console.log(JSON.parse(require('fs').readFileSync('.mcp.json','utf8')).mcpServers['learning-loop'].env)"
    ```
-   Expected: `{ LOOP_SURFACE: '.claude' }` (for Claude Code). Repeat for
-   `.factory/mcp.json` (`.factory`) and `.mastracode/mcp.json`
-   (`.mastracode`).
+   Claude Code should identify `.claude`; Hermes uses `.hermes/mcp.json` and
+   Codex uses `.codex/config.toml` with native Initial Delivery.
 2. From inside a harness session, verify the env var reached the session:
    ```bash
    node -e "console.log(process.env.LOOP_SURFACE)"
    ```
-   Should print `.claude` (Claude Code), `.factory` (Droid CLI), or
-   `.mastracode` (Mastra Code). If it prints `undefined`, the harness did not
-   pass `env` to the spawned process — re-check the `mcp.json` env field.
+   Should print the current runtime identity. If it prints `undefined`, the
+   harness did not pass the configured identity to the spawned process —
+   re-check the runtime configuration.
 3. If you intentionally disabled injection (removed the env field to debug),
    re-add it once the harness issue is resolved. The server fails closed
    without the pin.

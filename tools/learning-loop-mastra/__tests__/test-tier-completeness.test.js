@@ -30,7 +30,6 @@ const projectRoot = resolve(__dirname, "..", "..", "..");
 const SEARCH_DIRS = [
   "tools/learning-loop-mastra/__tests__",
   ".claude/coordination/__tests__",
-  ".factory/hooks/__tests__",
   "tools/scripts/__tests__",
 ];
 
@@ -126,11 +125,11 @@ test("three projects are disjoint and complete over the discovered test inventor
 
   // Every file must be in exactly one of {e2e, integration, unit-residual}.
   // unit-residual = a file that is in BASE_INCLUDE scope (mastra / .claude /
-  // .factory / scripts) and not e2e and not integration.
+  // .claude / .hermes / scripts) and not e2e and not integration.
   const inScope = (f) =>
     f.startsWith("tools/learning-loop-mastra/") ||
     f.startsWith(".claude/") ||
-    f.startsWith(".factory/") ||
+    f.startsWith(".hermes/") ||
     f.startsWith("tools/scripts/");
 
   const orphans = [];

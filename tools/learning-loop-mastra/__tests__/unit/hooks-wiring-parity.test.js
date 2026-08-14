@@ -14,12 +14,10 @@
  *
  * Runtime config shapes:
  *   - .claude   → .claude/settings.json   (hooks.<Event>[].hooks[].command, matcher nested under PreToolUse groups)
- *   - .factory  → .factory/settings.json (gates) + .factory/hooks.json (SessionStart adapter)
- *                  merged into one per-surface list
- *   - .mastracode → .mastracode/hooks.json (flat array per Event with command + matcher object)
+ *   - .hermes   → .hermes/hooks.json (nested event shape)
  *
- * Env-token canonicalization: .claude and .factory commands may use
- * `$FACTORY_PROJECT_DIR` / `$CLAUDE_PROJECT_DIR` prefixes. The helper
+ * Env-token canonicalization: runtime commands may use
+ * `$HERMES_PROJECT_DIR` / `$CLAUDE_PROJECT_DIR` prefixes. The helper
  * strips these so the comparison is anchored at the surface-relative
  * path with no path-separator prefix (rejects `evil/<ref>` path-traversal).
  *
@@ -56,9 +54,9 @@ function loadManifest() {
 /**
  * Strip env-token path prefixes that some runtimes embed in hook commands
  * before comparing against the manifest `ref`. Handles:
- *   - "$FACTORY_PROJECT_DIR" / "$CLAUDE_PROJECT_DIR" — Droid/Claude token
+ *   - "$HERMES_PROJECT_DIR" / "$CLAUDE_PROJECT_DIR" — runtime project tokens
  *     (may be followed by a quote and/or a `/` separator, e.g.
- *      `node "$FACTORY_PROJECT_DIR"/.factory/...`)
+ *      `node "$HERMES_PROJECT_DIR"/.hermes/...`)
  *   - remaining double-quote characters
  *   - leading interpreter name (`node `) so we compare path-to-path
  *   - exact normalized path equality (no suffix matching)
@@ -68,7 +66,7 @@ function loadManifest() {
  */
 function normalizeCommandPath(command) {
   let s = String(command ?? "");
-  s = s.replace(/\$FACTORY_PROJECT_DIR"?\/?/g, "");
+  s = s.replace(/\$HERMES_PROJECT_DIR"?\/?/g, "");
   s = s.replace(/\$CLAUDE_PROJECT_DIR"?\/?/g, "");
   // Strip remaining double-quotes (may wrap nothing now).
   s = s.replace(/"/g, "");
@@ -105,50 +103,11 @@ function flattenClaude(hooks) {
   return out;
 }
 
-/** Flatten a mastracode-style hooks file (flat array per event). */
-function flattenMastracode(hooks) {
-  const out = [];
-  if (!hooks || typeof hooks !== "object") return out;
-  for (const [event, entries] of Object.entries(hooks)) {
-    for (const h of Array.isArray(entries) ? entries : []) {
-      if (h && h.type === "command" && typeof h.command === "string") {
-        out.push({ event, command: h.command, matcher: h.matcher });
-      }
-    }
-  }
-  return out;
-}
-
-function flattenFactory(settings, hooks) {
-  // BOTH .factory/settings.json (gate hooks) AND .factory/hooks.json
-  // (SessionStart adapter) use the Claude Code nested format:
-  //   { <Event>: [ { matcher, hooks: [ {type:"command", command} ] } ] }
-  // (The mastracode flat format does NOT apply to .factory.) Merge the two
-  // per-surface event lists into one so the parity path sees every wire.
-  return [
-    ...flattenClaude(settings?.hooks ?? {}),
-    ...flattenClaude(hooks ?? {}),
-  ];
-}
-
 async function loadRuntimeHooks(surface) {
   const root = REPO_ROOT;
   if (surface === ".claude") {
     const cfg = readJson(join(root, ".claude/settings.json"));
     return flattenClaude(cfg.hooks);
-  }
-  if (surface === ".factory") {
-    const settings = existsSync(join(root, ".factory/settings.json"))
-      ? readJson(join(root, ".factory/settings.json"))
-      : {};
-    const hooks = existsSync(join(root, ".factory/hooks.json"))
-      ? readJson(join(root, ".factory/hooks.json"))
-      : {};
-    return flattenFactory(settings, hooks);
-  }
-  if (surface === ".mastracode") {
-    const cfg = readJson(join(root, ".mastracode/hooks.json"));
-    return flattenMastracode(cfg);
   }
   if (surface === ".hermes") {
     // Hermes records its hook wiring in .hermes/hooks.json (Claude-Code
@@ -174,7 +133,7 @@ function matchersEqual(a, b) {
     }
     return true;
   }
-  // Array form: list of strings (mastracode write-gate triple-wire)
+  // Array form: list of strings (runtime-native write-gate wiring)
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
     const sa = [...a].map(String).sort();
@@ -287,21 +246,19 @@ await test("loadRuntimeHooks resolves all runtime config shapes (shape test)", a
     }
   }
 
-  // .factory specifically must merge its two config files into one list —
-  // the SessionStart adapter lives in hooks.json, not settings.json.
-  const factoryHooks = await loadRuntimeHooks(".factory");
-  const adapterEntry = factoryHooks.find((h) => h.command.includes("loop-surface-inject"));
-  assert.ok(adapterEntry, ".factory: SessionStart adapter wiring must be visible (two-file merge)");
+  const hermesHooks = await loadRuntimeHooks(".hermes");
+  const adapterEntry = hermesHooks.find((h) => h.command.includes("loop-surface-inject"));
+  assert.ok(adapterEntry, ".hermes: SessionStart adapter wiring must be visible");
   assert.strictEqual(adapterEntry.event, "SessionStart");
-  assert.strictEqual(adapterEntry.matcher, "startup");
+  assert.strictEqual(adapterEntry.matcher, "first_turn");
 });
 
-await test("env-token canonicalization: $FACTORY_PROJECT_DIR / $CLAUDE_PROJECT_DIR stripped before comparison", () => {
+await test("env-token canonicalization: $HERMES_PROJECT_DIR / $CLAUDE_PROJECT_DIR stripped before comparison", () => {
   // Prefixed env tokens in command strings MUST be stripped before
   // comparing against the (env-token-free) manifest ref.
   assert.strictEqual(
-    normalizeCommandPath('node "$FACTORY_PROJECT_DIR"/.factory/coordination/hooks/bash-coordination-gate.cjs'),
-    ".factory/coordination/hooks/bash-coordination-gate.cjs",
+    normalizeCommandPath('node "$HERMES_PROJECT_DIR"/.hermes/coordination/hooks/bash-coordination-gate.cjs'),
+    ".hermes/coordination/hooks/bash-coordination-gate.cjs",
   );
   assert.strictEqual(
     normalizeCommandPath('node "$CLAUDE_PROJECT_DIR"/.claude/coordination/hooks/bash-coordination-gate.cjs'),
@@ -343,10 +300,7 @@ await test("every wired shim/adapter ref exists on disk", () => {
   }
 });
 
-await test("SessionStart adapter matcher (`startup`) is asserted", async () => {
-  // .factory's SessionStart adapter carries matcher:"startup"; the parity
-  // path uses matchersEqual on the runtime config's matcher to ensure the
-  // matcher is actually wired (not just any event entry).
+await test("SessionStart adapter matcher is asserted", async () => {
   const SURFACES = await loadSurfaces();
   for (const surface of SURFACES) {
     const hooks = await loadRuntimeHooks(surface);
@@ -355,17 +309,9 @@ await test("SessionStart adapter matcher (`startup`) is asserted", async () => {
       h.command.includes("loop-surface-inject")
     );
     if (adapterEntry) {
-      if (surface === ".factory") {
-        assert.strictEqual(adapterEntry.matcher, "startup", `${surface}: SessionStart adapter must carry matcher:"startup"`);
-      } else {
-        // Non-.factory adapter surfaces (e.g. .hermes' pre_llm_call
-        // first-turn adapter) wire their own matcher; the exact-value
-        // equality against the manifest is asserted by the general
-        // forEachHookAcrossSurfaces parity test below.
-        assert.ok(adapterEntry.matcher, `${surface}: SessionStart adapter must carry a non-empty matcher`);
-      }
+      assert.ok(adapterEntry.matcher, `${surface}: SessionStart adapter must carry a non-empty matcher`);
     } else {
-      assert.notStrictEqual(surface, ".factory", ".factory must wire the SessionStart adapter");
+      assert.notStrictEqual(surface, ".hermes", ".hermes must wire the SessionStart adapter");
     }
   }
 });
@@ -375,27 +321,4 @@ await forEachHookAcrossSurfaces(async (key, entry, surface, wiring, runtimeHooks
     const res = wiresArePresent({ runtimeHooks, key, surface, wiring, entry });
     assert.ok(res.ok, `${key} on ${surface} (kind=${wiring.kind ?? wiring?.kind}) failed: ${res.found ?? ""} | fix: ${res.fix_suggestion ?? ""}`);
   });
-});
-
-await test(".mastracode write-gate: array-matcher cardinality (3 distinct wires)", async () => {
-  // The manifest declares write-gate on .mastracode as kind:"direct" with
-  // matcher ["write_file","string_replace_lsp","delete_file"]. The runtime
-  // config MUST have exactly 3 distinct wires — missing one of the three
-  // is silent 2-of-3 degradation if we only check command-existence.
-  const manifest = loadManifest();
-  const entry = manifest.hooks["write-gate"];
-  const wiring = entry.wiring[".mastracode"];
-  assert.strictEqual(wiring.kind, "direct");
-  assert.ok(Array.isArray(wiring.matcher));
-  assert.strictEqual(wiring.matcher.length, 3);
-
-  const runtimeHooks = await loadRuntimeHooks(".mastracode");
-  const expectedCmd = `node ${entry.path}`;
-  const wires = runtimeHooks.filter((h) => h.event === "PreToolUse" && commandEquals(h.command, expectedCmd));
-  assert.strictEqual(wires.length, 3, `expected 3 distinct wires for write-gate on .mastracode; got ${wires.length}`);
-
-  const coveredTools = wires.map((h) => h.matcher?.tool_name).filter(Boolean);
-  for (const tool of wiring.matcher) {
-    assert.ok(coveredTools.includes(tool), `write-gate on .mastracode must wire tool:"${tool}"`);
-  }
 });

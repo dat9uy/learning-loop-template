@@ -26,8 +26,6 @@
       "canonicalSource": "tools/learning-loop-mastra/skills/coordination-gate/SKILL.md",
       "targets": [
         ".claude",
-        ".factory",
-        ".mastracode",
         ".hermes"
       ],
       "maturity": "state-2",
@@ -89,8 +87,6 @@
       "canonicalSource": "tools/learning-loop-mastra/skills/learning-loop/SKILL.md",
       "targets": [
         ".claude",
-        ".factory",
-        ".mastracode",
         ".hermes"
       ],
       "maturity": "state-2",
@@ -104,8 +100,6 @@
       "skillPath": "skills/mastra/SKILL.md",
       "targets": [
         ".claude",
-        ".factory",
-        ".mastracode",
         ".hermes"
       ],
       "maturity": null,

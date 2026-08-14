@@ -29,18 +29,6 @@ product/*/dist/
 .claude/coordination/.inbound-stale-surfaced
 .claude/coordination/.inbound-pointer-surfaced
 .claude/coordination/.loop-preflight-*
-.factory/coordination/.gate-override
-.factory/coordination/.last-operator-message
-.factory/coordination/.last-operator-message-*
-.factory/coordination/.inbound-stale-surfaced
-.factory/coordination/.inbound-pointer-surfaced
-.factory/coordination/.loop-preflight-*
-.mastracode/coordination/.gate-override
-.mastracode/coordination/.last-operator-message
-.mastracode/coordination/.last-operator-message-*
-.mastracode/coordination/.inbound-stale-surfaced
-.mastracode/coordination/.inbound-pointer-surfaced
-.mastracode/coordination/.loop-preflight-*
 .hermes/coordination/gate-log.jsonl
 .hermes/coordination/.gate-override
 .hermes/coordination/.last-operator-message
@@ -74,9 +62,6 @@ tools/learning-loop-mastra/data/
 **/*.db
 **/*.db-wal
 **/*.db-shm
-# Phase E Plan 4 — Mastra Code runtime DB (generated from .mastracode/database.json)
-.mastracode/data/
-
 # Central skills plan (260719-1428) Phase 3 — npx `skills` CLI central store.
 # `npx skills add/update` regenerates `.agents/skills/<pkg>/` as its internal
 # central copy; it is not our source-of-truth (the detected `<surface>/skills/`
@@ -96,3 +81,7 @@ tools/learning-loop-mastra/reports/fallow/
 
 # c8 Istanbul coverage output consumed by Fallow --coverage (PR #28)
 coverage/
+
+# Local residue from retired runtime surfaces; not current configuration.
+.factory/coordination/
+.mastracode/coordination/

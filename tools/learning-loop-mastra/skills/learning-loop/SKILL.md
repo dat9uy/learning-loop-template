@@ -103,7 +103,7 @@ When budget state blocks prompt generation, return one of these signals instead 
 - `tools/learning-loop-mastra/core/README.md` — FCIS invariant: zero `@mastra/*` imports in core.
 - `tools/learning-loop-mastra/docs/schemas.md` — meta-state 4-kind schema, wire envelope, parity contract.
 
-### Runtime interface contract (Phase E.1b)
-- `tools/learning-loop-mastra/interface/CONTRACT.md` — the 5 requirements a runtime MUST satisfy (hook shims, MCP config, this skill, identity marker, settings).
-- `tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md` — how to onboard a new runtime (worked example: Mastra Code).
+### Runtime interface contract
+- `tools/learning-loop-mastra/interface/CONTRACT.md` — the current MCP requirements a runtime MUST satisfy (hook surface, MCP config, this skill, identity marker, settings, manifest path fields, and I2 delivery).
+- `tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md` — how to onboard a future runtime against the current topology and ownership boundary.
 - `node tools/learning-loop-mastra/interface/contract.js <runtime-id>` — validate a runtime against the contract. Returns `{ok, missing[], notes[], path_map}`.

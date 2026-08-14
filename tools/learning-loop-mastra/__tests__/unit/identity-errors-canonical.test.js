@@ -28,11 +28,11 @@ test("R11 identity-errors.json has all 4 canonical message keys", () => {
   }
 });
 
-test("R11 MISSING_LOOP_SURFACE names all three allowed surfaces", () => {
+test("R11 MISSING_LOOP_SURFACE names all current allowed surfaces", () => {
   const msg = ERRORS.MISSING_LOOP_SURFACE;
+  assert.ok(msg.includes(".codex"), "MISSING_LOOP_SURFACE must mention .codex");
   assert.ok(msg.includes(".claude"), "MISSING_LOOP_SURFACE must mention .claude");
-  assert.ok(msg.includes(".factory"), "MISSING_LOOP_SURFACE must mention .factory");
-  assert.ok(msg.includes(".mastracode"), "MISSING_LOOP_SURFACE must mention .mastracode");
+  assert.ok(msg.includes(".hermes"), "MISSING_LOOP_SURFACE must mention .hermes");
   assert.ok(msg.includes("LOOP_SURFACE"), "MISSING_LOOP_SURFACE must name the env var");
 });
 

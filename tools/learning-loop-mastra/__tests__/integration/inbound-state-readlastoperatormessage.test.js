@@ -71,13 +71,13 @@ await test("falls through to .claude when env-var marker is expired", () => {
 
 // ─── Priority 2 + 3: surface iteration ───
 
-await test("falls through to .factory when env-var and .claude are both missing", () => {
-  const factoryTs = ts(5);
-  writeMarker(".factory", factoryTs);
+await test("falls through to .hermes when env-var and .claude are both missing", () => {
+  const hermesTs = ts(5);
+  writeMarker(".hermes", hermesTs);
 
   const result = readLastOperatorMessage(root);
   assert.ok(result);
-  assert.strictEqual(result.timestamp, factoryTs);
+  assert.strictEqual(result.timestamp, hermesTs);
 });
 
 await test("returns null when no surface has a marker", () => {
@@ -86,51 +86,51 @@ await test("returns null when no surface has a marker", () => {
 });
 
 await test("skips expired marker (older than 30 min)", () => {
-  const factoryTs = ts(5);
+  const hermesTs = ts(5);
   writeMarker(".claude", ts(60));
-  writeMarker(".factory", factoryTs);
+  writeMarker(".hermes", hermesTs);
 
   const result = readLastOperatorMessage(root);
   assert.ok(result);
-  assert.strictEqual(result.timestamp, factoryTs);
+  assert.strictEqual(result.timestamp, hermesTs);
 });
 
 await test("skips malformed JSON on a surface", () => {
-  const factoryTs = ts(5);
+  const hermesTs = ts(5);
   const claudePath = join(root, ".claude", "coordination", ".last-operator-message");
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
   writeFileSync(claudePath, "not json {", "utf8");
-  writeMarker(".factory", factoryTs);
+  writeMarker(".hermes", hermesTs);
 
   const result = readLastOperatorMessage(root);
   assert.ok(result);
-  assert.strictEqual(result.timestamp, factoryTs);
+  assert.strictEqual(result.timestamp, hermesTs);
 });
 
 await test("skips marker without timestamp", () => {
-  const factoryTs = ts(5);
+  const hermesTs = ts(5);
   const claudePath = join(root, ".claude", "coordination", ".last-operator-message");
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
   writeFileSync(claudePath, JSON.stringify({ foo: "bar" }), "utf8");
-  writeMarker(".factory", factoryTs);
+  writeMarker(".hermes", hermesTs);
 
   const result = readLastOperatorMessage(root);
   assert.ok(result);
-  assert.strictEqual(result.timestamp, factoryTs);
+  assert.strictEqual(result.timestamp, hermesTs);
 });
 
 await test("returns null when all surfaces have expired markers", () => {
   writeMarker(".claude", ts(60));
-  writeMarker(".factory", ts(60));
+  writeMarker(".hermes", ts(60));
 
   const result = readLastOperatorMessage(root);
   assert.strictEqual(result, null);
 });
 
-await test("priority order: .claude wins over .factory when both have fresh markers", () => {
+await test("priority order: .claude wins over .hermes when both have fresh markers", () => {
   const claudeTs = ts(10);
   writeMarker(".claude", claudeTs);
-  writeMarker(".factory", ts(5));
+  writeMarker(".hermes", ts(5));
 
   const result = readLastOperatorMessage(root);
   assert.ok(result);

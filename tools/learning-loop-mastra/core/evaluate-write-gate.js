@@ -76,7 +76,7 @@ const PREFLIGHT_MARKER_PATHS = getAllCoordinationPaths(".loop-preflight-*");
 const DECISION_LOG_PATHS = getAllCoordinationPaths(".gate-decision.log");
 
 // Skills paths across every runtime surface, derived from SURFACES so the
-// skills rule covers .claude + .factory + .mastracode consistently.
+// skills rule covers the retained .claude + .hermes mirror surfaces.
 // The skills rule is preflight-delegating (like product/**) but uses an
 // EXPLICIT surface="skills" lookup — NOT inferSurface (which returns null
 // for surface-prefix paths; red-team finding). The marker is named

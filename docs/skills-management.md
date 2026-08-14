@@ -19,11 +19,11 @@ The loop recognizes three skill kinds via `skills-lock.json`:
 ```
 1. gate_mark_preflight(surface: "skills")
 2. Edit tools/learning-loop-mastra/skills/<name>/SKILL.md (canonical)
-3. pnpm skills:sync                 # fans out to .claude/.factory/.mastracode
+3. pnpm skills:sync                 # fans out to .claude/.hermes
 4. meta_state_log_change(...)       # record the change in the meta-state registry
 ```
 
-The preflight marker unlocks writes to canonical-source paths for 30 minutes (gate rule from `core/evaluate-write-gate.js`). `pnpm skills:sync` is the fan-out materializer — it copies byte-identically to all 3 surfaces via `writeToAllSkills`. Idempotent (re-run = no diff when mirrors already match canonical).
+The preflight marker unlocks writes to canonical-source paths for 30 minutes (gate rule from `core/evaluate-write-gate.js`). `pnpm skills:sync` is the fan-out materializer — it copies byte-identically to both retained mirror surfaces via `writeToAllSkills`. Idempotent (re-run = no diff when mirrors already match canonical).
 
 The same run also self-heals the internal manifest entries: `hash` and `maturity` are re-derived from the canonical file, so editing the canonical is the only step — never hand-edit `skills-lock.json`. Sync fails closed (exit 2, manifest untouched) when an internal canonical is missing or declares no `maturity:` frontmatter; restore the file or add the line (`state-1|state-2|state-3`) and re-run.
 
@@ -36,7 +36,7 @@ The same run also self-heals the internal manifest entries: `hash` and `maturity
 
 `npx skills` is the provider CLI; it owns `skills-lock.json` and rewrites the `mastra` entry to its native schema on every `add`/`update`. Without the next step, the loop's manifest-driven exclusion (`external:true`) and the hash trust anchor (`manifest.skills.mastra.hash === sha256(SKILL.md)`) are dropped — contract `listLoopMaintainedSkills` would re-enumerate `mastra` and parity fails.
 
-`pnpm skills:sync` auto-heals this by running `normalizeManifest` in-process before fan-out: the `external:true` / `delivery` / `targets` / `maturity` / `sourceType` / `source` fields are restored from the policy table at `tools/scripts/skills-lib.mjs#EXTERNAL_POLICY`, and the `hash` is re-derived from the most-recently-written `<surface>/skills/mastra/SKILL.md` (the surface `npx` just wrote to). Then fan-out closes any drift on `.factory` + `.mastracode` like in path A.
+`pnpm skills:sync` auto-heals this by running `normalizeManifest` in-process before fan-out: the `external:true` / `delivery` / `targets` / `maturity` / `sourceType` / `source` fields are restored from the policy table at `tools/scripts/skills-lib.mjs#EXTERNAL_POLICY`, and the `hash` is re-derived from the most-recently-written retained mirror `<surface>/skills/mastra/SKILL.md` (the surface `npx` just wrote to). Then fan-out closes any drift on `.claude` + `.hermes` like in path A.
 
 ## Standalone restore
 
@@ -62,7 +62,7 @@ This is the same `normalizeManifest` that `pnpm skills:sync` runs internally, ex
 | Skills-lock parity fails | `manifest.skills.mastra.hash` no longer matches installed SKILL.md, or `external:true` is gone | `pnpm skills:sync` |
 | Cross-surface byte-identity fails | A runtime surface has stale mastra content from before fan-out | `pnpm skills:sync` |
 | `[sync-skills] FAIL mastra: no-detected-copy` | `<runtime>/skills/mastra/SKILL.md` was deleted or never installed | Re-run `npx skills add mastra-ai/skills --copy` for the detected runtime, then `pnpm skills:sync` |
-| `[normalize-skills] FATAL: normalize mastra: no real-dir SKILL.md found` | All 3 surfaces' mastra trees were deleted; normalize can't derive a hash | Same as above |
+| `[normalize-skills] FATAL: normalize mastra: no real-dir SKILL.md found` | All retained mirrors' mastra trees were deleted; normalize can't derive a hash | Same as above |
 | `FATAL: normalize <name>: canonicalSource missing at ...` | Internal canonical SKILL.md was deleted | Restore the canonical file, then `pnpm skills:sync` |
 | `FATAL: normalize <name>: ... declares no maturity frontmatter` | Internal canonical lost its `maturity:` line | Add `maturity: state-1|state-2|state-3` to the canonical, then `pnpm skills:sync` |
 

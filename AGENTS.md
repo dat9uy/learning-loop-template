@@ -1,6 +1,6 @@
 # AGENTS.md — Agent Surfaces Reference
 
-Shared coordination rules for every agent runtime (Claude Code, Droid CLI, Mastra Code). All gate logic lives in `tools/learning-loop-mastra/core/` (single source of truth). All runtimes use the same universal hooks via thin wrappers or declarative config.
+Shared coordination rules for every agent runtime (Codex, Claude Code, Hermes). All gate logic lives in `tools/learning-loop-mastra/core/` (single source of truth). Runtimes use the same core policy through native configuration or thin boundary adapters.
 
 This is the thin root entry doc. It keeps the load-bearing layer definitions and the 4-kind union, then points into `docs/` for depth. The engine invariant and concept vocabulary live in `docs/loop-engine.md`; the runtime participation contract in `docs/runtime-contract.md`; the mechanism (gate system, 3-layer architecture, meta-state self-learning loop) in `docs/architecture.md`; the 4-kind lifecycle in `docs/meta-state-lifecycle.md`; the long-term direction in `docs/trajectory.md`.
 
@@ -39,9 +39,10 @@ The meta-surface is implemented across 3 layers:
   `interface/CONTRACT.md`); the transport-agnostic participation contract
   lives at `docs/runtime-contract.md`. **Hooks** (universal scripts in
   `hooks/universal/` + per-runtime shim files in `.claude/coordination/hooks/`,
-  `.factory/coordination/hooks/`, `.hermes/coordination/hooks/`, or declarative
-  `.mastracode/hooks.json`) are boundary adapters within Runtime interface —
-  they translate runtime-specific protocol to/from Core. Policy lives in Core, not in hooks.
+  `.hermes/coordination/hooks/`) are boundary adapters within Runtime
+  interface — they translate runtime-specific protocol to/from Core. Codex uses
+  native Initial Delivery; Claude Code and Hermes retain project-local
+  hook/skill mirrors. Policy lives in Core, not in hooks.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -170,7 +171,7 @@ The mutation region is wrapped in `flock` + an `ERR` trap that restores BOTH the
 - `broken` — SSH + probe fails AND the host is reachable (pointer).
 - `unknown/offline` — probe fails AND reachability is ambiguous (no pointer — never prescribe a mutating script on an ambiguous signal).
 
-Read-only, fail-open (any internal error → warning line, exit 0). Common case < 1s, worst case ≤ ~5s (3s probe + 2s reachability). Wired for `.claude` only alongside the merge-driver preflight hook (§4); `.factory` and `.mastracode` deferred to follow-up (the `.factory` adapter is hardcoded to the inject-* hooks, so a non-trivial extension is required before the preflight can dispatch through it).
+Read-only, fail-open (any internal error → warning line, exit 0). Common case < 1s, worst case ≤ ~5s (3s probe + 2s reachability). Wired for `.claude` only alongside the merge-driver preflight hook (§4); other runtimes use their native startup/configuration surfaces.
 
 **Scope honesty.** This setup restores the *legitimate* push path. It does NOT remove the incentive to skip local verification or bypass the pre-commit/commit-msg hooks under transient vitest flake pressure — the audit-trail-destroying bypass (e.g. `core.hooksPath=/dev/null`, `--no-verify`) is a separate, residual risk (the full gate still runs on CI regardless). An I3 Rule detecting the bypass itself is the mitigation (proposed via `meta_state_promote_rule` for operator decision).
 
@@ -184,7 +185,7 @@ The long-term direction lives in `docs/trajectory.md` — read it before reasoni
 
 ## 6. Runtime Interface Ownership (R2)
 
-Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, `.hermes/coordination/hooks/` + `.hermes/*.json` mirrors, and for Mastra Code: declarative config in `.mastracode/{mcp,hooks,settings,database}.json`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.** Each runtime agent works on its own branch; cross-runtime edits require an operator-approved PR. The `interface/CONTRACT.md` conformance checklist is the loop's concern; the runtime's coordination directory is the runtime's concern. Enforcement: git branch protection + PR review + the R2 write-gate (LIM-3 caller identity + LIM-4 path traversal). See `docs/security/plan-5-hardening.md` for the gating chain, R2 allowlist schema, and the operator runbook for diagnosing `cross_runtime_write_denied`.
+Runtime interface code (Codex native configuration under `.codex/`, `.claude/coordination/hooks/`, and `.hermes/coordination/hooks/` plus `.hermes/*.json` mirrors) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.** Each runtime agent works on its own branch; cross-runtime edits require an operator-approved PR. The `interface/CONTRACT.md` conformance checklist is the loop's concern; the runtime's coordination directory is the runtime's concern. Enforcement: git branch protection + PR review + the R2 write-gate (LIM-3 caller identity + LIM-4 path traversal). See `docs/security/plan-5-hardening.md` for the gating chain, R2 allowlist schema, and the operator runbook for diagnosing `cross_runtime_write_denied`.
 
 ---
 

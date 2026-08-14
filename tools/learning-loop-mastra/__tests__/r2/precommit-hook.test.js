@@ -35,7 +35,7 @@ describe("gate layout (R13)", () => {
     const parsed = JSON.parse(readFileSync(ALLOWLIST, "utf8"));
     assert.equal(parsed.schema, "r2-allowlist/v1");
     assert.equal(parsed.version, 1);
-    for (const runtime of ["claude-code", "droid", "mastra-code"]) {
+    for (const runtime of ["codex", "claude-code", "hermes"]) {
       assert.ok(Array.isArray(parsed[runtime]?.own), `${runtime}.own must be an array`);
       assert.ok(Array.isArray(parsed[runtime]?.deny), `${runtime}.deny must be an array`);
     }
@@ -45,7 +45,7 @@ describe("gate layout (R13)", () => {
   test("claude-code deny list includes the bootstrap-deny critical files", () => {
     const parsed = JSON.parse(readFileSync(ALLOWLIST, "utf8"));
     const deny = parsed["claude-code"].deny;
-    for (const pat of [".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override", ".factory/**", ".mastracode/**"]) {
+    for (const pat of [".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override", ".codex/**", ".hermes/**"]) {
       assert.ok(deny.includes(pat), `claude-code.deny must include "${pat}"`);
     }
   });

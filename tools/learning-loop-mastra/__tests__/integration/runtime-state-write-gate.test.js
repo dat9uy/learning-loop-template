@@ -22,11 +22,11 @@ let root;
 beforeEach(() => {
   root = join(tmpdir(), `runtime-state-gate-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(root, { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   // Isolate the MCP handler from real coordination dirs, and its appendGateLog
   // call from the repo's live gate log.
-  process.env.GATE_COORD_DIR = join(root, ".factory", "coordination");
-  process.env.GATE_LOG_DIR = join(root, ".factory", "coordination");
+  process.env.GATE_COORD_DIR = join(root, ".hermes", "coordination");
+  process.env.GATE_LOG_DIR = join(root, ".hermes", "coordination");
 });
 
 afterEach(() => {
@@ -36,7 +36,7 @@ afterEach(() => {
 });
 
 function writePreflightMarker(surface) {
-  const path = join(root, ".factory", "coordination", `.loop-preflight-${surface}`);
+  const path = join(root, ".hermes", "coordination", `.loop-preflight-${surface}`);
   writeFileSync(path, JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 }
 

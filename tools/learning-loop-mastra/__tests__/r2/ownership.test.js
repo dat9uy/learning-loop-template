@@ -12,15 +12,15 @@ const CLAUDE_ALLOWLIST = {
   schema: "r2-allowlist/v1",
   "claude-code": {
     own: [".claude/**"],
-    deny: [".claude/.loop/r2-allowlist.json", ".factory/**", ".mastracode/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"],
+    deny: [".claude/.loop/r2-allowlist.json", ".codex/**", ".hermes/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"],
   },
-  droid: {
-    own: [".factory/**"],
-    deny: [".factory/.loop/r2-allowlist.json", ".claude/**", ".mastracode/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"],
+  codex: {
+    own: [".codex/**"],
+    deny: [".codex/.loop/r2-allowlist.json", ".claude/**", ".hermes/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"],
   },
-  "mastra-code": {
-    own: [".mastracode/**"],
-    deny: [".mastracode/.loop/r2-allowlist.json", ".claude/**", ".factory/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"],
+  hermes: {
+    own: [".hermes/**"],
+    deny: [".hermes/.loop/r2-allowlist.json", ".claude/**", ".codex/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"],
   },
   universal: ["records/**", "plans/**", "docs/**", "AGENTS.md", "tools/learning-loop-mastra/**", ".loop/.cache/**", "meta-state.jsonl"],
 };
@@ -52,7 +52,7 @@ describe("checkR2Ownership", () => {
   });
 
   test("runtime_state_jsonl_denied (R6): any runtime → runtime-state.jsonl → bootstrap_deny", () => {
-    for (const runtime of ["claude-code", "droid", "mastra-code"]) {
+    for (const runtime of ["codex", "claude-code", "hermes"]) {
       const d = checkR2Ownership({
         runtime,
         path: "runtime-state.jsonl",
@@ -65,7 +65,7 @@ describe("checkR2Ownership", () => {
   });
 
   test("local substrate denied (R6): .loop/runtime-state-local.jsonl → bootstrap_deny (session-local, operator-controlled)", () => {
-    for (const runtime of ["claude-code", "droid", "mastra-code"]) {
+    for (const runtime of ["codex", "claude-code", "hermes"]) {
       const d = checkR2Ownership({
         runtime,
         path: ".loop/runtime-state-local.jsonl",
@@ -88,10 +88,10 @@ describe("checkR2Ownership", () => {
     assert.equal(d.reason, "bootstrap_deny");
   });
 
-  test("cross_runtime_write_denied: claude-code → .factory/x → deny", () => {
+  test("cross_runtime_write_denied: claude-code → .codex/x → deny", () => {
     const d = checkR2Ownership({
       runtime: "claude-code",
-      path: ".factory/x",
+      path: ".codex/x",
       allowlist: CLAUDE_ALLOWLIST,
       root: "/tmp/fake-root",
     });
@@ -128,10 +128,10 @@ describe("checkR2Ownership", () => {
     assert.equal(d.allowed, true);
   });
 
-  test("deny_explicit_match: claude-code → .factory/deep/x → deny (via .factory/**)", () => {
+  test("deny_explicit_match: claude-code → .codex/deep/x → deny (via .codex/**)", () => {
     const d = checkR2Ownership({
       runtime: "claude-code",
-      path: ".factory/deep/x",
+      path: ".codex/deep/x",
       allowlist: CLAUDE_ALLOWLIST,
       root: "/tmp/fake-root",
     });
@@ -149,40 +149,40 @@ describe("checkR2Ownership", () => {
     assert.equal(d.reason, "default_deny");
   });
 
-  test("path_normalization: .//./.factory/x normalizes and matches deny", () => {
+  test("path_normalization: .//./.codex/x normalizes and matches deny", () => {
     const d = checkR2Ownership({
       runtime: "claude-code",
-      path: ".//./.factory/x",
+      path: ".//./.codex/x",
       allowlist: CLAUDE_ALLOWLIST,
       root: "/tmp/fake-root",
     });
-    assert.equal(d.allowed, false, "normalized path must match .factory/** deny");
+    assert.equal(d.allowed, false, "normalized path must match .codex/** deny");
   });
 
-  test("glob_dotdot_inside: .claude/../.factory/x resolves to .factory/x → deny", () => {
+  test("glob_dotdot_inside: .claude/../.codex/x resolves to .codex/x → deny", () => {
     const d = checkR2Ownership({
       runtime: "claude-code",
-      path: ".claude/../.factory/x",
+      path: ".claude/../.codex/x",
       allowlist: CLAUDE_ALLOWLIST,
       root: "/tmp/fake-root",
     });
-    assert.equal(d.allowed, false, "resolved path must match .factory/** deny");
+    assert.equal(d.allowed, false, "resolved path must match .codex/** deny");
   });
 
-  test("droid own surface allowed: droid → .factory/x → allow", () => {
+  test("codex own surface allowed: codex → .codex/x → allow", () => {
     const d = checkR2Ownership({
-      runtime: "droid",
-      path: ".factory/x",
+      runtime: "codex",
+      path: ".codex/x",
       allowlist: CLAUDE_ALLOWLIST,
       root: "/tmp/fake-root",
     });
     assert.equal(d.allowed, true);
   });
 
-  test("mastra-code own surface allowed: mastra-code → .mastracode/x → allow", () => {
+  test("hermes own surface allowed: hermes → .hermes/x → allow", () => {
     const d = checkR2Ownership({
-      runtime: "mastra-code",
-      path: ".mastracode/x",
+      runtime: "hermes",
+      path: ".hermes/x",
       allowlist: CLAUDE_ALLOWLIST,
       root: "/tmp/fake-root",
     });
@@ -190,7 +190,7 @@ describe("checkR2Ownership", () => {
   });
 
   test("universal tools dir allowed for all runtimes", () => {
-    for (const runtime of ["claude-code", "droid", "mastra-code"]) {
+    for (const runtime of ["codex", "claude-code", "hermes"]) {
       const d = checkR2Ownership({
         runtime,
         path: "tools/learning-loop-mastra/core/r2/ownership.js",

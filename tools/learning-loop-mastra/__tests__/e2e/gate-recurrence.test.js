@@ -36,16 +36,16 @@ function decisionLogPath(surface) {
 
 function writeEntries(entries) {
   const claudeLines = [];
-  const factoryLines = [];
+  const hermesLines = [];
   for (let i = 0; i < entries.length; i++) {
     const line = JSON.stringify(entries[i]);
     if (i % 2 === 0) claudeLines.push(line);
-    else factoryLines.push(line);
+    else hermesLines.push(line);
   }
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   if (claudeLines.length) writeFileSync(decisionLogPath(".claude"), claudeLines.join("\n") + "\n");
-  if (factoryLines.length) writeFileSync(decisionLogPath(".factory"), factoryLines.join("\n") + "\n");
+  if (hermesLines.length) writeFileSync(decisionLogPath(".hermes"), hermesLines.join("\n") + "\n");
 }
 
 const UNEXPECTED_PROV = {
@@ -129,10 +129,10 @@ await test("findRecurrentGroups: cross-surface dedup", () => {
   ];
   // Put all entries on both surfaces to exercise dedup.
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   const lines = entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
   writeFileSync(decisionLogPath(".claude"), lines);
-  writeFileSync(decisionLogPath(".factory"), lines);
+  writeFileSync(decisionLogPath(".hermes"), lines);
   const groups = findRecurrentGroups(root);
   assert.strictEqual(groups.length, 1);
   assert.strictEqual(groups[0].count, 3);

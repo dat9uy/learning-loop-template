@@ -6,10 +6,10 @@ import { listRuntimes } from "./runtime-topology.js";
  * Cross-surface helper for storage fan-out and compatibility surfaces.
  *
  * Runtime participation is catalogued by core/runtime-topology.js. The
- * participant view below is derived from that catalog. SURFACES remains the
- * transitional storage-fan-out view for existing callers until the retained
- * runtime cleanup decides which project-local mirrors survive; it is not the
- * participant catalog.
+ * participant view below is derived from that catalog. SURFACES is the
+ * retained project-local storage-fan-out view; it intentionally excludes
+ * Codex because Codex participates through its native Initial Delivery
+ * surface and does not consume project-local skill mirrors.
  *
  * Cross-surface atomicity: per-surface operations are atomic (write-temp +
  * rename for writes, single readFileSync for reads). Cross-surface
@@ -18,9 +18,9 @@ import { listRuntimes } from "./runtime-topology.js";
  */
 export const PARTICIPANT_SURFACES = Object.freeze(listRuntimes().map((runtime) => runtime.surface));
 
-// Compatibility storage view. Do not add participant identity or runtime
-// configuration here; new shared validators must use Runtime Topology.
-export const SURFACES = Object.freeze([".claude", ".factory", ".mastracode", ".hermes"]);
+// Storage fan-out view. Do not add participant identity or runtime
+// configuration here; participant validators must use Runtime Topology.
+export const SURFACES = Object.freeze([".claude", ".hermes"]);
 
 /**
  * Section-aware path generator. Returns the per-surface path for a given
@@ -28,7 +28,7 @@ export const SURFACES = Object.freeze([".claude", ".factory", ".mastracode", ".h
  *
  * @example
  * getAllSurfacePaths("coordination", "hooks/bash-gate.js")
- * // => [".claude/coordination/hooks/bash-gate.js", ".factory/coordination/hooks/bash-gate.js", ".mastracode/coordination/hooks/bash-gate.js"]
+ * // => [".claude/coordination/hooks/bash-gate.js", ".hermes/coordination/hooks/bash-gate.js"]
  *
  * @param {string} section — section name (e.g. "coordination", "skills")
  * @param {string} subpath — relative path under the section

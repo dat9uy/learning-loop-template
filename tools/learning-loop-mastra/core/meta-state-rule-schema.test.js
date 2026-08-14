@@ -143,7 +143,7 @@ test("agent-checklist rule rejects items with empty id/description", () => {
 test("pattern shape gate does not constrain regex/glob/determinism-checklist patterns", () => {
   for (const [pattern_type, pattern] of [
     ["regex", "(unbalanced"],
-    ["glob", ".factory/skills/**"],
+    ["glob", ".hermes/skills/**"],
     ["determinism-checklist", "*"],
   ]) {
     const rule = { ...validRule, pattern_type, pattern };

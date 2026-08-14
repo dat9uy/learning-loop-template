@@ -67,27 +67,6 @@ await test("rule entry carries hint_text mentioning SHA pin (registry invariant)
   );
 });
 
-await test("factory hook renders the rule id verbatim (single-source guard)", () => {
-  // plans/260717-1826-unify-context-injection Phase 1: the factory hook no
-  // longer carries a LOCAL_PROCESS_HINTS mirror — it imports the canonical
-  // builders from core/loop-introspect.js. The drift-prevention guard here
-  // therefore moves down to "the canonical builder must carry the rule id"
-  // (already asserted by the prior PROCESS_HINTS test) AND the factory hook
-  // source must not contain the rule id literal (otherwise a stale mirror
-  // would silently drift). The hook renders the canonical text by reference,
-  // so this is a stronger invariant than the old parity check.
-  const { readFileSync } = require("node:fs");
-  const hookSource = readFileSync(require("node:path").join(PROJECT_ROOT, ".factory/hooks/loop-surface-inject.cjs"), "utf8");
-  assert.ok(
-    !hookSource.includes("LOCAL_PROCESS_HINTS"),
-    "factory hook must not carry a LOCAL_PROCESS_HINTS mirror (Phase 1 invariant)",
-  );
-  assert.ok(
-    !hookSource.includes(RULE_ID),
-    `factory hook must not embed the rule id literal ${RULE_ID} (single-source renders it from core)`,
-  );
-});
-
 // Phase 3 of plans/260629-2011-fallow-tools-v2-action-swap/: extend the rule
 // with a 4th item covering third-party GitHub Action SHA pinning. TDD guard:
 // the live registry rule MUST carry the 4th item AND the hint_text (Phase 3

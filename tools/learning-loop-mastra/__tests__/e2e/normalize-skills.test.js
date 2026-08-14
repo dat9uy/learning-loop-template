@@ -26,7 +26,7 @@ import { execFileSync } from "node:child_process";
 
 const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
 const NORMALIZE_SCRIPT = join(MCP_ROOT, "tools/scripts/normalize-skills.mjs");
-const SURFACES = [".claude", ".factory", ".mastracode"];
+const SURFACES = [".claude", ".hermes"];
 
 function sha256hex(content) {
   return createHash("sha256").update(content, "utf8").digest("hex");
@@ -60,12 +60,9 @@ const INTERNAL_SKILLS = {
 // `detectedSurfaces` set carries the post-npx `newMastraContent`; the others carry
 // `staleContent` (the pre-npx bytes). Matches the empirical probe shape.
 function buildClobberedFixture({
-  // Realistic npx shape: 2 surfaces detected, 1 stale. .claude + .factory
-  // are the runtimes npx auto-detects in the parent Phase 3 probe; .mastracode
-  // stays undetected. The mtime heuristic (detectExternalHash) picks one of
-  // the freshly-written detected surfaces; both share the same new content,
-  // so the derived hash is sha256(newContent) regardless of which wins.
-  detectedSurfaces = [".claude", ".factory"],
+  // Realistic npx shape: one retained mirror detected and one stale. The
+  // mtime heuristic (detectExternalHash) picks the freshly-written mirror.
+  detectedSurfaces = [".claude"],
   newMastraContent = "# mastra\nNEW: npx-installed content for detection\n",
   staleContent = "# mastra\nSTALE: pre-clobber content\n",
   includeUnknownExternal = null,
@@ -156,7 +153,7 @@ test("clobber→normalize: restores the v2 extended schema for mastra (external/
     assert.ok(m, "mastra entry must remain in skills");
     assert.strictEqual(m.external, true, "external must be restored to true");
     assert.strictEqual(m.delivery, "npx-per-runtime+fanout-undetected", "delivery must be restored");
-    assert.deepStrictEqual(m.targets, [".claude", ".factory", ".mastracode", ".hermes"], "targets must be restored from the canonical SURFACES list");
+    assert.deepStrictEqual(m.targets, SURFACES, "targets must be restored from the canonical SURFACES list");
     assert.strictEqual(m.maturity, null, "maturity must be restored");
     assert.strictEqual(m.source, "mastra-ai/skills", "source must be preserved");
     assert.strictEqual(m.sourceType, "npx-skills-cli", "sourceType must be restored to loop's canonical");
@@ -187,14 +184,13 @@ test("idempotence: normalize on an already-normalized manifest is a no-op (chang
   }
 });
 
-test("hash derivation: 2 detected surfaces + 1 stale → hash matches the detected content (mtime heuristic)", () => {
-  // Realistic npx install: writes to .claude + .factory (both fresh mtime, same
-  // new content), leaves .mastracode stale. mtime-max picks a detected surface;
-  // derived hash = sha256(newContent).
+test("hash derivation: both retained mirrors detected → hash matches detected content", () => {
+  // Realistic sync state: writes to both retained mirrors with the same content.
+  // mtime-max picks a detected surface; derived hash = sha256(newContent).
   const newContent = "# mastra\nNEW detected content\n";
-  const staleContent = "# mastra\nSTALE: .mastracode is the undetected surface\n";
+  const staleContent = "# mastra\nSTALE: .hermes is the undetected surface\n";
   const { root } = buildClobberedFixture({
-    detectedSurfaces: [".claude", ".factory"],
+    detectedSurfaces: [".claude", ".hermes"],
     newMastraContent: newContent,
     staleContent,
   });
@@ -356,13 +352,13 @@ test("unknown external entry: not in policy table → left untouched (surgical r
 });
 
 test("F10/F6 regression shape: post-normalize, mastra carries external:true and a 64-char hash matching the detected surface", () => {
-  // All 3 surfaces detected (post-npx + post-`pnpm skills:sync` fan-out state)
-  // so F6 cross-surface holds. The npx-only state (no fan-out yet) would
-  // leave 1 surface stale; that's covered by skills-mirror-parity.test.js
+  // All retained mirrors detected (post-npx + post-`pnpm skills:sync` fan-out
+  // state) so F6 cross-surface holds. The npx-only state (no fan-out yet)
+  // would leave one mirror stale; that's covered by skills-mirror-parity.test.js
   // F12 (the live-running test that triggers after `pnpm skills:sync`).
   const content = "# mastra\nF10/F6 regression content\n";
   const { root } = buildClobberedFixture({
-    detectedSurfaces: [".claude", ".factory", ".mastracode"],
+    detectedSurfaces: [".claude", ".hermes"],
     newMastraContent: content,
   });
   try {
@@ -375,7 +371,7 @@ test("F10/F6 regression shape: post-normalize, mastra carries external:true and 
     assert.strictEqual(m.hash.length, 64, "F6: hash is a 64-char sha256 hex");
     const expected = sha256hex(content);
     assert.strictEqual(m.hash, expected, "F6: hash must match sha256 of the (single-content) detected surface");
-    // F6 cross-surface: with all 3 surfaces byte-identical, every surface's
+    // F6 cross-surface: with all retained mirrors byte-identical, every mirror's
     // SKILL.md sha256 must equal the manifest hash.
     for (const surface of SURFACES) {
       const p = join(root, surface, "skills", "mastra", "SKILL.md");

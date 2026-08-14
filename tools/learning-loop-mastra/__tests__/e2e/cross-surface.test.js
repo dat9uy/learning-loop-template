@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Cross-surface integration test — verifies Claude Code and Droid CLI
+ * Cross-surface integration test — verifies Claude Code and Hermes
  * formats produce identical gate decisions via the same universal hooks.
  */
 
@@ -18,13 +18,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Phase 4, Validation V2), gated by a `.inbound-pointer-surfaced` token in the
 // surface coordination dir. Two hook calls sharing a GATE_ROOT collapse to a
 // single emission (second call suppresses); to assert cross-surface parity
-// (Claude vs Droid identical) each call needs its own clean root so both read
+// (Claude vs Hermes identical) each call needs its own clean root so both read
 // as "first prompt of an independent session".
 function createTempGateRoot() {
   const root = mkdtempSync(join(tmpdir(), "cross-surface-inbound-"));
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
-  mkdirSync(join(root, ".mastracode", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   return root;
 }
 
@@ -76,45 +75,45 @@ const bashTestCases = [
   {
     name: "docker command blocked",
     claude: { tool_name: "Bash", tool_input: { command: "docker run ubuntu" } },
-    droid: { tool_name: "Execute", tool_input: { command: "docker run ubuntu" } },
+    hermes: { tool_name: "terminal", tool_input: { command: "docker run ubuntu" } },
     expectedDecision: "block",
   },
   {
     name: "sudo command blocked",
     claude: { tool_name: "Bash", tool_input: { command: "sudo apt update" } },
-    droid: { tool_name: "Execute", tool_input: { command: "sudo apt update" } },
+    hermes: { tool_name: "terminal", tool_input: { command: "sudo apt update" } },
     expectedDecision: "block",
   },
   {
     name: "ls command allowed",
     claude: { tool_name: "Bash", tool_input: { command: "ls -la" } },
-    droid: { tool_name: "Execute", tool_input: { command: "ls -la" } },
+    hermes: { tool_name: "terminal", tool_input: { command: "ls -la" } },
     expectedDecision: null, // exit 0, no output
   },
   {
     name: "records redirect blocked",
     claude: { tool_name: "Bash", tool_input: { command: "echo x > records/test.yaml" } },
-    droid: { tool_name: "Execute", tool_input: { command: "echo x > records/test.yaml" } },
+    hermes: { tool_name: "terminal", tool_input: { command: "echo x > records/test.yaml" } },
     expectedDecision: "block",
   },
 ];
 
 for (const tc of bashTestCases) {
-  await test(`bash-gate: ${tc.name} — Claude vs Droid identical`, () => {
+  await test(`bash-gate: ${tc.name} — Claude vs Hermes identical`, () => {
     const claudeResult = runHook(BASH_HOOK, tc.claude);
-    const droidResult = runHook(BASH_HOOK, tc.droid);
+    const hermesResult = runHook(BASH_HOOK, tc.hermes);
 
     assert.strictEqual(
       claudeResult.exitCode,
-      droidResult.exitCode,
-      `Exit codes differ: Claude=${claudeResult.exitCode}, Droid=${droidResult.exitCode}`
+      hermesResult.exitCode,
+      `Exit codes differ: Claude=${claudeResult.exitCode}, Hermes=${hermesResult.exitCode}`
     );
 
     if (tc.expectedDecision) {
       const claudeDecision = getBashDecision(claudeResult.output);
-      const droidDecision = getBashDecision(droidResult.output);
+      const hermesDecision = getBashDecision(hermesResult.output);
       assert.strictEqual(claudeDecision?.decision, tc.expectedDecision);
-      assert.strictEqual(droidDecision?.decision, tc.expectedDecision);
+      assert.strictEqual(hermesDecision?.decision, tc.expectedDecision);
     }
   });
 }
@@ -125,37 +124,37 @@ const writeTestCases = [
   {
     name: "records/observations blocked",
     claude: { tool_name: "Edit", tool_input: { file_path: "records/observations/test.yaml" } },
-    droid: { tool_name: "Create", tool_input: { file_path: "records/observations/test.yaml" } },
+    hermes: { tool_name: "write_file", tool_input: { path: "records/observations/test.yaml" } },
     expectedDecision: "block",
   },
   {
     name: "docs allowed",
     claude: { tool_name: "Write", tool_input: { file_path: "docs/readme.md" } },
-    droid: { tool_name: "Edit", tool_input: { file_path: "docs/readme.md" } },
+    hermes: { tool_name: "write_file", tool_input: { path: "docs/readme.md" } },
     expectedDecision: null, // exit 0
   },
   {
     name: "schemas blocked",
     claude: { tool_name: "Edit", tool_input: { file_path: "schemas/test.schema.json" } },
-    droid: { tool_name: "ApplyPatch", tool_input: { file_path: "schemas/test.schema.json" } },
+    hermes: { tool_name: "patch", tool_input: { path: "schemas/test.schema.json" } },
     expectedDecision: "block",
   },
 ];
 
 for (const tc of writeTestCases) {
-  await test(`write-gate: ${tc.name} — Claude vs Droid identical`, () => {
+  await test(`write-gate: ${tc.name} — Claude vs Hermes identical`, () => {
     const claudeResult = runHook(WRITE_HOOK, tc.claude);
-    const droidResult = runHook(WRITE_HOOK, tc.droid);
+    const hermesResult = runHook(WRITE_HOOK, tc.hermes);
 
     assert.strictEqual(
       claudeResult.exitCode,
-      droidResult.exitCode,
-      `Exit codes differ: Claude=${claudeResult.exitCode}, Droid=${droidResult.exitCode}`
+      hermesResult.exitCode,
+      `Exit codes differ: Claude=${claudeResult.exitCode}, Hermes=${hermesResult.exitCode}`
     );
 
     if (tc.expectedDecision) {
       assert.strictEqual(getWriteDecision(claudeResult.output)?.decision, tc.expectedDecision);
-      assert.strictEqual(getWriteDecision(droidResult.output)?.decision, tc.expectedDecision);
+      assert.strictEqual(getWriteDecision(hermesResult.output)?.decision, tc.expectedDecision);
     }
   });
 }
@@ -171,30 +170,30 @@ const inboundTestCases = [
   {
     name: "normal message emits pointer once per session",
     claude: { prompt: "what should we do next?" },
-    droid: { prompt: "what should we do next?" },
+    hermes: { user_message: "what should we do next?" },
     expectContext: true,
   },
 ];
 
 for (const tc of inboundTestCases) {
-  await test(`inbound-gate: ${tc.name} — Claude vs Droid identical`, () => {
+  await test(`inbound-gate: ${tc.name} — Claude vs Hermes identical`, () => {
     // Once-per-session pointer (V2): isolate each surface in its own clean
-    // GATE_ROOT so both the Claude and Droid calls read as the first prompt
+    // GATE_ROOT so both the Claude and Hermes calls read as the first prompt
     // of an independent session and both emit the pointer — preserving the
-    // cross-surface parity assertion (Claude vs Droid identical).
+    // cross-surface parity assertion (Claude vs Hermes identical).
     const claudeResult = runHookWithRoot(INBOUND_HOOK, tc.claude, createTempGateRoot());
-    const droidResult = runHookWithRoot(INBOUND_HOOK, tc.droid, createTempGateRoot());
+    const hermesResult = runHookWithRoot(INBOUND_HOOK, tc.hermes, createTempGateRoot());
 
     assert.strictEqual(
       claudeResult.exitCode,
-      droidResult.exitCode,
-      `Exit codes differ: Claude=${claudeResult.exitCode}, Droid=${droidResult.exitCode}`
+      hermesResult.exitCode,
+      `Exit codes differ: Claude=${claudeResult.exitCode}, Hermes=${hermesResult.exitCode}`
     );
 
     const claudeHasContext = claudeResult.output?.hookSpecificOutput?.additionalContext != null;
-    const droidHasContext = droidResult.output?.hookSpecificOutput?.additionalContext != null;
+    const hermesHasContext = hermesResult.output?.hookSpecificOutput?.additionalContext != null;
 
     assert.strictEqual(claudeHasContext, tc.expectContext);
-    assert.strictEqual(droidHasContext, tc.expectContext);
+    assert.strictEqual(hermesHasContext, tc.expectContext);
   });
 }

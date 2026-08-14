@@ -15,7 +15,7 @@
    → No: continue.
 
 4. Does it translate between a runtime's hook protocol and our internal API?
-   → Yes: `hooks/universal/<gate>.js` (universal) + `.claude|.factory/coordination/hooks/*.cjs` (shim)
+   → Yes: `hooks/universal/<gate>.js` (universal) + the runtime-owned boundary adapter under `.claude` or `.hermes`
    → No: continue.
 
 5. Is it an MCP tool that exposes a core function?

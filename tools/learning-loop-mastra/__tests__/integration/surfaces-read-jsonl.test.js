@@ -26,7 +26,7 @@ function writeLine(surface, subpath, obj) {
 
 await test("readJsonlFromAllSurfaces parses, flattens, and sorts entries across surfaces", () => {
   writeLine(".claude", "logs/events.jsonl", { ts: "2026-06-15T10:00:00.000Z", value: 1 });
-  writeLine(".factory", "logs/events.jsonl", { ts: "2026-06-15T09:00:00.000Z", value: 2 });
+  writeLine(".hermes", "logs/events.jsonl", { ts: "2026-06-15T09:00:00.000Z", value: 2 });
 
   const entries = readJsonlFromAllSurfaces(root, "logs/events.jsonl");
 
@@ -38,7 +38,7 @@ await test("readJsonlFromAllSurfaces parses, flattens, and sorts entries across 
 await test("readJsonlFromAllSurfaces dedupes entries by ts + command_prefix + rule_id", () => {
   const entry = { ts: "2026-06-15T10:00:00.000Z", command_prefix: "git push", rule_id: "rule-foo", value: 1 };
   writeLine(".claude", "logs/events.jsonl", entry);
-  writeLine(".factory", "logs/events.jsonl", entry);
+  writeLine(".hermes", "logs/events.jsonl", entry);
 
   const entries = readJsonlFromAllSurfaces(root, "logs/events.jsonl");
 

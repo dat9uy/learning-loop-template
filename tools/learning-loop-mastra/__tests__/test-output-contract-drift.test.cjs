@@ -12,9 +12,8 @@
  *   - the EFFECTIVE promoted `rule-no-raw-stdout-vitest` rule (resolved through
  *     the canonical max-version projection, never raw-line comparison)
  *   - runtime adapters project from the registry and never re-type the policy
- *   - .mastracode stays pull-only (hooks-lock.json wiring = none)
  *   - projection parity for the canonical slug across loop-introspect builders,
- *     the Claude hooks, the Factory adapter, and loop_get_instruction
+ *     the Claude hooks, and loop_get_instruction
  *
  * Expected current values are passed through canonical resolution
  * (loadPromotedRules + the registry builders), NOT hardcoded raw registry lines.
@@ -47,27 +46,20 @@ const PACKAGE_PATH = resolve(PROJECT_ROOT, "package.json");
 const VITEST_CONFIG_PATH = resolve(PROJECT_ROOT, "vitest.config.mjs");
 const VITEST_FAILURES_PATH = resolve(PROJECT_ROOT, PARSER_SCRIPT);
 const TEST_ONE_PATH = resolve(PROJECT_ROOT, ONE_SCRIPT);
-const HOOKS_LOCK_PATH = resolve(PROJECT_ROOT, "hooks-lock.json");
 const META_STATE_PATH = resolve(PROJECT_ROOT, "meta-state.jsonl");
-const MASTRACODE_HOOKS_PATH = resolve(PROJECT_ROOT, ".mastracode", "hooks.json");
 
 // Runtime adapters that MUST project from the registry, never re-type the
-// full Vitest policy. Actual paths per hooks-lock.json wiring (the
-// .claude universal hooks live under tools/learning-loop-mastra/hooks/universal/;
-// the Factory adapter under .factory/hooks/).
+// full Vitest policy. Both retained runtimes consume the universal hooks.
 const RUNTIME_ADAPTERS = [
   resolve(PROJECT_ROOT, "tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs"),
   resolve(PROJECT_ROOT, "tools/learning-loop-mastra/hooks/universal/session-start-inject-process-hints.cjs"),
-  resolve(PROJECT_ROOT, ".factory/hooks/loop-surface-inject.cjs"),
 ];
 
 let registry;
 let introspect;
 let gateLogic;
 let loopGetInstructionTool;
-let factoryHook;
 let discoverabilityHook;
-let surfaces;
 
 function read(path) {
   return readFileSync(path, "utf8");
@@ -83,15 +75,7 @@ beforeAll(async () => {
   introspect = await import(pathToFileURL(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/loop-introspect.js")).href);
   gateLogic = await import(pathToFileURL(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/gate-logic.js")).href);
   loopGetInstructionTool = await import(pathToFileURL(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/tools/handlers/loop-get-instruction-tool.js")).href);
-  factoryHook = require(resolve(PROJECT_ROOT, ".factory/hooks/loop-surface-inject.cjs"));
   discoverabilityHook = require(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs"));
-  // SURFACES from core/surfaces.js is the single source of truth for the
-  // supported runtime set. Deriving the .mastracode / .factory / .claude dirs
-  // from it (rather than hand-coding) keeps the drift matrix parameterized for
-  // any future runtime and satisfies the runtime-agnostic
-  // `parameterized-for-new-surfaces` checklist item.
-  const surfacesMod = await import(pathToFileURL(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/surfaces.js")).href);
-  surfaces = surfacesMod.SURFACES;
 });
 
 function canonicalHint() {
@@ -237,49 +221,6 @@ describe("runtime adapters project from the registry, never duplicate the policy
     assert.ok(discoverabilitySrc.includes("buildProcessPointers") && discoverabilitySrc.includes("buildHintIndex"),
       "discoverability hook must project pointers + hint_index from the core builders");
 
-    const factorySrc = read(resolve(PROJECT_ROOT, ".factory/hooks/loop-surface-inject.cjs"));
-    assert.ok(factorySrc.includes("loop-introspect.js"), "factory adapter must import core loop-introspect builders");
-    assert.ok(factorySrc.includes("buildProcessHints") && factorySrc.includes("buildHintIndex"),
-      "factory adapter must project process hints + hint index from the core builders");
-  });
-});
-
-describe("Mastracode stays pull-only (no SessionStart hint injection)", () => {
-  // `.mastracode` is derived from the canonical SURFACES set so the pull-only
-  // matrix stays parameterized for future runtimes. Resolved lazily at test
-  // time (module top-level runs before beforeAll assigns `surfaces`).
-  const mastracodeSurface = () => {
-    const found = surfaces.includes(".mastracode") ? ".mastracode" : null;
-    assert.ok(found, "SURFACES must include the mastracode runtime");
-    return found;
-  };
-
-  test("hooks-lock.json marks the mastracode surface SessionStart hint wiring as none", () => {
-    const mastraSurface = mastracodeSurface();
-    const manifest = JSON.parse(read(HOOKS_LOCK_PATH));
-    for (const hookKey of ["session-start-inject-discoverability", "session-start-inject-process-hints"]) {
-      const wiring = manifest.hooks[hookKey]?.wiring;
-      assert.ok(wiring, `hooks-lock.json must declare ${hookKey}`);
-      assert.ok(wiring[mastraSurface], `hooks-lock.json must declare ${mastraSurface} wiring for ${hookKey}`);
-      assert.strictEqual(wiring[mastraSurface].kind, "none",
-        `${hookKey}: ${mastraSurface} wiring must be kind:"none" (pull-only, no SessionStart hint injection)`);
-    }
-  });
-
-  test("no mastracode SessionStart hint hook exists and its hooks.json does not wire one", () => {
-    const mastraSurface = mastracodeSurface();
-    const mastraHooks = JSON.parse(read(MASTRACODE_HOOKS_PATH));
-    const sessionStart = mastraHooks.SessionStart ?? [];
-    for (const hook of sessionStart) {
-      const cmd = String(hook.command ?? "");
-      assert.ok(!cmd.includes("session-start-inject"),
-        `${mastraSurface} SessionStart must not wire a hint-injection hook; got: ${cmd}`);
-    }
-    // No injected hook artifact under the surface's hooks/ dir either (the
-    // directory does not exist — pull-only by explicit matrix test, not by
-    // accident).
-    assert.ok(!existsSync(resolve(PROJECT_ROOT, mastraSurface, "hooks")),
-      `no ${mastraSurface}/hooks/ directory must exist (hint injection is pull-only)`);
   });
 });
 
@@ -306,19 +247,6 @@ describe("projection parity for pnpm-test-discipline across surfaces", () => {
     assert.strictEqual(row.key, CANONICAL_SLUG);
     assert.strictEqual(row.hint, hint.text, "loop_get_instruction must return the registry's canonical text, not a copy");
     assert.strictEqual(row.suggestion, hint.suggestion, "loop_get_instruction must return the registry's canonical suggestion");
-  });
-
-  test("Factory adapter projects the pointer into hint_index and pushes no full text", () => {
-    const hint = canonicalHint();
-    const block = factoryHook.formatBlock(
-      { tool_count: 41, record_type_count: 5, rule_count: 1, active_finding_count: 0 },
-      { discoverability_hints: [], process_hints: [], hint_index: [{ slug: CANONICAL_SLUG, suggestion: hint.suggestion }] },
-      "warm",
-    );
-    assert.ok(block.includes(`${CANONICAL_SLUG} — ${hint.suggestion}`),
-      "factory block must advertise the pull path as `slug — suggestion` in hint_index");
-    assert.ok(!block.includes(hint.text),
-      "factory block must NOT push the full pnpm-test-discipline text (on-demand full text is pulled)");
   });
 
   test("Claude sidecar payload projects the canonical pointer into hint_index", () => {

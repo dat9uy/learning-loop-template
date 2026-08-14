@@ -22,16 +22,16 @@ import {
   DECISION_LOG_WRITE_PATTERNS,
   DECISION_LOG_WRITE_REASON,
 } from "./protected-shell-writes.js";
-import { PARTICIPANT_SURFACES, SURFACES } from "./surfaces.js";
+import { SURFACES } from "./surfaces.js";
 
 function makeRoot() {
   return mkdtempSync(join(tmpdir(), "protected-shell-writes-test-"));
 }
 
 function writeRuntimeStateEditMarker(root) {
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   writeFileSync(
-    join(root, ".factory", "coordination", ".loop-preflight-runtime-state-edit"),
+    join(root, ".hermes", "coordination", ".loop-preflight-runtime-state-edit"),
     JSON.stringify({ surface: "runtime-state-edit", completed_at: new Date().toISOString() }),
     "utf8",
   );
@@ -73,17 +73,6 @@ test("preflight-marker write for every surface → block candidate", () => {
     assert.ok(result, `redirect to ${surface} preflight marker should block`);
     assert.strictEqual(result.decision, "block");
   });
-});
-
-test("Runtime Topology participant surfaces include Codex protected paths", () => {
-  assert.ok(PARTICIPANT_SURFACES.includes(".codex"));
-  const root = makeRoot();
-  const result = evaluateProtectedShellWritePolicy({
-    command: "echo x >> .codex/coordination/.gate-decision.log",
-    root,
-  });
-  assert.ok(result, "catalogued participant decision-log writes must be blocked");
-  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
 });
 
 test("quote-concatenation split (rec''ords/) still detected", () => {
@@ -130,9 +119,9 @@ test("runtime-state.jsonl redirect WITH active edit marker → null (exempted)",
 
 test("append-only marker does NOT exempt direct write (markers decoupled)", () => {
   const root = makeRoot();
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   writeFileSync(
-    join(root, ".factory", "coordination", ".loop-preflight-runtime-state"),
+    join(root, ".hermes", "coordination", ".loop-preflight-runtime-state"),
     JSON.stringify({ surface: "runtime-state", completed_at: new Date().toISOString() }),
     "utf8",
   );

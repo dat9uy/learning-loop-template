@@ -20,10 +20,9 @@ import { normalizeQuoteConcatenation } from "./blanking.js";
 import { PARTICIPANT_SURFACES, SURFACES } from "./surfaces.js";
 import { hasSurfacePreflightMarker } from "./runtime-tracking.js";
 
-// Active patterns come from Runtime Topology through PARTICIPANT_SURFACES.
-// SURFACES contributes only the transitional storage compatibility view so
-// existing protected paths remain fail-closed until the cleanup ticket removes
-// the retired runtime surfaces.
+// Protected paths cover every active runtime surface plus the retained mirror
+// fan-out view. Codex has no project-local mirror, but its native `.codex`
+// surface remains an ownership boundary for shell-path detection.
 export const PROTECTED_SURFACES = Object.freeze([
   ...new Set([...PARTICIPANT_SURFACES, ...SURFACES]),
 ]);
@@ -34,8 +33,8 @@ function escapeForRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Preflight-marker path-write patterns, derived from the participant catalog
-// plus the transitional storage view so every known runtime
+// Preflight-marker path-write patterns, derived from the active topology plus
+// retained storage surfaces so every known runtime
 // surface's coordination/.loop-preflight-* redirect is detected without
 // hand-rolling per-surface regex literals. Two forms per surface: shell redirect
 // (`>`/`>>`) and `tee`. Built once at module load.
@@ -49,8 +48,8 @@ function preflightMarkerPatterns() {
   });
 }
 
-// Decision-log path-write patterns, derived from the participant catalog plus
-// the transitional storage view so every known runtime
+// Decision-log path-write patterns, derived from the active topology plus
+// retained storage surfaces so every known runtime
 // surface's coordination/.gate-decision.log redirect (`>`/`>>`), `tee` append,
 // AND non-redirect file-writing verbs (cp/mv/dd/install/rsync) are detected.
 // This is the trusted-producer boundary for the decision log: the ONLY

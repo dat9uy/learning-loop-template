@@ -4,7 +4,7 @@
  * Tests the canonical source + fan-out materializer pattern:
  *   - tools/scripts/sync-skills.mjs reads the canonical
  *     tools/learning-loop-mastra/skills/<name>/SKILL.md
- *     and fans out to .claude, .factory, .mastracode via writeToAllSkills.
+ *     and fans out to the retained .claude and .hermes mirrors via writeToAllSkills.
  *   - Idempotent (re-run = 0 bytes written, no mtime bump).
  *   - Canonical-vs-mirror parity invariant (detection of direct canonical tamper).
  *   - Partial-fan-out failure (one surface fails → exits non-zero, names divergent surface).
@@ -70,7 +70,7 @@ function buildFixture(names, { seedMirrors = false, manifestSkills } = {}) {
       sourceType: "local",
       delivery: "fanout",
       canonicalSource: `tools/learning-loop-mastra/skills/${name}/SKILL.md`,
-      targets: [".claude", ".factory", ".mastracode"],
+      targets: SURFACES,
       maturity: "state-1",
       external: false,
       hash: "0".repeat(64),
@@ -132,13 +132,13 @@ test("sync-skills is idempotent (second run writes 0 bytes, no mtime bump)", () 
   withFixture(["test-skill"], {}, (root) => {
     const r1 = runSyncSkills(root);
     assert.strictEqual(r1.code, 0, `first run must exit 0: ${r1.err}`);
-    assert.match(r1.out, /4 wrote, 0 unchanged/, `first run must write all 4 mirrors: ${r1.out}`);
+    assert.match(r1.out, /2 wrote, 0 unchanged/, `first run must write both retained mirrors: ${r1.out}`);
     const mirror = mirrorPath(root, ".claude", "test-skill");
     const mtimeAfterFirst = statSync(mirror).mtimeMs;
 
     const r2 = runSyncSkills(root);
     assert.strictEqual(r2.code, 0, `second run must exit 0: ${r2.err}`);
-    assert.match(r2.out, /0 wrote, 4 unchanged/, `second run must write nothing: ${r2.out}`);
+    assert.match(r2.out, /0 wrote, 2 unchanged/, `second run must write nothing: ${r2.out}`);
     assert.strictEqual(
       statSync(mirror).mtimeMs,
       mtimeAfterFirst,
@@ -236,13 +236,13 @@ test("fan-out correctness: canonical edit propagates byte-identically to all mir
 test("self-heal: deleted mirror is restored byte-identically on next sync", () => {
   // Phase-02 step 13.
   withFixture(["test-skill"], { seedMirrors: true }, (root) => {
-    unlinkSync(mirrorPath(root, ".factory", "test-skill"));
+    unlinkSync(mirrorPath(root, ".hermes", "test-skill"));
     const r = runSyncSkills(root);
     assert.strictEqual(r.code, 0, `heal run must exit 0: ${r.err}`);
     assert.strictEqual(
-      readFileSync(mirrorPath(root, ".factory", "test-skill"), "utf8"),
+      readFileSync(mirrorPath(root, ".hermes", "test-skill"), "utf8"),
       "# test-skill\nmaturity: state-1\n",
-      ".factory mirror must be restored byte-identically from canonical",
+      ".hermes mirror must be restored byte-identically from canonical",
     );
   });
 });
@@ -285,7 +285,7 @@ test("partial-fan-out failure: read-only surface → exit 1, names surface, no t
     // Read-only must be applied to the LEAF dir (where writeFileSync(tmp)
     // happens) — chmod on the surface root alone does not block writes into
     // an already-writable subdir.
-    const leafDir = join(root, ".mastracode", "skills", "test-skill");
+    const leafDir = join(root, ".hermes", "skills", "test-skill");
     chmodSync(leafDir, 0o555);
     let r;
     try {
@@ -294,10 +294,10 @@ test("partial-fan-out failure: read-only surface → exit 1, names surface, no t
       chmodSync(leafDir, 0o755);
     }
     assert.strictEqual(r.code, 1, `materializer must exit 1 on partial fan-out: ${JSON.stringify(r)}`);
-    assert.match(r.err, /\.mastracode/, `error must name the divergent surface: ${r.err}`);
+    assert.match(r.err, /\.hermes/, `error must name the divergent surface: ${r.err}`);
 
     // The two writable surfaces received the update (failure is isolated).
-    for (const surface of [".claude", ".factory"]) {
+    for (const surface of [".claude"]) {
       assert.strictEqual(
         readFileSync(mirrorPath(root, surface, "test-skill"), "utf8"),
         "# test-skill\nmaturity: state-1\nchanged\n",
@@ -306,9 +306,9 @@ test("partial-fan-out failure: read-only surface → exit 1, names surface, no t
     }
     // The failed surface kept its stale content (visible divergence, not silent).
     assert.strictEqual(
-      readFileSync(mirrorPath(root, ".mastracode", "test-skill"), "utf8"),
+      readFileSync(mirrorPath(root, ".hermes", "test-skill"), "utf8"),
       "# test-skill\nmaturity: state-1\n",
-      ".mastracode: failed surface must retain its prior content",
+      ".hermes: failed surface must retain its prior content",
     );
     // No temp debris anywhere (finally-cleanup, red-team F15 behavioral check).
     for (const surface of SURFACES) {
@@ -412,7 +412,7 @@ function buildExternalFixture({ detectedSurface = ".claude", legacySymlinkOn = [
         sourceType: "npx-skills-cli",
         delivery: "npx-per-runtime+fanout-undetected",
         skillPath: "skills/mastra/SKILL.md",
-        targets: [".claude", ".factory", ".mastracode"],
+        targets: SURFACES,
         maturity: null,
         external: true,
         hash,
@@ -453,7 +453,7 @@ test("F13: external fan-out propagates the detected tree byte-identically to und
     const r = runSyncSkills(root);
     assert.strictEqual(r.code, 0, `fan-out must exit 0: ${r.err}`);
     assert.match(r.out, /external fan-out from \.claude/, `log must name the detected source: ${r.out}`);
-    for (const surface of [".factory", ".mastracode"]) {
+    for (const surface of SURFACES.filter((surface) => surface !== ".claude")) {
       const tree = readTree(join(root, surface, "skills", "mastra"));
       assert.deepStrictEqual(
         Object.keys(tree).sort(),
@@ -476,14 +476,14 @@ test("F13: external fan-out is idempotent (second run writes nothing, source unt
     assert.strictEqual(r1.code, 0, `first run must exit 0: ${r1.err}`);
     const sourceSkillMd = join(root, ".claude", "skills", "mastra", "SKILL.md");
     const sourceMtime = statSync(sourceSkillMd).mtimeMs;
-    const factorySkillMd = join(root, ".factory", "skills", "mastra", "SKILL.md");
-    const factoryMtime = statSync(factorySkillMd).mtimeMs;
+    const hermesSkillMd = join(root, ".hermes", "skills", "mastra", "SKILL.md");
+    const hermesMtime = statSync(hermesSkillMd).mtimeMs;
     const r2 = runSyncSkills(root);
     assert.strictEqual(r2.code, 0, `second run must exit 0: ${r2.err}`);
     // Source is read-only (never rewritten): mtime unchanged.
     assert.strictEqual(statSync(sourceSkillMd).mtimeMs, sourceMtime, "detected copy must be read-only (no mtime bump on re-run)");
     // Fanned-out surfaces are skipUnchanged on re-run: mtime unchanged.
-    assert.strictEqual(statSync(factorySkillMd).mtimeMs, factoryMtime, ".factory mirror must not be touched on idempotent re-run");
+    assert.strictEqual(statSync(hermesSkillMd).mtimeMs, hermesMtime, ".hermes mirror must not be touched on idempotent re-run");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -492,9 +492,9 @@ test("F13: external fan-out is idempotent (second run writes nothing, source unt
 test("F13: detected copy is read-only (materializer never writes back to the source surface)", () => {
   const { root, skillContent } = buildExternalFixture();
   try {
-    // Seed .factory + .mastracode with a STALE mastra tree so the materializer
+    // Seed the undetected retained mirror with a STALE mastra tree so the materializer
     // has a pending write on every surface except the source.
-    for (const surface of [".factory", ".mastracode"]) {
+    for (const surface of SURFACES.filter((surface) => surface !== ".claude")) {
       const dir = join(root, surface, "skills", "mastra");
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, "SKILL.md"), "# stale\n");
@@ -511,8 +511,8 @@ test("F13: detected copy is read-only (materializer never writes back to the sou
     assert.strictEqual(r.code, 0, `fan-out must exit 0: ${r.err}`);
     assert.strictEqual(statSync(sourceSkillMd).mtimeMs, sourceMtime, "source surface must be untouched (read-only)");
     assert.strictEqual(readFileSync(join(root, ".claude", "skills", "mastra", "SKILL.md"), "utf8"), skillContent, "source content must be unchanged");
-    // Stale surfaces were overwritten with the source tree.
-    for (const surface of [".factory", ".mastracode"]) {
+    // The stale retained mirror was overwritten with the source tree.
+    for (const surface of SURFACES.filter((surface) => surface !== ".claude")) {
       assert.strictEqual(
         readFileSync(join(root, surface, "skills", "mastra", "SKILL.md"), "utf8"),
         skillContent,
@@ -534,7 +534,7 @@ test("F13: missing detected copy → explicit failure (not a silent skip)", () =
   const { root } = buildExternalFixture({ hashOverride: "0".repeat(64) });
   // Wipe ALL surfaces' mastra trees so neither normalize nor fan-out
   // can find any real-dir source.
-  for (const s of [".claude", ".factory", ".mastracode"]) {
+  for (const s of SURFACES) {
     rmSync(join(root, s, "skills", "mastra"), { recursive: true, force: true });
   }
   try {
@@ -572,21 +572,21 @@ test("F13/F6: detected copy whose SKILL.md hash does NOT match manifest → norm
 });
 
 test("F13: legacy .agents symlink at an undetected surface is replaced with real files (no write-through)", () => {
-  const { root, skillContent } = buildExternalFixture({ legacySymlinkOn: [".factory"] });
+  const { root, skillContent } = buildExternalFixture({ legacySymlinkOn: [".hermes"] });
   try {
-    // Pre-condition: .factory/skills/mastra is a symlink to .agents/skills/mastra.
-    const factoryLink = join(root, ".factory", "skills", "mastra");
-    assert.ok(lstatSync(factoryLink).isSymbolicLink(), "precondition: .factory mastra is a legacy symlink");
+    // Pre-condition: .hermes/skills/mastra is a symlink to .agents/skills/mastra.
+    const hermesLink = join(root, ".hermes", "skills", "mastra");
+    assert.ok(lstatSync(hermesLink).isSymbolicLink(), "precondition: .hermes mastra is a legacy symlink");
     const agentsSourceSkillMd = join(root, ".agents", "skills", "mastra", "SKILL.md");
     const agentsContentBefore = readFileSync(agentsSourceSkillMd, "utf8");
     const r = runSyncSkills(root);
     assert.strictEqual(r.code, 0, `fan-out must exit 0: ${r.err}`);
     // The symlink was replaced with a real dir.
-    assert.ok(!lstatSync(factoryLink).isSymbolicLink(), ".factory mastra must now be a real dir, not a symlink");
+    assert.ok(!lstatSync(hermesLink).isSymbolicLink(), ".hermes mastra must now be a real dir, not a symlink");
     assert.strictEqual(
-      readFileSync(join(factoryLink, "SKILL.md"), "utf8"),
+      readFileSync(join(hermesLink, "SKILL.md"), "utf8"),
       skillContent,
-      ".factory must hold the fanned-out real files",
+      ".hermes must hold the fanned-out real files",
     );
     // No write-through to .agents (the retired source is untouched).
     assert.strictEqual(readFileSync(agentsSourceSkillMd, "utf8"), agentsContentBefore, ".agents source must not be modified via write-through");

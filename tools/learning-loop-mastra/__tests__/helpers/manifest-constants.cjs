@@ -5,7 +5,7 @@
  *   - __tests__/manifest-arithmetic.test.cjs          (tools: 44, total: 50, workflow: 11, groups: 6)
  *   - __tests__/cold-session-enumerate-mastra.test.cjs (declared: 50, groups: 6)
  *   - __tests__/integration/cold-session-discoverability.test.cjs (total: 50, groups: 6)
- *   - __tests__/e2e/mastra-code-smoke.test.cjs (live MCP residue: 8)
+ *   - the current MCP residue E2E coverage (8)
  *
  * WHY: prior removal (meta_state_ack + intake_orient + intake_plan) and
  * addition (meta_state_ship_loop_design in plan 260712-0724 Fix A) both

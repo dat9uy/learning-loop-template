@@ -36,10 +36,7 @@ import { globMatch } from "./gate-logic.js";
  * Rec 12 detection set — frozen, in the order documented in the plan.
  * Superset of `BOUND_ARTIFACTS` (the gate surface): adds docs/**,
  * tools/learning-loop-mastra/{core,tools,hooks}/**, AGENTS.md, CONTRACT.md,
- * and the three skills-mirror surfaces. `.factory/hooks/**` covers the
- * Droid-only SessionStart adapter (loop-surface-inject.cjs) — runtime-local
- * wiring that is hand-edited, unlike the byte-identical cross-surface shims.
- * Only .factory has a hooks/ tree; the other runtimes have none to bind.
+ * and the retained skills-mirror surfaces.
  */
 export const CHANGE_LOG_BOUND_PATHS = Object.freeze([
   "docs/**",
@@ -51,9 +48,7 @@ export const CHANGE_LOG_BOUND_PATHS = Object.freeze([
   "CONTRACT.md",
   "hooks-lock.json",
   ".claude/skills/**",
-  ".factory/skills/**",
-  ".mastracode/skills/**",
-  ".factory/hooks/**",
+  ".hermes/skills/**",
 ]);
 
 /**

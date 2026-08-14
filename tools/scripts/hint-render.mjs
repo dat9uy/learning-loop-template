@@ -12,7 +12,6 @@
  *
  * Channels:
  *   claude-session-start — 2-partition render (discoverability + process)
- *   factory-session-start — single block (factory hook stdout)
  *   mcp-warm             — structured JSON array
  *   sidecar              — session-context.json payload
  *

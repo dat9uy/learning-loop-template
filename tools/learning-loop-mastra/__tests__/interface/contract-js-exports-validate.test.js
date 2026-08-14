@@ -17,9 +17,14 @@ test("contract.js exports validate as named export", async () => {
 test("contract.js exports REQUIREMENT_IDS constant", async () => {
   const mod = await import(CONTRACT_JS);
   assert.ok(Array.isArray(mod.REQUIREMENT_IDS), "expected REQUIREMENT_IDS to be an array");
-  // Plan 5-Lite Phase 3 grew the list to 10; Codex Initial Delivery adds
-  // the dedicated native-adapter conformance result.
-  // Req #9 (.mastracode-config-presence), Req #10 (mastracode-session-start-pins-loop-surface),
-  // and Req #11 (tools-manifest-has-path-fields). Req #8 is intentionally skipped (gap).
-  assert.equal(mod.REQUIREMENT_IDS.length, 11, "expected 11 requirement IDs (5 base + Req #6 + #7 + #9 + #10 + #11 + #12)");
+  assert.deepEqual(mod.REQUIREMENT_IDS, [
+    "hook-shim-set",
+    "mcp-client-config",
+    "skill-spec",
+    "identity-marker",
+    "settings-integration",
+    "tools-manifest-has-path-fields",
+    "runtime-owned-i2-delivery",
+    "codex-initial-delivery",
+  ]);
 });
