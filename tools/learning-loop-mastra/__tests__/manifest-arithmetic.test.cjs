@@ -4,7 +4,7 @@
 //
 // Expected sizes are centralised in ./helpers/manifest-constants.cjs (single
 // source of truth shared with cold-session-enumerate-mastra and the
-// integration/cold-session-discoverability + e2e/mastra-code-smoke
+// integration/cold-session-discoverability plus current MCP E2E coverage
 // tests — all of which were previously drifting independently).
 //
 // Test inventory:

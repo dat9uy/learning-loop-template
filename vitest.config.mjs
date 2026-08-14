@@ -35,7 +35,6 @@ const E2E_FILES = [
   ".claude/coordination/__tests__/preflight-gate.test.cjs",
   ".claude/coordination/__tests__/write-coordination-gate-minimal.test.cjs",
   ".claude/coordination/__tests__/write-gate-index-capabilities.test.cjs",
-  ".factory/hooks/__tests__/loop-surface-inject.test.cjs",
   "tools/learning-loop-mastra/__tests__/agent-parity.test.cjs",
   "tools/learning-loop-mastra/__tests__/cli-args-file-dispatch.test.js",
   "tools/learning-loop-mastra/__tests__/cli-bare-key-json-hint.test.js",
@@ -64,7 +63,6 @@ const E2E_FILES = [
   "tools/learning-loop-mastra/__tests__/e2e/gate-recurrence.test.js",
   "tools/learning-loop-mastra/__tests__/e2e/git-diff.test.js",
   "tools/learning-loop-mastra/__tests__/e2e/loop-get-instruction.test.js",
-  "tools/learning-loop-mastra/__tests__/e2e/mastra-code-smoke.test.cjs",
   "tools/learning-loop-mastra/__tests__/e2e/mcp-protocol-e2e.test.cjs",
   "tools/learning-loop-mastra/__tests__/e2e/meta-state-list-id-stdio.test.js",
   "tools/learning-loop-mastra/__tests__/e2e/meta-state-patch-derived-schema.test.js",
@@ -113,7 +111,6 @@ const INTEGRATION_FILES = [
   "tools/learning-loop-mastra/__tests__/create-loop-agent.test.js",
   "tools/learning-loop-mastra/__tests__/create-loop-workflow.test.js",
   "tools/learning-loop-mastra/__tests__/drop-idempotency-cache.test.cjs",
-  "tools/learning-loop-mastra/__tests__/factory-hook-single-source.test.cjs",
   "tools/learning-loop-mastra/__tests__/field-glossary.test.js",
   "tools/learning-loop-mastra/__tests__/hint-dedup-invariant.test.cjs",
   "tools/learning-loop-mastra/__tests__/hint-registry.test.cjs",
@@ -300,7 +297,6 @@ const UNIT_FILES = [
 const BASE_INCLUDE = [
   "tools/learning-loop-mastra/**/*.test.{js,cjs,mjs}",
   ".claude/coordination/__tests__/*.test.cjs",
-  ".factory/hooks/__tests__/*.test.cjs",
   "tools/scripts/__tests__/*.test.js",
 ];
 

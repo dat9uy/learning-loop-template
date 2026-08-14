@@ -8,9 +8,8 @@
  * caught (the drift the manifest closes for "a new universal hook never
  * adopted").
  *
- * Sibling of skills-lock.json (skills manifest); consumes SURFACES from
- * core/surfaces.js so a new runtime added to the cross-surface helpers is
- * picked up here too.
+ * Sibling of skills-lock.json (skills manifest); consumes the retained
+ * mirror surfaces from core/surfaces.js.
  */
 
 import { test } from "vitest";

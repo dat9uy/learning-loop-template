@@ -12,9 +12,9 @@ await test("whitelists .claude/ prefix (was rejected before refactor)", () => {
   assert.strictEqual(isGlobScopeWhitelisted(".claude/coordination/hooks/*"), true);
 });
 
-await test("whitelists .factory/ prefix (no regression)", () => {
-  assert.strictEqual(isGlobScopeWhitelisted(".factory/skills/foo/**"), true);
-  assert.strictEqual(isGlobScopeWhitelisted(".factory/coordination/hooks/*"), true);
+await test("whitelists .hermes/ prefix (no regression)", () => {
+  assert.strictEqual(isGlobScopeWhitelisted(".hermes/skills/foo/**"), true);
+  assert.strictEqual(isGlobScopeWhitelisted(".hermes/coordination/hooks/*"), true);
 });
 
 await test("whitelists non-surface prefixes (no regression)", () => {

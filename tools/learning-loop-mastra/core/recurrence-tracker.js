@@ -112,11 +112,11 @@ function provenanceSignature(entry) {
  * pick a surface winner, detects same-identity rows whose provenance differs
  * across surfaces and downgrades them to candidate_kind "unclassified" /
  * match_origin "unknown" (fail closed). A `.claude` unexpected-match row +
- * `.factory` ordinary row for one identity is one conflicted event that can
+ * `.hermes` ordinary row for one identity is one conflicted event that can
  * never auto-file.
  *
- * The raw union is read in surface order (`.claude`, `.factory`,
- * `.mastracode`); identical rows (duplicated on the same surface, or
+ * The raw union is read in surface order (`.claude`, `.hermes`); identical
+ * rows (duplicated on the same surface, or
  * byte-identical fan-out across surfaces) dedupe to the first occurrence with
  * the SAME provenance signature, preserving the reader's previous behavior.
  * The full log is scanned — no `since` filter.

@@ -25,7 +25,7 @@ describe("cold-session churn regression", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "L2 probe gap. runtime: droid; layer: L2;",
+      description: "L2 probe gap. runtime: hermes; layer: L2;",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
       status: "open",
@@ -39,7 +39,7 @@ describe("cold-session churn regression", () => {
     const l1Result = await tryClaimSessionId(tempRoot, {
       sessionId,
       subtype: "mcp-client-loading",
-      runtime: "droid",
+      runtime: "hermes",
       layer: "L1",
     }, () => ({
       id: generateId("mcp-client-loading-missing"),
@@ -48,7 +48,7 @@ describe("cold-session churn regression", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "L1 probe gap. runtime: droid; layer: L1;",
+      description: "L1 probe gap. runtime: hermes; layer: L1;",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
       status: "open",
@@ -73,7 +73,7 @@ describe("cold-session churn regression", () => {
     const { writeEntry } = await import(pathToFileURL(corePath).href);
 
     const sessionId = "test-cold-session-mcp-client-loading";
-    const l1Key = { sessionId, subtype: "mcp-client-loading", runtime: "droid", layer: "L1" };
+    const l1Key = { sessionId, subtype: "mcp-client-loading", runtime: "hermes", layer: "L1" };
 
     // First L1 claim succeeds
     const first = await tryClaimSessionId(tempRoot, l1Key, () => ({
@@ -83,7 +83,7 @@ describe("cold-session churn regression", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "L1 probe gap. runtime: droid; layer: L1;",
+      description: "L1 probe gap. runtime: hermes; layer: L1;",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
       status: "open",
@@ -100,7 +100,7 @@ describe("cold-session churn regression", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "L1 probe gap. runtime: droid; layer: L1;",
+      description: "L1 probe gap. runtime: hermes; layer: L1;",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
       status: "open",

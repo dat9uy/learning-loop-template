@@ -228,7 +228,7 @@ describe("meta-state registry core", () => {
     const key = {
       sessionId: "test-session-123",
       subtype: "mcp-client-loading",
-      runtime: "droid",
+      runtime: "hermes",
       layer: "L2",
     };
 
@@ -239,7 +239,7 @@ describe("meta-state registry core", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "Claim test finding. runtime: droid; layer: L2;",
+      description: "Claim test finding. runtime: hermes; layer: L2;",
       evidence_code_ref: "tools/test.js",
       session_id: key.sessionId,
       status: "open",

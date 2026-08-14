@@ -315,7 +315,7 @@ await test("bash command appending .gate-decision.log → block with dedicated r
 
 await test("bash command tee-ing .gate-decision.log → block with dedicated reason", () => {
   const { exitCode: code, stdout } = runGate(
-    makeInput("echo 'x' | tee -a .factory/coordination/.gate-decision.log"),
+    makeInput("echo 'x' | tee -a .hermes/coordination/.gate-decision.log"),
   );
   assert.strictEqual(code, 0, "exit 0 so harness processes the denial JSON");
   const parsed = JSON.parse(stdout);

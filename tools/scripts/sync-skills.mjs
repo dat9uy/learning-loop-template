@@ -14,7 +14,7 @@
  * lives in skills-lib.mjs (DRY with normalize-skills.mjs).
  *
  * Reads the canonical source at tools/learning-loop-mastra/skills/<name>/SKILL.md
- * and fans out (byte-identical) to .claude, .factory, .mastracode via
+ * and fans out (byte-identical) to the retained mirrors via
  * core/surfaces.js#writeToAllSkills. Idempotent (re-run = no diff when mirrors
  * already match canonical).
  *
@@ -24,10 +24,10 @@
  * real-dir copy to the undetected runtimes via `findDetectedSurface` (F6
  * hash-verify).
  *
- * Post-fan-out runtime parity check (red-team F5): re-read all 3 mirrors +
- * canonical; fail loudly if any pair differs. This closes the partial-fan-out
- * gap — the contract's `checkMirrorPresence` (count>=2) masks a single failed
- * surface; the materializer enforces 3-way byte-identity at runtime.
+ * Post-fan-out runtime parity check (red-team F5): re-read all retained
+ * mirrors + canonical; fail loudly if any pair differs. This closes the
+ * partial-fan-out gap — the contract's `checkMirrorPresence` (count>=2) masks
+ * a single failed surface; the materializer enforces byte-identity at runtime.
  *
  * Authoring path: edit canonical → `pnpm skills:sync` → meta_state_log_change.
  */
@@ -208,7 +208,7 @@ function materializeOne(name, entry) {
 }
 
 function postFanOutParityCheck(name, entry) {
-  // Re-read all mirrors + canonical; require 3-way byte-identity.
+  // Re-read all retained mirrors + canonical; require byte-identity.
   const canonicalRel = entry.canonicalSource;
   if (!canonicalRel) return { ok: true };
   const canonicalAbs = join(repoRoot, canonicalRel);
@@ -232,9 +232,9 @@ function postFanOutParityCheck(name, entry) {
   return { ok: true };
 }
 
-// Post-fan-out 3-way byte-identity for external skills. Mirrors the internal
+// Post-fan-out byte-identity for external skills. Mirrors the internal
 // postFanOutParityCheck, but externals have no canonical source (the detected
-// surface IS the content), so all 3 surfaces are compared to each other.
+// surface IS the content), so all retained mirrors are compared to each other.
 // Closes the asymmetry where external fan-out relied only on writeToAllSkills
 // per-file failure reporting and skipped the post-fan-out re-read.
 function postExternalFanOutParityCheck(name) {

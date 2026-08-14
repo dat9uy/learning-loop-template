@@ -14,19 +14,28 @@ test("CONTRACT.md is larger than 500 bytes", () => {
   assert.ok(size > 500, `expected CONTRACT.md > 500 bytes, got ${size}`);
 });
 
-test("CONTRACT.md contains all 5 requirement IDs", () => {
+test("CONTRACT.md contains every current requirement ID", () => {
   const content = readFileSync(CONTRACT_MD, "utf8");
-  const ids = ["hook-shim-set", "mcp-client-config", "skill-spec", "identity-marker", "settings-integration"];
+  const ids = [
+    "hook-shim-set",
+    "mcp-client-config",
+    "skill-spec",
+    "identity-marker",
+    "settings-integration",
+    "tools-manifest-has-path-fields",
+    "runtime-owned-i2-delivery",
+    "codex-initial-delivery",
+  ];
   for (const id of ids) {
     assert.ok(content.includes(id), `expected CONTRACT.md to contain requirement ID "${id}"`);
   }
 });
 
-test("CONTRACT.md contains verification section", () => {
+test("CONTRACT.md contains validator instructions", () => {
   const content = readFileSync(CONTRACT_MD, "utf8");
   assert.ok(
-    content.includes("erification") || content.includes("erify"),
-    "expected CONTRACT.md to contain a verification section"
+    content.includes("Running the validator"),
+    "expected CONTRACT.md to contain validator instructions"
   );
 });
 

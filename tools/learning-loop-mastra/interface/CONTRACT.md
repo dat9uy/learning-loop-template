@@ -1,120 +1,81 @@
 <!-- level: L2 | surface: implementation -->
 
-# Runtime Interface Contract — MCP-Transport Conformance
+# Runtime Interface Contract — MCP transport
 
-The transport-agnostic runtime participation contract lives at `docs/runtime-contract.md` (the concept: 4 capabilities a runtime must provide to participate, stated without reference to any transport). This file is the **MCP-transport conformance checklist**: the mechanism checks that prove a runtime wired on the MCP+hooks transport satisfies those 4 capabilities. The validator (`contract.js`) enforces this checklist.
+Runtime identity is owned by `core/runtime-topology.js`. The current topology
+is exactly:
 
-## The 4 runtime capabilities (concept)
+| Runtime id | Owned surface |
+|---|---|
+| `codex` | `.codex` |
+| `claude-code` | `.claude` |
+| `hermes` | `.hermes` |
 
-These are the transport-agnostic capabilities from `docs/runtime-contract.md`. The mechanism checks below each derive from one of them.
+`interface/contract.js` is the executable conformance view. It rejects retired
+ids; it does not provide compatibility aliases for `droid` or `mastra-code`.
 
-1. **Capability surface** — expose the loop's deterministic-steps and agentic-steps to its agent. *(MCP transport: the server registered in `mcpServers.learning-loop`; the SKILL.md that surfaces the tools. → Req #2, #3)*
-2. **Gate enforcement** — route lifecycle events (pre-tool, pre-write, pre-prompt, session-start) into the loop's gate evaluation. *(MCP transport: hook shims or declarative hooks delegating to the universal gate scripts. → Req #1, #5, #6, #7)*
-3. **Record routing** — the runtime never writes `records/**`, `meta-state.jsonl`, `runtime-state.jsonl` directly; writes go through the loop. *(MCP transport: the MCP server is the only write path; bypass fields that disable it are rejected. → Req #7, #11)*
-4. **Identity + discoverability** — the runtime identifies its surface at boot and surfaces loop-discoverability to its operator/agent. *(MCP transport: `RUNTIME_ID`/`MASTRA_RESOURCE_ID` env marker; `LOOP_SURFACE` env wiring; session-start recurrence hook. → Req #4, #9, #10)*
+## Requirements
 
-## MCP-transport conformance checklist
+The validator reports these requirement ids in `path_map`:
 
-### 1. `hook-shim-set`
+1. `hook-shim-set` — Claude Code and Hermes expose the four universal gate
+   shims in `<surface>/coordination/hooks/`. Codex is intentionally reported as
+   non-compliant here because it uses its native Initial Delivery surface.
+2. `mcp-client-config` — the runtime registers `learning-loop` and points to
+   `tools/learning-loop-mastra/mastra/server.js`. Codex reads its TOML config;
+   Claude Code and Hermes use their project-local JSON mirrors.
+3. `skill-spec` — every loop-maintained mirror declares `maturity:` as
+   `state-1`, `state-2`, or `state-3`; `learning-loop` references
+   `loop_describe` and `meta_state_list`; retained mirror surfaces have parity.
+   Codex does not consume project-local skill mirrors.
+4. `identity-marker` — `RUNTIME_ID` (or the legacy advisory resource marker) is
+   observed when present. It is advisory until runtime-owned identity is
+   adopted.
+5. `settings-integration` — Claude Code and Hermes route the four shim
+   basenames through their native hook configuration. Codex is reported as
+   missing this generic lifecycle wiring because its native surface is checked
+   separately.
+6. `tools-manifest-has-path-fields` — every manifest entry declares
+   `pathFields`.
+7. `runtime-owned-i2-delivery` — the current runtime owner must declare the
+   Initial I2 Rule Delivery adapter. Claude Code and Hermes currently return a
+   typed failure:
 
-The runtime MUST provide 4 hook shims in `<surface>/coordination/hooks/`:
-- `bash-coordination-gate.cjs`
-- `write-coordination-gate.cjs`
-- `inbound-state-gate.cjs`
-- `recurrence-check-on-start.cjs`
+   ```json
+   {
+     "code": "runtime_owned_delivery_missing",
+     "applicable": true,
+     "ok": false
+   }
+   ```
 
-Each shim MUST delegate to a universal hook in `tools/learning-loop-mastra/hooks/universal/` via `child_process.execFileSync('node', [<universal-hook-path>], ...)`. **Pass:** all 4 shims exist as files in `<surface>/coordination/hooks/`. **Note:** the contract does NOT require byte-identical shims across runtimes (verified: Claude Code and Droid CLI shims differ in content but both delegate to the same universal hooks). The validator additionally reports each shim's `universal_target` (the path it delegates to) in `path_map` for documentation, but does NOT fail when the target is absent — universal hook wiring is git-tracked and not runtime-mutable (red-team Finding F1: real shims pass `[universalHook]` as a `path.join` result, not as a string literal; a regex-based check would silently fail for both runtimes). **Applicability:** N/A for declarative-hook runtimes (use Req #6 instead); validator reports `applicable:false` for those runtimes.
+   A shared conformance pass must not silently certify either runtime while
+   this owner-controlled delivery wiring is absent.
+8. `codex-initial-delivery` — Codex's synchronous
+   `.codex/hooks/session-start-i2-delivery.cjs` registration and adapter must
+   exist. This is the Codex-native delivery check.
 
-### 2. `mcp-client-config`
+The result is intentionally a projection, not a claim that the loop may edit a
+runtime-owned adapter. Claude Code and Hermes adapter/config files remain owned
+by those runtime agents; their missing I2 result is the handoff signal.
 
-The runtime MUST register the loop's MCP server in its MCP config:
-- `mcpServers.learning-loop.command === "node"`
-- `mcpServers.learning-loop.args` contains a string ending in `tools/learning-loop-mastra/mastra/server.js`.
-
-**Pass:** entry present AND target matches. **Fail:** entry missing, wrong command, or wrong args. **Note:** Claude Code stores MCP config at the root `.mcp.json`; Droid CLI stores it at `.factory/mcp.json`; Mastra Code stores it at `.mastracode/mcp.json` (NOT `.mastracode/config.json`); Hermes Agent stores it at `.hermes/mcp.json` (the committed project-local mirror of the live `mcp_servers.learning-loop` entry in `~/.hermes/config.yaml` — Hermes has no per-project config file, so the validator checks the in-repo mirror). The validator resolves the path per runtime.
-
-### 3. `skill-spec`
-
-The runtime MUST host loop-maintained skills at `<surface>/skills/<name>/SKILL.md`, mirrored across all participating runtimes. A skill is **loop-maintained** iff its SKILL.md declares a `maturity:` frontmatter field set to one of `state-1`, `state-2`, or `state-3` (the injection-determinism-by-maturity convention). The validator enumerates only `maturity:`-declaring skills — non-loop-maintained content (e.g. the `.claude/skills/mastra` external symlink) is excluded from the enumeration. The `maturity:` field is hard-required (a skill with frontmatter but no valid `maturity:` is a per-skill `maturity-not-declared` fail).
-
-`learning-loop` MUST reference `loop_describe` AND `meta_state_list` (it documents the loop's tool surface). Other loop-maintained skills are NOT required to reference those tools — the tool-ref check is scoped to `learning-loop` only.
-
-**Mirror requirement:** a loop-maintained skill is mirrored when the same `<name>` SKILL.md exists in ≥ 2 of the 3 runtime surfaces (`.claude`, `.factory`, `.mastracode`). A single-surface placement fails with `skill-mirror-gap`. The cross-runtime parity test (`integration/skills-mirror-parity.test.js`) is the backstop for byte-identity.
-
-**Skill files are gated artifacts:** direct writes to `<surface>/skills/**` are blocked by the write-gate (`.loop-preflight-skills` marker required); edits go through the gated authoring path (`gate_mark_preflight(surface: "skills")` → write → `meta_state_log_change`).
-
-**Per-skill error isolation:** a malformed or oversized frontmatter (size cap: 64KB; billion-laughs guard) yields a per-skill `frontmatter-unparseable` / `frontmatter-too-large` fail, and the loop continues with the remaining skills.
-
-**Pass:** every loop-maintained skill in the surface passes (maturity declared + mirror present + tool-ref check satisfied where applicable). **Fail:** any loop-maintained skill fails its per-skill validation. **Note:** a structured `tools:` block is an upgrade target; prose references pass today. **Threat-model boundary:** the write-gate protects loop-maintained skills only; external symlinked content under `.agents/skills/**` is out of the gate's scope (not loop-maintained, not mirrored).
-
-**Discovery paths by runtime:**
-- Claude Code: `.claude/skills/learning-loop/SKILL.md`
-- Droid CLI: `.factory/skills/learning-loop/SKILL.md`
-- Mastra Code: `.mastracode/skills/learning-loop/SKILL.md` OR (via Claude-compatible auto-discovery) `.claude/skills/learning-loop/SKILL.md`
-- Hermes Agent: `.hermes/skills/learning-loop/SKILL.md` (Hermes' own skill store is global at `~/.hermes/skills/`; the in-repo mirror satisfies the contract and is the fan-out target for `sync-skills`)
-
-### 4. `identity-marker` (PROPOSED, non-blocking)
-
-The runtime SHOULD set its session env to one of `RUNTIME_ID=<runtimeId>` or `MASTRA_RESOURCE_ID=<runtimeId>`. **NEVER fails.** When unset: `notes: ["identity-marker-not-adopted"]`. When mismatched: `notes: ["identity-marker-mismatch"]`. The marker is the target convention from the bundled hardening plan (LIM-3 caller identity); existing runtimes do not yet set it. **Note (Phase E Plan 4):** `MASTRA_RESOURCE_ID` is an additive alternative for Mastra Code (accepted but spoofable until LIM-3 caller-identity ships in Plan 5). First match wins; both unset ⇒ advisory note only.
-
-### 5. `settings-integration`
-
-The runtime MUST reference all 4 universal-hook paths via `command` strings. **Pass:** all 4 referenced. **Fail:** any missing.
-
-For shim-file runtimes (Claude Code, Droid CLI): the validator reads the runtime's `settings.json` `hooks` blocks and checks each `entry.hooks[].command` for the 4 shim basenames.
-
-**Note (Phase E Plan 4):** For declarative-hook runtimes (Mastra Code), this requirement applies to the declarative config's `command` field, not to shim files. See Req #6 for the dedicated declarative-shape check.
-
-### 6. `hook-declarative-config` (Phase E Plan 4 — additive for declarative-hook runtimes)
-
-For runtimes using declarative hook configs (Mastra Code, future), the runtime MUST provide `<surface>/hooks.json` (or equivalent) containing:
-- `PreToolUse`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/universal/bash-gate.js` (bash coordination gate); plus write/edit/delete entries referencing `tools/learning-loop-mastra/hooks/universal/write-gate.js` for built-in write/edit/delete tool names (e.g., Mastra Code's `write_file`, `string_replace_lsp`, `delete_file`).
-- `UserPromptSubmit`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/universal/inbound-gate.js`.
-- `SessionStart`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js`.
-
-**Pass:** JSON parses, all 3 required event entries present, AND every `command` references a known universal-hook path (no silent passes on bogus commands). **Fail:** malformed JSON, missing event entries, OR commands referencing paths that are not in the canonical universal-hook set (red-team Security F4). **Applicability:** declarative-hook runtimes only (e.g., Mastra Code). For shim-file runtimes, this requirement reports `applicable:false` and trivially passes.
-
-### 7. `settings-no-bypass` (Phase E Plan 4 — additive for declarative-settings runtimes)
-
-The runtime's declarative settings file (e.g., `.mastracode/settings.json`) MUST NOT enable any documented bypass for the loop's gates:
-- `shellPassthrough: true` — bypasses the bash-gate hook entirely (hooks don't fire when commands are passed-through); rejected.
-- `disableHooks: true` — disables all hooks; rejected.
-- `disableMcp: true` — disables MCP server connections; rejected (the learning loop IS the MCP server).
-
-**Pass:** no bypass fields enabled, AND settings JSON parses (malformed JSON in the settings file is treated as a bypass attempt — fail closed). **Fail:** any bypass field set to `true`. **Applicability:** declarative-settings runtimes only. For shim-file runtimes (Claude Code, Droid CLI), this requirement reports `applicable:false` and trivially passes.
-
-### 9. `.mastracode-config-presence` (Plan 5-Lite Phase 3 — additive for Mastra Code)
-
-For the `mastra-code` runtime, the `.mastracode/` directory MUST exist and contain all four config files: `mcp.json`, `hooks.json`, `settings.json`, `database.json`. **Pass:** directory exists AND all four files present. **Fail:** directory missing OR any of the four files missing. **Applicability:** `mastra-code` only. For shim-file runtimes (Claude Code, Droid CLI), this requirement reports `applicable:false` and trivially passes.
-
-### 10. `mastracode-session-start-pins-loop-surface` (Plan 5-Lite Phase 3 — LOOP_SURFACE wiring via mcp.json env field)
-
-The runtime's MCP config (`<surface>/mcp.json`) MUST set `env.LOOP_SURFACE` on the `learning-loop` server entry so the harness passes the surface to the spawned `server.js`, where `pinRuntimeIdAtBoot()` reads it at boot. For `mastra-code`: `mcpServers["learning-loop"].env.LOOP_SURFACE === ".mastracode"`. **Pass:** the env field is present and equals the runtime's surface. **Fail:** env field missing OR wrong value. **Applicability:** `mastra-code` only (the env-field wiring is the operator-chosen approach for all three runtimes, but the contract asserts it for Mastra Code to lock the third-runtime regression; the `.mcp.json` and `.factory/mcp.json` env fields are covered by `__tests__/mcp-config.test.js`). For non-mastra-code runtimes, this requirement reports `applicable:false` and trivially passes.
-
-### 11. `tools-manifest-has-path-fields` (Plan 5-Lite Phase 3 — project-wide invariant)
-
-Every entry in `tools/learning-loop-mastra/tools/manifest.json` MUST declare `pathFields: string[]` (may be `[]`). This is the boot-time invariant enforced by `mastra/server.js#validateToolManifest` (Phase 1 R3); surfaced here as a contract requirement so a manifest regression fails loudly in the contract validator, not only at server boot. The manifest is JSONC (full-line `//` comments only); the validator strips comments before parsing. **Pass:** every entry has a `pathFields` array. **Fail:** any entry missing `pathFields` OR `pathFields` is not an array. **Applicability:** ALL runtimes (project-wide invariant).
-
-### 12. `codex-initial-delivery`
-
-Codex's adapter is configured independently from the generic gate-shim checks. `.codex/hooks.json` MUST register a synchronous `SessionStart` command handler for `.codex/hooks/session-start-i2-delivery.cjs`. The adapter translates that native event into Core's I2 Rule Delivery result and emits the complete compiled projection in the native `hookSpecificOutput.additionalContext` envelope; it deliberately declares no local context limit that could truncate a multi-partition projection. **Pass:** the hook config parses, names the command handler, the handler is synchronous, and the adapter file exists. **Fail:** missing or malformed wiring, an asynchronous handler, or a missing adapter. **Applicability:** Codex only. This Initial Delivery check does not certify the generic four lifecycle gate routes; those remain visible as unmet requirements until Codex adopts them.
-
-## How to verify
+## Running the validator
 
 ```bash
-node tools/learning-loop-mastra/interface/contract.js claude-code
-node tools/learning-loop-mastra/interface/contract.js droid
-node tools/learning-loop-mastra/interface/contract.js mastra-code
 node tools/learning-loop-mastra/interface/contract.js --list
+node tools/learning-loop-mastra/interface/contract.js codex
+node tools/learning-loop-mastra/interface/contract.js claude-code
+node tools/learning-loop-mastra/interface/contract.js hermes
 ```
 
-Exit codes: `0` = all hard requirements pass; `1` = at least one requirement fails; `2` = usage error (no runtime ID).
+Exit status `0` means every applicable check passes. Exit status `1` means at
+least one requirement fails. Unknown or retired ids return a typed
+`unknown-runtime-id` result.
 
-For `mastra-code` on a properly configured repo (Phase E Plan 4 ships the `.mastracode/` config), the validator returns `{ok: true, missing: [], notes: [...], path_map: {...}}` — exit 0. If `MASTRA_RESOURCE_ID` is unset (advisory), `notes` includes `identity-marker-not-adopted`.
+## Reintroducing a retired runtime
 
-## Notes
-
-- `RUNTIME_ID` / `MASTRA_RESOURCE_ID` are advisory today; the bundled hardening plan will make it mandatory for R2 write-gate ownership.
-- The validator reads the runtime's filesystem layout; it does NOT execute hooks or call MCP. It is a pure read-only validator.
-- Adding a new runtime requires amending the `RUNTIMES` const in `contract.js` (one entry) and appending the surface to `core/surfaces.js` (one line). See `RUNTIME_ONBOARDING.md`.
-- Req #1 (`hook-shim-set`) is monomorphic on shim files; Req #6 (`hook-declarative-config`) is the parallel/alternative for declarative-hook runtimes. The validator sets `applicable:false` on the inapplicable check per runtime (not failing the contract for the wrong-shape runtime).
+Reintroduction is a new implementation against the then-current contract. Add
+one exact Runtime Topology entry, native configuration, ownership rules, and
+tests; do not restore the deleted Factory/Mastra Code adapters or resurrect a
+legacy compatibility branch. Historical journals, registry records, and Git
+history remain available for archaeology but are not current conformance input.

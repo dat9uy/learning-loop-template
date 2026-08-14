@@ -15,8 +15,8 @@ import { join } from "node:path";
 
 const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
 // The target topology in #154 retains Claude Code and Hermes as project-local
-// skill-mirror consumers. Factory and Mastra Code are removed from this
-// parity set; Runtime Topology owns the eventual production fan-out change.
+// skill-mirror consumers. Codex receives native Initial Delivery and is not a
+// project-local skill-mirror target.
 const MIRROR_CONSUMERS = [".claude", ".hermes"];
 const CANONICAL_SKILLS_ROOT = join(MCP_ROOT, "tools/learning-loop-mastra/skills");
 

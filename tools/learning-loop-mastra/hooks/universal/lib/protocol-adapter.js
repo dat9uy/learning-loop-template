@@ -1,8 +1,8 @@
 /**
- * Protocol Adapter — normalizes stdin/stdout between Claude Code and Droid CLI.
+ * Protocol Adapter — normalizes stdin/stdout for retained hook runtimes.
  *
- * Both systems use the same JSON protocol with minor differences:
- * - Tool names: Claude uses "Bash"/"Write", Droid uses "Execute"/"Create"
+ * Retained runtimes use the same JSON protocol with minor differences:
+ * - Tool names are normalized to the canonical bash/write categories.
  * - Exit codes: both use 0=allow, 2=block
  * - Output format: both support { decision, reason, hookSpecificOutput }
  */
@@ -20,19 +20,19 @@ export function parseInput(stdin) {
 }
 
 /**
- * Normalize tool names between Claude Code and Droid CLI.
+ * Normalize tool names from a runtime-specific hook payload.
  */
 // fallow-ignore-next-line complexity -- 3-branch tool-name lookup mapping (bash/write/passthrough); trivial branching
 export function normalizeToolName(toolName) {
   if (!toolName || typeof toolName !== "string") return null;
   const lower = toolName.toLowerCase();
-  if (lower === "bash" || lower === "execute") return "bash";
-  if (lower === "edit" || lower === "write" || lower === "create" || lower === "applypatch") return "write";
+  if (lower === "bash" || lower === "execute" || lower === "terminal") return "bash";
+  if (lower === "edit" || lower === "write" || lower === "create" || lower === "applypatch" || lower === "write_file" || lower === "patch") return "write";
   return lower;
 }
 
 /**
- * Extract command from tool input (handles both Claude and Droid formats).
+ * Extract command from a runtime-specific tool input.
  */
 export function extractCommand(toolInput) {
   if (!toolInput || typeof toolInput !== "object") return null;
@@ -40,20 +40,20 @@ export function extractCommand(toolInput) {
 }
 
 /**
- * Extract file path from tool input (handles both Claude and Droid formats).
+ * Extract file path from a runtime-specific tool input.
  */
 export function extractFilePath(toolInput) {
   if (!toolInput || typeof toolInput !== "object") return null;
-  return toolInput.file_path || null;
+  return toolInput.file_path || toolInput.path || null;
 }
 
 /**
- * Extract prompt from user message (handles both Claude and Droid formats).
+ * Extract prompt from a runtime-specific user message.
  */
 // fallow-ignore-next-line complexity -- 2-branch fallback read (prompt/user_prompt); trivial
 export function extractPrompt(payload) {
   if (!payload || typeof payload !== "object") return null;
-  return payload.prompt || payload.user_prompt || null;
+  return payload.prompt || payload.user_prompt || payload.user_message || payload.message || null;
 }
 
 /**

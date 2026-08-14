@@ -8,9 +8,9 @@ import { validateR2AllowlistShape } from "../../core/r2/allowlist-shape.js";
 const VALID = {
   schema: "r2-allowlist/v1",
   version: 1,
+  codex: { own: [".codex/**"], deny: [] },
   "claude-code": { own: [".claude/**"], deny: [] },
-  droid: { own: [".factory/**"], deny: [] },
-  "mastra-code": { own: [".mastracode/**"], deny: [] },
+  hermes: { own: [".hermes/**"], deny: [] },
   universal: ["records/**"],
 };
 
@@ -35,7 +35,7 @@ describe("validateR2AllowlistShape", () => {
     assert.throws(() => validateR2AllowlistShape({ ...VALID, version: "1" }), /version must be a number/);
   });
 
-  for (const runtime of ["claude-code", "droid", "mastra-code"]) {
+  for (const runtime of ["codex", "claude-code", "hermes"]) {
     test(`rejects missing runtime "${runtime}"`, () => {
       const bad = { ...VALID };
       delete bad[runtime];
@@ -57,12 +57,12 @@ describe("validateR2AllowlistShape", () => {
     assert.throws(() => validateR2AllowlistShape({ ...VALID, universal: "not-array" }), /universal must be an array/);
   });
 
-  test("a topology-only runtime selects the catalog even with retained legacy keys", () => {
+  test("rejects a retired runtime key", () => {
     const mixed = {
       ...VALID,
-      codex: { own: [".codex/**"], deny: [] },
+      droid: { own: [".factory/**"], deny: [] },
     };
-    assert.throws(() => validateR2AllowlistShape(mixed), /missing runtime "hermes"/);
+    assert.throws(() => validateR2AllowlistShape(mixed), /unknown runtime "droid"/);
   });
 });
 

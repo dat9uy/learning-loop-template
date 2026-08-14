@@ -2,8 +2,8 @@
  * hint-registry.js — single source of truth for context-injection hints.
  *
  * Collapses the legacy DISCOVERABILITY_HINTS / PROCESS_HINTS frozen consts
- * in core/loop-introspect.js (and the LOCAL_* mirror in .factory/hooks/loop-
- * surface-inject.cjs) into one slug-keyed registry.
+ * in core/loop-introspect.js and the runtime hook adapters into one
+ * slug-keyed registry.
  *
  * Consumers: production injection projects through core/loop-introspect.js
  * builders (hooks + loop_describe); inspection projects through

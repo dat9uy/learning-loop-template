@@ -16,45 +16,27 @@ test("validate('codex') records native Initial Delivery without falsely certifyi
   assert.equal(result.path_map["codex-initial-delivery"].activation, "synchronous-session-start");
 });
 
-test("validate('claude-code') on real repo returns ok: true", () => {
+test("validate('claude-code') reports the runtime-owned I2 delivery gap", () => {
   delete process.env.RUNTIME_ID;
   const result = validate("claude-code", PROJECT_ROOT);
-  assert.equal(result.ok, true);
-  assert.deepEqual(result.missing, []);
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.missing, ["runtime-owned-i2-delivery"]);
+  assert.equal(result.path_map["runtime-owned-i2-delivery"].code, "runtime_owned_delivery_missing");
   assert.ok(result.notes.includes("identity-marker-not-adopted"));
 });
 
-test("validate('droid') on real repo returns ok: true", () => {
-  delete process.env.RUNTIME_ID;
-  const result = validate("droid", PROJECT_ROOT);
-  assert.equal(result.ok, true);
-  assert.deepEqual(result.missing, []);
-  assert.ok(result.notes.includes("identity-marker-not-adopted"));
-});
-
-test("validate('hermes') on real repo returns ok: true", () => {
-  // Hermes is declared in the RUNTIMES catalog but was never exercised by the
-  // conformance suite (characterization baseline, issue #155). The declaration
-  // must continue to validate against the committed .hermes/*.json mirrors.
+test("validate('hermes') reports the runtime-owned I2 delivery gap", () => {
   delete process.env.RUNTIME_ID;
   const result = validate("hermes", PROJECT_ROOT);
-  assert.equal(result.ok, true, `hermes must pass conformance: missing=${JSON.stringify(result.missing)}`);
-  assert.deepEqual(result.missing, []);
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.missing, ["runtime-owned-i2-delivery"]);
+  assert.equal(result.path_map["runtime-owned-i2-delivery"].code, "runtime_owned_delivery_missing");
 });
 
-test("validate('mastra-code') on real repo returns ok: true (.mastracode/ shipped)", () => {
-  delete process.env.RUNTIME_ID;
-  const result = validate("mastra-code", PROJECT_ROOT);
-  // Phase E Plan 4 Phase 2 shipped .mastracode/{mcp,hooks,settings,database}.json;
-  // the contract validator now passes against the real repo.
-  assert.equal(result.ok, true, `mastra-code must pass on real repo after Plan 4: missing=${JSON.stringify(result.missing)}`);
-  assert.deepEqual(result.missing, []);
-});
-
-test("path_map includes all 7 requirement entries for claude-code", () => {
+test("path_map includes all 8 requirement entries for claude-code", () => {
   delete process.env.RUNTIME_ID;
   const result = validate("claude-code", PROJECT_ROOT);
-  for (const id of ["hook-shim-set", "mcp-client-config", "skill-spec", "identity-marker", "settings-integration", "hook-declarative-config", "settings-no-bypass"]) {
+  for (const id of ["hook-shim-set", "mcp-client-config", "skill-spec", "identity-marker", "settings-integration", "tools-manifest-has-path-fields", "runtime-owned-i2-delivery", "codex-initial-delivery"]) {
     assert.ok(id in result.path_map, `expected path_map to contain "${id}"`);
   }
 });

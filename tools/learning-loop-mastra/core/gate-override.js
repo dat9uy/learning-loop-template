@@ -26,7 +26,7 @@ function validateMarker(parsed) {
 
 /**
  * Read the active gate-override marker from the first surface that has a
- * VALID (non-expired) one. Iterates SURFACES in order (.claude, .factory, .mastracode)
+ * VALID (non-expired) one. Iterates the retained SURFACES in order.
  * and returns the first valid marker; an expired or malformed marker on
  * one surface does not block a valid marker on another.
  * Returns null if no valid marker exists.

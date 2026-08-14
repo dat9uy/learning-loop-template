@@ -10,19 +10,14 @@ import { existsSync, lstatSync, statSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 
-import { PARTICIPANT_SURFACES, SURFACES } from "../learning-loop-mastra/core/surfaces.js";
+import { SURFACES } from "../learning-loop-mastra/core/surfaces.js";
 
 export { SURFACES };
 
-// Storage fan-out is intentionally separate from Runtime Topology membership:
-// Codex participates in the loop before its project-local skill storage is
-// decided. Claude Code and Hermes are the retained mirror consumers; the
-// remaining entries are a temporary compatibility view for existing mirrors.
-const MIRROR_SURFACES = SURFACES.filter((surface) => PARTICIPANT_SURFACES.includes(surface));
-const MIRROR_SURFACE_SET = new Set(MIRROR_SURFACES);
-export const SKILL_SURFACES = Object.freeze(
-  SURFACES.filter((surface) => MIRROR_SURFACE_SET.has(surface) || !PARTICIPANT_SURFACES.includes(surface)),
-);
+// Runtime Topology membership and project-local skill storage are separate.
+// SURFACES is the explicit retained mirror-consumer projection; Codex does not
+// appear here because its native Initial Delivery adapter has no skill mirror.
+export const SKILL_SURFACES = SURFACES;
 
 /**
  * sha256 of a UTF-8 string, hex digest.
@@ -91,17 +86,17 @@ export const EXTERNAL_POLICY = Object.freeze({
  * the trust-anchor hash by reading the installed files.
  *
  * Heuristic: the detected surface is the one most-recently written to. We pick
- * the SKILL.md with the highest `mtimeMs` across the 3 surfaces (symlinks +
+ * the SKILL.md with the highest `mtimeMs` across the retained mirrors (symlinks +
  * missing skipped -- only real-dir SKILL.md qualifies). This handles both
  * realistic npx flows without ambiguity:
- *   - `npx update` writes to .claude + .factory within ~1ms of each other;
+ *   - `npx update` writes to the retained mirrors within ~1ms of each other;
  *     either wins (same content -> same hash).
  *   - `npx add -a claude-code` writes only to .claude; .claude's mtime is
- *     freshly bumped, .factory + .mastracode carry older mtimes from the last
- *     `pnpm skills:sync`. .claude wins even though the stale surfaces share
+ *     freshly bumped, .hermes carries an older mtime from the last
+ *     `pnpm skills:sync`. .claude wins even though the stale mirror shares
  *     the same old content (which would otherwise form a 2-member cluster that
  *     beats the fresh singleton under naive majority-rule).
- *   - All surfaces equal (initial sync, no npx yet) -> any wins (same content);
+ *   - All retained mirrors equal (initial sync, no npx yet) -> any wins (same content);
  *     normalize is a no-op since the manifest entry already matches.
  *
  * Caveat: mtime cannot distinguish operator-edited vs npx-installed content.

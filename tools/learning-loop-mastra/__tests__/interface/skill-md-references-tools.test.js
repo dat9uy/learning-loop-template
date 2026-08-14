@@ -7,7 +7,7 @@ const ROOT = join(import.meta.dirname, "..", "..", "..", "..");
 
 const SKILL_PATHS = [
   ".claude/skills/learning-loop/SKILL.md",
-  ".factory/skills/learning-loop/SKILL.md",
+  ".hermes/skills/learning-loop/SKILL.md",
 ];
 
 for (const rel of SKILL_PATHS) {

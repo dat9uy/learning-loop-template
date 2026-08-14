@@ -9,17 +9,14 @@ const UNIVERSAL_DIRS = [
   "tools/learning-loop-mastra/tools/handlers",
 ];
 
-// Shim parity still scans the legacy storage view while the runtime-owned
-// adapters migrate. The surface names used by the shared static checks are
-// the union of that compatibility view and the Runtime Topology catalog.
+// Shim parity scans only the retained project-local mirror consumers. Codex is
+// a participant, but its native Initial Delivery adapter has no shim mirror.
 const SHIM_DIRS = SURFACES.map((surface) => `${surface}/coordination/hooks`);
 
-// Surface-name regex fragments derived from Runtime Topology. Surface names start with
-// ".", a regex metachar, so the alternation matches the leading dot literally
-// via `\.(...)`. Deriving these from PARTICIPANT_SURFACES (instead of hand-rolled
-// `\.claude|\.factory` literals) means the auditors cover every runtime surface
-// — a file hard-coding `.mastracode` (or any future surface) paths is caught.
-const SURFACE_NAMES = [...new Set([...PARTICIPANT_SURFACES, ...SURFACES])].map((s) => s.slice(1));
+// Surface-name regex fragments are derived from Runtime Topology. Surface
+// names start with ".", a regex metachar, so the alternation matches the
+// leading dot literally via `\.(...)`.
+const SURFACE_NAMES = [...new Set(PARTICIPANT_SURFACES)].map((s) => s.slice(1));
 const SURFACE_ALT = SURFACE_NAMES.join("|");
 const HAND_CODED_SURFACE_PATH = new RegExp(`join\\s*\\(\\s*root\\s*,\\s*"\\.(${SURFACE_ALT})"`);
 const TOUCHES_SURFACES = new RegExp(`\\.(${SURFACE_ALT})|coordination`);
@@ -388,7 +385,7 @@ export const CHECKLIST = [
         return fail(
           offenders.join(", "),
           "hook files import from hooks/lib/protocol-adapter.js",
-          "Route hook stdin/stdout through hooks/lib/protocol-adapter.js so both Claude Code and Droid CLI speak the same protocol.",
+          "Route hook stdin/stdout through hooks/lib/protocol-adapter.js so retained hook runtimes speak the same protocol.",
         );
       }
       return pass();
@@ -458,7 +455,7 @@ export const CHECKLIST = [
         return fail(
           offenders.join(", "),
           "cross-surface iteration via surfaces.js helpers (writeToAllSurfaces, readFromAllSurfaces, appendToAllSurfaces, readJsonlFromAllSurfaces, readModifyWriteOnAllSurfaces)",
-          "Replace hand-rolled for-of-SURFACES loops and hard-coded join(root, '.claude'|'.factory') paths with imports from core/surfaces.js.",
+          "Replace hand-rolled for-of-SURFACES loops and hard-coded runtime paths with imports from core/surfaces.js.",
         );
       }
       return pass();
@@ -484,7 +481,7 @@ export const CHECKLIST = [
         return fail(
           offenders.join(", "),
           "files that touch runtimes to import from core/surfaces.js or reference SURFACES",
-          "Import the cross-surface helpers from core/surfaces.js and use SURFACES as the source of truth instead of hard-coding '.claude' or '.factory'.",
+          "Import the cross-surface helpers from core/surfaces.js and use SURFACES as the source of truth instead of hard-coding runtime surfaces.",
         );
       }
       return pass();

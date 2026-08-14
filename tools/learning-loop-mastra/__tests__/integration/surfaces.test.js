@@ -25,7 +25,7 @@ afterEach(() => {
 // ─── SURFACES ───
 
 await test("SURFACES is frozen and equals the canonical runtime set", () => {
-  assert.deepStrictEqual(SURFACES, [".claude", ".factory", ".mastracode", ".hermes"]);
+  assert.deepStrictEqual(SURFACES, [".claude", ".hermes"]);
   assert.throws(() => {
     SURFACES.push(".cursor");
   });
@@ -40,8 +40,6 @@ await test("getAllCoordinationPaths maps each surface to <surface>/coordination/
   const paths = getAllCoordinationPaths("hooks/bash-gate.js");
   assert.deepStrictEqual(paths, [
     ".claude/coordination/hooks/bash-gate.js",
-    ".factory/coordination/hooks/bash-gate.js",
-    ".mastracode/coordination/hooks/bash-gate.js",
     ".hermes/coordination/hooks/bash-gate.js",
   ]);
 });
@@ -50,8 +48,6 @@ await test("getAllCoordinationPaths handles nested subpaths", () => {
   const paths = getAllCoordinationPaths("a/b/c.txt");
   assert.deepStrictEqual(paths, [
     ".claude/coordination/a/b/c.txt",
-    ".factory/coordination/a/b/c.txt",
-    ".mastracode/coordination/a/b/c.txt",
     ".hermes/coordination/a/b/c.txt",
   ]);
 });
@@ -81,15 +77,15 @@ await test("writeToAllSurfaces is atomic (write-temp + rename)", () => {
 
 await test("writeToAllSurfaces best-effort: skip-on-permission-denied (Unix)", () => {
   if (process.platform === "win32") return; // skip on Windows
-  const factoryDir = join(root, ".factory", "coordination");
-  mkdirSync(factoryDir, { recursive: true });
-  chmodSync(factoryDir, 0o000);
+  const hermesDir = join(root, ".hermes", "coordination");
+  mkdirSync(hermesDir, { recursive: true });
+  chmodSync(hermesDir, 0o000);
   try {
     writeToAllSurfaces(root, "markers/best-effort.json", '{"ok": true}');
     const claudePath = join(root, ".claude", "coordination", "markers", "best-effort.json");
     assert.ok(existsSync(claudePath), ".claude should still get the file");
   } finally {
-    chmodSync(factoryDir, 0o755);
+    chmodSync(hermesDir, 0o755);
   }
 });
 
@@ -132,19 +128,19 @@ await test("readFromAllSurfaces({ first: true }) returns null when nothing exist
 
 await test("readFromAllSurfaces skips surfaces with malformed JSON", () => {
   const claudePath = join(root, ".claude", "coordination", "markers", "bad.json");
-  const factoryPath = join(root, ".factory", "coordination", "markers", "bad.json");
+  const hermesPath = join(root, ".hermes", "coordination", "markers", "bad.json");
   mkdirSync(join(root, ".claude", "coordination", "markers"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination", "markers"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination", "markers"), { recursive: true });
   writeFileSync(claudePath, "not json {", "utf8");
-  writeFileSync(factoryPath, JSON.stringify({ winner: ".factory" }), "utf8");
+  writeFileSync(hermesPath, JSON.stringify({ winner: ".hermes" }), "utf8");
 
   const results = readFromAllSurfaces(root, "markers/bad.json");
   assert.strictEqual(results.length, 1);
-  assert.strictEqual(results[0].surface, ".factory");
-  assert.deepStrictEqual(results[0].parsed, { winner: ".factory" });
+  assert.strictEqual(results[0].surface, ".hermes");
+  assert.deepStrictEqual(results[0].parsed, { winner: ".hermes" });
 
   const first = readFromAllSurfaces(root, "markers/bad.json", { first: true });
-  assert.deepStrictEqual(first, { surface: ".factory", content: '{"winner":".factory"}', parsed: { winner: ".factory" } });
+  assert.deepStrictEqual(first, { surface: ".hermes", content: '{"winner":".hermes"}', parsed: { winner: ".hermes" } });
 });
 
 await test("readFromAllSurfaces never throws on per-surface errors", () => {
@@ -159,13 +155,13 @@ await test("readFromAllSurfaces never throws on per-surface errors", () => {
   });
 });
 
-await test("readFromAllSurfaces({ first: true }) prefers .claude over .factory when both fresh", () => {
+await test("readFromAllSurfaces({ first: true }) prefers .claude over .hermes when both fresh", () => {
   const claudePath = join(root, ".claude", "coordination", "markers", "priority.json");
-  const factoryPath = join(root, ".factory", "coordination", "markers", "priority.json");
+  const hermesPath = join(root, ".hermes", "coordination", "markers", "priority.json");
   mkdirSync(join(root, ".claude", "coordination", "markers"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination", "markers"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination", "markers"), { recursive: true });
   writeFileSync(claudePath, JSON.stringify({ priority: 1 }), "utf8");
-  writeFileSync(factoryPath, JSON.stringify({ priority: 2 }), "utf8");
+  writeFileSync(hermesPath, JSON.stringify({ priority: 2 }), "utf8");
 
   const result = readFromAllSurfaces(root, "markers/priority.json", { first: true });
   assert.strictEqual(result.surface, ".claude");

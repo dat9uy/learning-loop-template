@@ -29,7 +29,7 @@ function setup() {
   root = join(tmpdir(), `tfc-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(root, { recursive: true });
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
 }
 
 function teardown() {
@@ -45,7 +45,7 @@ function runHook(payload) {
   });
 }
 
-// The hook writes the same entry to all 3 surfaces via appendToAllSurfaces
+// The hook writes the same entry to all retained mirror surfaces via appendToAllSurfaces
 // (per-surface storage for cross-runtime dedup on read). Read the first
 // surface only — it always exists and holds exactly one entry per capture.
 // Other surfaces carry byte-identical entries; cross-surface dedup is the

@@ -14,7 +14,6 @@
     "dev:web": "cd product/web && pnpm dev",
     "dev": "(trap 'kill 0' EXIT; pnpm dev:api & pnpm dev:web)",
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
-    "smoke:mastracode": "node scripts/probe-mastracode.cjs",
     "test": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run && node tools/scripts/sanitize-coverage.mjs",
     "test:unit": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run --project unit --coverage.enabled=false",
     "test:integration": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run --project integration",
@@ -48,7 +47,6 @@
   "devDependencies": {
     "@vitest/coverage-istanbul": "^4.1.10",
     "fallow": "3.10.0",
-    "mastracode": "^0.26.0",
     "simple-git-hooks": "^2.13.1",
     "vitest": "^4.1.10"
   },

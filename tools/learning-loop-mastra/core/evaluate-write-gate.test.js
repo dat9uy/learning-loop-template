@@ -109,10 +109,10 @@ test(".claude preflight marker blocks", () => {
   assert.ok(result.reason.includes("mark_preflight_complete"));
 });
 
-test(".factory preflight marker blocks", () => {
+test(".hermes preflight marker blocks", () => {
   const root = makeRoot();
   const result = evaluateWriteGate({
-    filePath: ".factory/coordination/.loop-preflight-product",
+    filePath: ".hermes/coordination/.loop-preflight-product",
     root,
   });
   assert.strictEqual(result.decision, "block");
@@ -121,7 +121,7 @@ test(".factory preflight marker blocks", () => {
 test("every surface's preflight marker blocks (derived from SURFACES)", () => {
   // The preflight-marker rule is derived from SURFACES. A direct write to any
   // surface's coordination/.loop-preflight-* must be blocked. Regression guard:
-  // before the rule was derived, .mastracode/coordination/.loop-preflight-*
+  // before the rule was derived, a retained-surface marker
   // matched no rule and was allowed (a bypass of the "markers may only be
   // created via mark_preflight_complete" invariant).
   // (.forEach, not for-of, so this core/*.test.js file does not trip the
@@ -207,9 +207,9 @@ test("product/** with no marker → block + checklist", () => {
   assert.ok(Array.isArray(result.preflight_checklist));
 });
 
-test("product/** with .factory marker → ok", () => {
+test("product/** with .hermes marker → ok", () => {
   const root = makeRoot();
-  writePreflightMarker(root, "product", ".factory");
+  writePreflightMarker(root, "product", ".hermes");
   const result = evaluateWriteGate({ filePath: "product/app.ts", root });
   assert.strictEqual(result.decision, "ok");
 });
@@ -235,17 +235,17 @@ test(".claude/skills/learning-loop/SKILL.md (no .loop-preflight-skills marker) �
   assert.ok(result.matched_rule.includes(".claude/skills/**"), `matched_rule should list .claude/skills/**: ${result.matched_rule}`);
 });
 
-test(".factory/skills/coordination-gate/SKILL.md (no marker) → block", () => {
+test(".hermes/skills/coordination-gate/SKILL.md (no marker) → block", () => {
   const root = makeRoot();
-  const result = evaluateWriteGate({ filePath: ".factory/skills/coordination-gate/SKILL.md", root });
+  const result = evaluateWriteGate({ filePath: ".hermes/skills/coordination-gate/SKILL.md", root });
   assert.strictEqual(result.decision, "block");
 });
 
-test(".mastracode/skills/learning-loop/SKILL.md (no marker) → block", () => {
+test(".hermes/skills/learning-loop/SKILL.md (no marker) → block", () => {
   const root = makeRoot();
-  const result = evaluateWriteGate({ filePath: ".mastracode/skills/learning-loop/SKILL.md", root });
+  const result = evaluateWriteGate({ filePath: ".hermes/skills/learning-loop/SKILL.md", root });
   assert.strictEqual(result.decision, "block");
-  assert.ok(result.matched_rule.includes(".mastracode/skills/**"));
+  assert.ok(result.matched_rule.includes(".hermes/skills/**"));
 });
 
 test(".claude/skills/learning-loop/SKILL.md (with .loop-preflight-skills marker) → ok", () => {

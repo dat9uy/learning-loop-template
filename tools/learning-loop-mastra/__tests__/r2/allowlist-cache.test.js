@@ -9,9 +9,9 @@ import { loadAllowlist, invalidateAllowlist, __clearCache } from "../../core/r2/
 const SCHEMA_V1 = {
   version: 1,
   schema: "r2-allowlist/v1",
+  codex: { own: [".codex/**"], deny: [] },
   "claude-code": { own: [".claude/**"], deny: [] },
-  droid: { own: [".factory/**"], deny: [] },
-  "mastra-code": { own: [".mastracode/**"], deny: [] },
+  hermes: { own: [".hermes/**"], deny: [] },
   universal: ["records/**"],
 };
 

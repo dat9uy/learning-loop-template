@@ -1,39 +1,34 @@
 #!/usr/bin/env node
 /**
- * tools/learning-loop-mastra/interface/contract.js
- * MCP-transport conformance validator (1 of N transports). The transport-agnostic
- * runtime participation contract lives at docs/runtime-contract.md; this file
- * validates the MCP+hooks transport's conformance to it. Verifies the requirements
- * in CONTRACT.md, including the runtime-native Codex Initial Delivery adapter.
+ * MCP-transport conformance for the current Runtime Topology.
  *
- * CLI: node tools/learning-loop-mastra/interface/contract.js <runtimeId> [rootPath]
- *      node tools/learning-loop-mastra/interface/contract.js --list
- *
- * FCIS: zero `@mastra/*` imports.
+ * Runtime Topology owns participant identity, surface, and ownership root.
+ * This module owns only the transport-specific checks that can be observed
+ * without editing a runtime-owned adapter. Retired runtime ids are rejected;
+ * they are not compatibility aliases.
  */
-import { existsSync, readFileSync, readdirSync, statSync, lstatSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { listRuntimes } from "../core/runtime-topology.js";
 import { SURFACES } from "../core/surfaces.js";
 
-// Runtime Topology owns participant identity, surface, and ownership root.
-// This layer owns only transport-specific conformance details. Keeping these
-// concerns separate prevents native hook/configuration vocabulary from
-// entering Core while letting the validator iterate the catalog.
 const NATIVE_RUNTIME_CONFIG = {
-  "codex":       { mcp_config: ".codex/config.toml", hooks_config: ".codex/hooks.json", transport: "mcp", initial_delivery: true },
-  "claude-code": { mcp_config: ".mcp.json",        settings: "settings.json", transport: "mcp" },
-  "hermes": {
+  codex: {
+    mcp_config: ".codex/config.toml",
+    hooks_config: ".codex/hooks.json",
+    transport: "mcp",
+    initial_delivery: true,
+  },
+  "claude-code": {
+    mcp_config: ".mcp.json",
+    settings: "settings.json",
+    transport: "mcp",
+  },
+  hermes: {
     mcp_config: ".hermes/mcp.json",
     settings: "hooks.json",
     transport: "mcp",
-    // Hermes wires lifecycle events via shell hooks (pre_tool_call /
-    // pre_llm_call / on_session_start) declared in ~/.hermes/config.yaml.
-    // The .hermes/hooks.json mirror records that wiring in-repo (the
-    // filename follows the .mastracode declarative-hooks convention; the
-    // shape is Claude-Code-style so settings-integration resolves the 4
-    // shim basenames).
     skill_discovery_paths: [".hermes/skills/learning-loop/SKILL.md"],
   },
 };
@@ -42,36 +37,6 @@ const RUNTIMES = Object.fromEntries(
   listRuntimes().map((runtime) => [runtime.id, { ...runtime, ...NATIVE_RUNTIME_CONFIG[runtime.id] }]),
 );
 
-// One-way compatibility view for callers that still validate the pre-topology
-// runtime surfaces. It is deliberately outside Runtime Topology and is
-// retained only until the supported-runtime cleanup ticket removes those
-// runtime-owned surfaces.
-const LEGACY_RUNTIMES = {
-  "droid": { surface: ".factory", mcp_config: ".factory/mcp.json", settings: "settings.json", transport: "mcp" },
-  // Mastra Code uses declarative config (.mastracode/*.json).
-  // mcp_config: canonical Mastra-Code path.
-  // declarative_hooks: path to .mastracode/hooks.json (Req #6).
-  // settings_path: explicit .mastracode/settings.json (Req #7).
-  // db_path: .mastracode/database.json (Req #4 alternative).
-  "mastra-code": {
-    surface: ".mastracode",
-    transport: "mcp",
-    mcp_config: ".mastracode/mcp.json",
-    settings: ".mastracode/hooks.json",
-    settings_path: ".mastracode/settings.json",
-    declarative_hooks: ".mastracode/hooks.json",
-    db_path: ".mastracode/database.json",
-    skill_discovery_paths: [
-      ".mastracode/skills/learning-loop/SKILL.md",
-      ".claude/skills/learning-loop/SKILL.md",      // Claude-compatible auto-discovery
-    ],
-  },
-};
-
-function getRuntimeConfig(runtimeId) {
-  return RUNTIMES[runtimeId] ?? LEGACY_RUNTIMES[runtimeId];
-}
-
 const SHIM_BASENAMES = [
   "bash-coordination-gate.cjs",
   "write-coordination-gate.cjs",
@@ -79,48 +44,26 @@ const SHIM_BASENAMES = [
   "recurrence-check-on-start.cjs",
 ];
 
-// Universal-hook basenames referenced by declarative hooks.json entries.
-const UNIVERSAL_HOOK_PATHS = [
-  "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
-  "tools/learning-loop-mastra/hooks/universal/write-gate.js",
-  "tools/learning-loop-mastra/hooks/universal/inbound-gate.js",
-  "tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js",
-  "tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js",
-];
-// Canonical hooks required for Req #5/Req #6 (Mastra Code declarative config)
-const REQUIRED_HOOK_COMMANDS = [
-  "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
-  "tools/learning-loop-mastra/hooks/universal/write-gate.js",
-  "tools/learning-loop-mastra/hooks/universal/inbound-gate.js",
-  "tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js",
-];
-
 const REQUIRED_TOOL_REFS = ["loop_describe", "meta_state_list"];
 
-// Additive Reqs #6 (hook-declarative-config) and #7 (settings-no-bypass)
-// for runtimes with declarative hook configs (e.g., Mastra Code).
-// Req #1 stays monomorphic (shim files only); Req #6 is parallel/alternative.
-// Additive Reqs #9 (.mastracode-config-presence),
-// #10 (mastracode-session-start-pins-loop-surface), #11 (tools-manifest-has-path-fields),
-// #12 (codex-initial-delivery).
-// Req #8 is intentionally skipped; the numbering gap is preserved.
 export const REQUIREMENT_IDS = [
   "hook-shim-set",
   "mcp-client-config",
   "skill-spec",
   "identity-marker",
   "settings-integration",
-  "hook-declarative-config",
-  "settings-no-bypass",
-  ".mastracode-config-presence",
-  "mastracode-session-start-pins-loop-surface",
   "tools-manifest-has-path-fields",
+  "runtime-owned-i2-delivery",
   "codex-initial-delivery",
 ];
 
-function readJsonSafe(p) {
+function getRuntimeConfig(runtimeId) {
+  return RUNTIMES[runtimeId];
+}
+
+function readJsonSafe(filePath) {
   try {
-    const content = readFileSync(p, "utf8").trim();
+    const content = readFileSync(filePath, "utf8").trim();
     if (content.length === 0) return { ok: false, error: "empty file" };
     return { ok: true, data: JSON.parse(content) };
   } catch (error) {
@@ -129,81 +72,46 @@ function readJsonSafe(p) {
 }
 
 function findUniversalHookPath(shimContent) {
-  // Best-effort: extract the first argument to execFileSync('node', [...]) for documentation.
-  // RED-TEAM NOTE (Finding F1, 2026-06-25): real shims pass `[universalHook]` as a path.join() variable,
-  // not a string literal. The regex below matches the LITERAL form only; for variable form it returns
-  // null. This is acceptable because `universal_target` is for documentation (path_map), not gating.
-  const match = shimContent.match(/execFileSync\(\s*['"]node['"]\s*,\s*\[(\s*['"][^'"]+['"])/);
-  return match ? match[1].slice(1, -1) : null;
+  const match = shimContent.match(/execFileSync\(\s*["']node["']\s*,\s*\[\s*["']([^"']+)/);
+  return match?.[1] ?? null;
 }
 
 function checkHookShimSet(runtimeId, rootPath) {
   const runtime = getRuntimeConfig(runtimeId);
-  const { surface } = runtime;
   if (runtime.initial_delivery) {
     return {
       id: "hook-shim-set",
       ok: false,
       applicable: true,
-      note: "Codex Initial Delivery does not yet establish the required lifecycle gate shims",
-      shim_dir: join(rootPath, surface, "coordination", "hooks"),
+      note: "Codex Initial Delivery does not establish the generic lifecycle gate shims",
+      shim_dir: join(rootPath, runtime.surface, "coordination", "hooks"),
       shims: [],
     };
   }
-  // Declarative runtimes (those with `declarative_hooks`) don't use shim files.
-  // Req #1 (hook-shim-set) is N/A for them; the contract uses Req #6 (hook-declarative-config)
-  // instead. Report OK with `applicable:false` so the contract doesn't fail.
-  if (runtime.declarative_hooks) {
-    return {
-      id: "hook-shim-set",
-      ok: true,
-      applicable: false,
-      note: "runtime uses declarative hooks (Req #6); Req #1 N/A",
-      shim_dir: join(rootPath, surface, "coordination", "hooks"),
-      shims: SHIM_BASENAMES.map((b) => ({ name: b, path: join(rootPath, surface, "coordination", "hooks", b), universal_target: null, universal_exists: false })),
-    };
-  }
-  const shimDir = join(rootPath, surface, "coordination", "hooks");
-  // Inherited complexity: per-shim existsSync + universal-hook path capture
-  // callback. Untouched by the skill-layer work; flagged because contract.js
-  // is in the changed-since set. CRAP is high from low coverage of the
-  // universal_target branch, not from a defect. Covered by contract.test.js Req #1.
-  // fallow-ignore-next-line complexity -- per-shim exists/capture guard chain with universal-hook path capture; inherited + test-covered
+
+  const shimDir = join(rootPath, runtime.surface, "coordination", "hooks");
   const shims = SHIM_BASENAMES.map((basename) => {
-    const shimPath = join(shimDir, basename);
-    const exists = existsSync(shimPath);
+    const path = join(shimDir, basename);
     let universalTarget = null;
     let universalExists = false;
-    if (exists) {
-      const content = readFileSync(shimPath, "utf8");
-      const captured = findUniversalHookPath(content);
-      if (captured) {
-        const idx = captured.indexOf("tools/learning-loop-mastra/hooks/universal/");
-        universalTarget = idx >= 0 ? join(rootPath, captured.slice(idx)) : null;
-        if (universalTarget) universalExists = existsSync(universalTarget);
+    if (existsSync(path)) {
+      const captured = findUniversalHookPath(readFileSync(path, "utf8"));
+      if (captured?.includes("tools/learning-loop-mastra/hooks/universal/")) {
+        universalTarget = join(rootPath, captured.slice(captured.indexOf("tools/")));
+        universalExists = existsSync(universalTarget);
       }
     }
-    return { name: basename, path: shimPath, universal_target: universalTarget, universal_exists: universalExists };
+    return { name: basename, path, universal_target: universalTarget, universal_exists: universalExists };
   });
-  // Pass = all 4 shims exist as files. Universal-hook wiring is git-tracked, not runtime-mutable;
-  // gating on `universal_exists` would silently fail for both runtimes (red-team Finding F1).
-  const allExist = shims.every((s) => existsSync(s.path));
-  return { id: "hook-shim-set", ok: allExist, shim_dir: shimDir, shims };
+  return { id: "hook-shim-set", ok: shims.every((shim) => existsSync(shim.path)), shim_dir: shimDir, shims };
 }
 
-function checkMcpClientConfig(runtimeId, rootPath) {
-  const { mcp_config } = getRuntimeConfig(runtimeId);
-  const configPath = join(rootPath, mcp_config);
-  if (runtimeId === "codex") return checkCodexMcpClientConfig(configPath);
-  const parsed = readJsonSafe(configPath);
-  if (!parsed.ok) {
-    return { id: "mcp-client-config", ok: false, config_path: configPath, entry: null, parse_error: parsed.error };
-  }
-  const entry = parsed.data?.mcpServers?.["learning-loop"] ?? null;
-  const targetOk = !!entry
-    && Array.isArray(entry.args)
-    && entry.args.some((a) => typeof a === "string" && a.endsWith("tools/learning-loop-mastra/mastra/server.js"));
-  return { id: "mcp-client-config", ok: !!entry && targetOk, config_path: configPath, entry };
+function tomlSection(content, header) {
+  const start = content.indexOf(header);
+  if (start < 0) return "";
+  const rest = content.slice(start + header.length);
+  const nextSection = rest.search(/^\[/m);
+  return nextSection < 0 ? rest : rest.slice(0, nextSection);
 }
 
 function checkCodexMcpClientConfig(configPath) {
@@ -223,664 +131,193 @@ function checkCodexMcpClientConfig(configPath) {
     id: "mcp-client-config",
     ok: command === "node" && serverConfigured && runtimeIdConfigured && loopSurfaceConfigured,
     config_path: configPath,
-    entry: {
-      command,
-      server_configured: serverConfigured,
-      runtime_id_configured: runtimeIdConfigured,
-      loop_surface_configured: loopSurfaceConfigured,
-    },
+    entry: { command, server_configured: serverConfigured, runtime_id_configured: runtimeIdConfigured, loop_surface_configured: loopSurfaceConfigured },
   };
 }
 
-function tomlSection(content, header) {
-  const lines = content.split(/\r?\n/);
-  const start = lines.findIndex((line) => line.trim() === header);
-  if (start === -1) return "";
-  const body = lines.slice(start + 1);
-  const nextHeader = body.findIndex((line) => line.trimStart().startsWith("["));
-  return (nextHeader === -1 ? body : body.slice(0, nextHeader)).join("\n");
+function checkMcpClientConfig(runtimeId, rootPath) {
+  const runtime = getRuntimeConfig(runtimeId);
+  const configPath = join(rootPath, runtime.mcp_config);
+  if (runtimeId === "codex") return checkCodexMcpClientConfig(configPath);
+  const parsed = readJsonSafe(configPath);
+  if (!parsed.ok) return { id: "mcp-client-config", ok: false, config_path: configPath, entry: null, parse_error: parsed.error };
+  const entry = parsed.data?.mcpServers?.["learning-loop"] ?? null;
+  const ok = entry?.command === "node"
+    && Array.isArray(entry.args)
+    && entry.args.some((arg) => typeof arg === "string" && arg.endsWith("tools/learning-loop-mastra/mastra/server.js"));
+  return { id: "mcp-client-config", ok, config_path: configPath, entry };
 }
 
-function resolveSkillPath(candidates, rootPath) {
-  // Returns the absolute path of the first candidate that exists on disk, or null.
-  for (const candidate of candidates) {
-    const absolute = candidate.startsWith("/") ? candidate : join(rootPath, candidate);
-    if (existsSync(absolute)) return absolute;
-  }
-  return null;
-}
-
-// Loop-skill-layer frontmatter parser + maturity hard-require (loop-maintained
-// skill envelope).
-// Local to contract.js so the contract validator has no dependency on
-// core/gate-logic.js's private `extractFrontmatter` (not exported). The
-// error-isolation + size cap (64KB; billion-laughs guard) match the
-// per-skill try/catch contract. `schema: "core"` enables the alias-expansion
-// guard (no YAML anchors pointing at recursive structures).
 const SKILL_FRONTMATTER_MAX_BYTES = 64 * 1024;
 const VALID_MATURITY = ["state-1", "state-2", "state-3"];
 
 function extractSkillFrontmatter(content) {
-  if (!content || typeof content !== "string") return { ok: false, reason: "empty-content" };
-  if (content.length > SKILL_FRONTMATTER_MAX_BYTES) return { ok: false, reason: "frontmatter-too-large" };
-  const trimmed = content.trimStart();
-  if (!trimmed.startsWith("---")) return { ok: false, reason: "no-frontmatter" };
-  const end = trimmed.indexOf("---", 3);
-  if (end === -1) return { ok: false, reason: "frontmatter-unparseable" };
-  const yamlBlock = trimmed.slice(3, end).trim();
-  if (!yamlBlock) return { ok: false, reason: "no-frontmatter" };
-  if (yamlBlock.length > SKILL_FRONTMATTER_MAX_BYTES) return { ok: false, reason: "frontmatter-too-large" };
+  if (Buffer.byteLength(content, "utf8") > SKILL_FRONTMATTER_MAX_BYTES) return { ok: false, reason: "frontmatter-too-large" };
+  const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/);
+  if (!match) return { ok: true, frontmatter: {} };
   try {
-    const parsed = parseYaml(yamlBlock, { uniqueKeys: false, schema: "core" });
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return { ok: true, frontmatter: parsed };
-    }
-    return { ok: false, reason: "frontmatter-unparseable" };
-  } catch {
-    return { ok: false, reason: "frontmatter-unparseable" };
+    const frontmatter = parseYaml(match[1]);
+    return { ok: true, frontmatter: frontmatter && typeof frontmatter === "object" ? frontmatter : {} };
+  } catch (error) {
+    return { ok: false, reason: "frontmatter-unparseable", error: error.message };
   }
-}
-
-function readSkillSafe(skillPath) {
-  let content;
-  try {
-    content = readFileSync(skillPath, "utf8");
-  } catch {
-    return { ok: false, reason: "unreadable" };
-  }
-  if (content.length > SKILL_FRONTMATTER_MAX_BYTES) return { ok: false, reason: "frontmatter-too-large" };
-  return { ok: true, content };
-}
-
-function lookupManifestSkill(skillsObj, name) {
-  // Trust-anchor read (F9 hardening): own-property + object-shaped
-  // entries only. A bare `skillsObj?.[name]` walks the prototype chain — a
-  // planted dir named "constructor"/"toString" would resolve to inherited
-  // Object members and be treated as manifest-declared internal. A null (or
-  // otherwise non-object) entry would crash the .external read with a
-  // TypeError. Both shapes are treated as NOT-declared → skill-not-in-manifest
-  // (fail closed, no crash).
-  if (!skillsObj || typeof skillsObj !== "object") return undefined;
-  if (!Object.prototype.hasOwnProperty.call(skillsObj, name)) return undefined;
-  const entry = skillsObj[name];
-  if (entry === null || typeof entry !== "object") return undefined;
-  return entry;
-}
-
-function listLoopMaintainedSkills(skillsDir, manifest) {
-  // Central-skills manifest-driven exclusion. The manifest is the trust anchor
-  // for "is this skill external?" (schema declares each entry; the reader
-  // consults it). Explicit failure modes (red-team F8, F9): if the manifest
-  // fails to load/parse, the skill enumeration is poisoned — fail each
-  // enumerated entry with `manifest-unreadable` (NOT a misleading
-  // `maturity-not-declared` on an external skill). If a real-dir skill is NOT
-  // in the manifest, fail with `skill-not-in-manifest`
-  // (defense-in-depth: a planted real-dir skill the manifest doesn't know
-  // about is a contract violation, not silently enumerated).
-  //
-  // Shape boundary (documented, review I2): Dirent.isDirectory() is false
-  // for a symlink-to-dir, so symlink-shaped entries are excluded by shape
-  // BEFORE the manifest lookup — the same external boundary as the earlier
-  // isSymbolicLink() filter. F9's defense covers real-dir skills;
-  // an unlisted symlink is out of scope by design (post-npx, no legitimate
-  // symlink skills remain — mastra becomes real files via fan-out).
-  //
-  // No module-level cache (red-team F7): `contract.js` has zero mutable
-  // module state today; the manifest is re-read on every call via
-  // readJsonSafe to match the existing per-call pattern.
-  const out = [];
-  if (!existsSync(skillsDir)) return out;
-  let entries;
-  try {
-    entries = readdirSync(skillsDir, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const skillMd = join(skillsDir, entry.name, "SKILL.md");
-    if (!existsSync(skillMd)) continue;
-    // Manifest-driven exclusion — read at this point. `manifest === null`
-    // is the explicit "manifest-unreadable" sentinel.
-    if (manifest === null) {
-      out.push({ name: entry.name, skillMd, manifestUnreadable: true });
-      continue;
-    }
-    const manifestEntry = lookupManifestSkill(manifest.skills, entry.name);
-    if (manifestEntry === undefined) {
-      // Real-dir skill not in the manifest — explicit failure (F9).
-      out.push({ name: entry.name, skillMd, notInManifest: true });
-      continue;
-    }
-    if (manifestEntry.external === true) {
-      // External skill — out of scope (manifest-driven, not symlink-based).
-      continue;
-    }
-    out.push({ name: entry.name, skillMd, notInManifest: false });
-  }
-  return out;
 }
 
 function readManifestSafe(rootPath) {
-  // Returns the parsed manifest object, or null if missing/corrupt
-  // (caller treats null as the manifest-unreadable signal).
-  const manifestPath = join(rootPath, "skills-lock.json");
-  const parsed = readJsonSafe(manifestPath);
-  if (!parsed.ok) return null;
-  if (!parsed.data || typeof parsed.data !== "object" || !parsed.data.skills) return null;
+  const parsed = readJsonSafe(join(rootPath, "skills-lock.json"));
+  if (!parsed.ok || !parsed.data || typeof parsed.data.skills !== "object") return null;
   return parsed.data;
 }
 
-function checkMirrorPresence(name, rootPath) {
-  // The skill is "mirrored" if it appears in at least 2 of the runtime
-  // surfaces (parity-test asserts byte-identity; the contract only checks
-  // the binary "is the mirror present somewhere"). Single-surface
-  // placements are NOT loop-maintained (the mirror convention requires
-  // ≥ 2 surfaces). Surfaces are sourced from core/surfaces.js so a new
-  // runtime surface is picked up without a contract-side edit.
-  let count = 0;
-  for (const surface of SURFACES) {
-    if (existsSync(join(rootPath, surface, "skills", name, "SKILL.md"))) count++;
-  }
-  return count >= 2;
+function lookupManifestSkill(skills, name) {
+  return Object.prototype.hasOwnProperty.call(skills ?? {}, name) ? skills[name] : undefined;
 }
 
-/**
- * Generalized Req #3 (skill-spec) — enumerates loop-maintained skills by their
- * maturity frontmatter and validates each skill's contract.
- *
- * Enumerates every <surface>/skills/<name>/SKILL.md that declares a
- * `maturity:` frontmatter (the loop-maintained marker). The external `mastra`
- * symlink (no maturity:) is excluded by this filter. Per-skill error isolation:
- * a malformed or oversized frontmatter yields a per-skill fail; the loop does
- * not abort. The `loop_describe` + `meta_state_list` reference check is scoped
- * to `learning-loop` only (other skills do not document the tool surface).
- */
-// Generalized Req #3 (skill-spec): per-skill enumeration + maturity
-// hard-require + mirror check + scoped tool-ref. Complexity is inherent to the
-// per-skill validation loop; sub-steps are already extracted (extractSkillFrontmatter,
-// readSkillSafe, listLoopMaintainedSkills, checkMirrorPresence). Covered by
-// contract.test.js req-3 cases.
-// fallow-ignore-next-line complexity -- per-skill validation chain (manifest/read/frontmatter/maturity/mirror/tool-ref); sub-steps already extracted, remaining loop is orchestration
+function listLoopMaintainedSkills(skillsDir, manifest) {
+  if (!existsSync(skillsDir)) return [];
+  return readdirSync(skillsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const name = entry.name;
+      const skillMd = join(skillsDir, name, "SKILL.md");
+      const manifestEntry = lookupManifestSkill(manifest?.skills, name);
+      if (manifest === null) return { name, skillMd, manifestUnreadable: true };
+      if (manifestEntry === undefined) return { name, skillMd, notInManifest: true };
+      if (manifestEntry.external === true) return null;
+      return { name, skillMd };
+    })
+    .filter(Boolean);
+}
+
+function checkMirrorPresence(name, rootPath) {
+  return SURFACES.filter((surface) => existsSync(join(rootPath, surface, "skills", name, "SKILL.md"))).length >= 2;
+}
+
 function checkSkillSpec(runtimeId, rootPath) {
   const runtime = getRuntimeConfig(runtimeId);
-  const surface = runtime.surface;
-  const skillsDir = join(rootPath, surface, "skills");
-  // Manifest-driven exclusion. Read fresh on every call (no cache).
+  if (runtime.initial_delivery) {
+    return { id: "skill-spec", ok: true, applicable: false, note: "Codex does not consume project-local skill mirrors" };
+  }
   const manifest = readManifestSafe(rootPath);
+  const skillsDir = join(rootPath, runtime.surface, "skills");
   const skills = listLoopMaintainedSkills(skillsDir, manifest);
-
-  // Fallback: if the surface's enumeration is empty AND the runtime has a
-  // skill_discovery_paths list (mastra-code's Claude-compat discovery), walk
-  // the fallback paths to find skills. The fallback is read-only — it
-  // only narrows the surface's apparent skill set when the surface itself
-  // is empty. The fallback entries are checked against the manifest the
-  // same way as primary entries (same composition check).
-  if (skills.length === 0 && Array.isArray(runtime.skill_discovery_paths)) {
-    for (const candidate of runtime.skill_discovery_paths) {
-      const absolute = candidate.startsWith("/") ? candidate : join(rootPath, candidate);
-      if (!existsSync(absolute)) continue;
-      // The candidate is a SKILL.md path; derive the name from the parent.
-      const name = absolute.split("/").slice(-2, -1)[0];
-      if (manifest === null) {
-        skills.push({ name, skillMd: absolute, manifestUnreadable: true });
-        continue;
-      }
-      const manifestEntry = lookupManifestSkill(manifest.skills, name);
-      if (manifestEntry === undefined) {
-        skills.push({ name, skillMd: absolute, notInManifest: true });
-        continue;
-      }
-      if (manifestEntry.external === true) continue;
-      skills.push({ name, skillMd: absolute });
+  const evaluated = skills.map((skill) => {
+    if (skill.manifestUnreadable) return { name: skill.name, ok: false, reason: "manifest-unreadable", skill_path: skill.skillMd };
+    if (skill.notInManifest) return { name: skill.name, ok: false, reason: "skill-not-in-manifest", skill_path: skill.skillMd };
+    let content;
+    try {
+      content = readFileSync(skill.skillMd, "utf8");
+    } catch (error) {
+      return { name: skill.name, ok: false, reason: "skill-unreadable", skill_path: skill.skillMd, error: error.message };
     }
-  }
-
-  // Pre-maturity filter: drop skills with no frontmatter / no maturity:
-  // (external `mastra` is excluded upstream by manifest, not here).
-  const evaluated = [];
-  for (const skill of skills) {
-    const { name, skillMd, manifestUnreadable: manifestBad, notInManifest } = skill;
-    if (manifestBad) {
-      // F8: explicit failure mode for missing/corrupt manifest.
-      evaluated.push({ name, ok: false, reason: "manifest-unreadable", skill_path: skillMd });
-      continue;
-    }
-    if (notInManifest) {
-      // F9: explicit failure mode for unlisted real-dir skill.
-      evaluated.push({ name, ok: false, reason: "skill-not-in-manifest", skill_path: skillMd });
-      continue;
-    }
-    const read = readSkillSafe(skillMd);
-    if (!read.ok) {
-      evaluated.push({ name, ok: false, reason: read.reason, skill_path: skillMd });
-      continue;
-    }
-    const fm = extractSkillFrontmatter(read.content);
-    if (!fm.ok) {
-      evaluated.push({ name, ok: false, reason: fm.reason, skill_path: skillMd });
-      continue;
-    }
-    const maturity = fm.frontmatter.maturity;
-    if (!maturity || !VALID_MATURITY.includes(maturity)) {
-      evaluated.push({ name, ok: false, reason: "maturity-not-declared", skill_path: skillMd });
-      continue;
-    }
-    // Mirror check.
-    if (!checkMirrorPresence(name, rootPath)) {
-      evaluated.push({ name, ok: false, reason: "skill-mirror-gap", skill_path: skillMd });
-      continue;
-    }
-    // Tool-ref check — scoped to learning-loop ONLY.
-    const toolsReferenced = name === "learning-loop"
-      ? REQUIRED_TOOL_REFS.filter((n) => read.content.includes(n))
+    const frontmatter = extractSkillFrontmatter(content);
+    if (!frontmatter.ok) return { name: skill.name, ok: false, reason: frontmatter.reason, skill_path: skill.skillMd };
+    const maturity = frontmatter.frontmatter.maturity;
+    if (!VALID_MATURITY.includes(maturity)) return { name: skill.name, ok: false, reason: "maturity-not-declared", skill_path: skill.skillMd };
+    if (!checkMirrorPresence(skill.name, rootPath)) return { name: skill.name, ok: false, reason: "skill-mirror-gap", skill_path: skill.skillMd };
+    const toolsReferenced = skill.name === "learning-loop"
+      ? REQUIRED_TOOL_REFS.filter((tool) => content.includes(tool))
       : [];
-    if (name === "learning-loop" && toolsReferenced.length !== REQUIRED_TOOL_REFS.length) {
-      evaluated.push({ name, ok: false, reason: "learning-loop-missing-tool-refs", skill_path: skillMd, tools_referenced: toolsReferenced });
-      continue;
+    if (skill.name === "learning-loop" && toolsReferenced.length !== REQUIRED_TOOL_REFS.length) {
+      return { name: skill.name, ok: false, reason: "learning-loop-missing-tool-refs", skill_path: skill.skillMd, tools_referenced: toolsReferenced };
     }
-    const hasToolsBlock = /^tools:\s*$/m.test(read.content) || /^\s*-\s+loop_describe/m.test(read.content);
-    evaluated.push({ name, ok: true, reason: null, skill_path: skillMd, tools_referenced: toolsReferenced, has_tools_block: hasToolsBlock, maturity });
-  }
-  // Empty enumeration is vacuously OK (a surface may have no skills yet —
-  // mastra-code has no .mastracode/skills/ mirror yet; the
-  // cross-runtime parity test in integration/skills-mirror-parity.test.js
-  // is the backstop for "all 3 surfaces must agree").
-  const allOk = evaluated.every((s) => s.ok);
-  return {
-    id: "skill-spec",
-    ok: allOk,
-    skills: evaluated,
-    has_tools_block: evaluated.some((s) => s.ok && s.has_tools_block),
-  };
-}
-
-// RUNTIME_ID is canonical; MASTRA_RESOURCE_ID is the additive
-// alternative for Mastra Code. MASTRA_RESOURCE_ID is spoofable until LIM-3 caller-identity
-// ships (deferred, D5).
-// Read fresh on each call so test env-var mutations are honored.
-function identityCandidates() {
-  return [
-    { name: "RUNTIME_ID", value: process.env.RUNTIME_ID ?? null },
-    { name: "MASTRA_RESOURCE_ID", value: process.env.MASTRA_RESOURCE_ID ?? null },
-  ];
+    return {
+      name: skill.name,
+      ok: true,
+      reason: null,
+      skill_path: skill.skillMd,
+      tools_referenced: toolsReferenced,
+      has_tools_block: /^tools:\s*$/m.test(content) || /^\s*-\s+loop_describe/m.test(content),
+      maturity,
+    };
+  });
+  return { id: "skill-spec", ok: evaluated.every((skill) => skill.ok), skills: evaluated, has_tools_block: evaluated.some((skill) => skill.has_tools_block) };
 }
 
 function checkIdentityMarker(runtimeId) {
-  // First match wins; both unset => 'unset'.
-  const candidates = identityCandidates();
-  const match = candidates.find((c) => c.value !== null) ?? candidates[0];
-  const actual = match.value;
-  const status = actual === null ? "unset" : actual === runtimeId ? "match" : "mismatch";
-  return { id: "identity-marker", ok: true, env_var: match.name, expected: runtimeId, actual, status };
+  const runtimeIdValue = process.env.RUNTIME_ID ?? null;
+  const resourceIdValue = process.env.MASTRA_RESOURCE_ID ?? null;
+  const actual = runtimeIdValue ?? resourceIdValue;
+  const envVar = runtimeIdValue !== null ? "RUNTIME_ID" : "MASTRA_RESOURCE_ID";
+  return {
+    id: "identity-marker",
+    ok: true,
+    env_var: envVar,
+    expected: runtimeId,
+    actual,
+    status: actual === null ? "unset" : actual === runtimeId ? "match" : "mismatch",
+  };
 }
 
-// Claude Code / Droid shape: entry.hooks[].command
-// Mastra Code declarative shape: entry.command
-// Cyclomatic floor: any "iterate filtered commands" loop needs (loop + typeof-filter),
-// and supporting both shapes in one entry-pass requires two such loops. The CC is
-// unavoidable for the dual-shape contract validator.
-function addMastraShapeCommand(entry, commands) {
-  if (typeof entry?.command === "string") commands.push(entry.command);
-}
-
-// fallow-ignore-next-line complexity -- 3-line push loop; exists only because for-loop + typeof-check crosses the cyclomatic floor
-function addClaudeShapeCommands(entry, commands) {
-  for (const h of entry?.hooks ?? []) {
-    if (typeof h?.command === "string") commands.push(h.command);
-  }
-}
-
-// Supports BOTH shapes:
-//   Claude Code / Droid: { PreToolUse: [{ matcher, hooks: [{ command }] }] }
-//   Mastra Code declarative: { PreToolUse: [{ command, matcher: { tool_name } }] }
-// CC floor: nested iteration over hook config entries (for-event + for-entry).
-// fallow-ignore-next-line complexity -- nested iteration over hook-config blocks (for-event + for-entry); delegates to shape helpers
-function collectHookCommands(hooksObj) {
+function collectHookCommands(hooksObject) {
   const commands = [];
-  for (const block of Object.values(hooksObj ?? {})) {
+  for (const block of Object.values(hooksObject ?? {})) {
     if (!Array.isArray(block)) continue;
     for (const entry of block) {
-      addClaudeShapeCommands(entry, commands);
-      addMastraShapeCommand(entry, commands);
+      for (const hook of entry?.hooks ?? []) {
+        if (typeof hook?.command === "string") commands.push(hook.command);
+      }
     }
   }
   return commands;
 }
 
-function findReferencedDeclarativeHooks(commands) {
-  // Required: all 4 universal-hook paths must be referenced; match by basename.
-  return REQUIRED_HOOK_COMMANDS.filter((p) => commands.some((c) => c.includes(p.split("/").pop())));
-}
-
-function findReferencedShimBasenames(commands) {
-  return SHIM_BASENAMES.filter((b) => commands.some((c) => c.includes(b)));
-}
-
-function evaluateDeclarativeSettingsIntegration(hooksPath) {
-  const parsed = readJsonSafe(hooksPath);
-  if (!parsed.ok) {
-    return {
-      id: "settings-integration",
-      ok: false,
-      settings_path: hooksPath,
-      commands: [],
-      shims_referenced: [],
-      parse_error: parsed.error,
-      note: "declarative-hooks (Mastra Code)",
-    };
-  }
-  const commands = collectHookCommands(parsed.data);
-  const hooksReferenced = findReferencedDeclarativeHooks(commands);
-  const ok = hooksReferenced.length === REQUIRED_HOOK_COMMANDS.length;
-  return {
-    id: "settings-integration",
-    ok,
-    settings_path: hooksPath,
-    commands,
-    hooks_referenced: hooksReferenced,
-    note: "declarative-hooks (Mastra Code)",
-  };
-}
-
-function evaluateShimFileSettingsIntegration(settingsPath) {
-  const parsed = readJsonSafe(settingsPath);
-  if (!parsed.ok) {
-    return { id: "settings-integration", ok: false, settings_path: settingsPath, commands: [], shims_referenced: [], parse_error: parsed.error };
-  }
-  const commands = collectHookCommands(parsed.data?.hooks);
-  const shimsReferenced = findReferencedShimBasenames(commands);
-  const ok = shimsReferenced.length === SHIM_BASENAMES.length;
-  return { id: "settings-integration", ok, settings_path: settingsPath, commands, shims_referenced: shimsReferenced };
-}
-
 function checkSettingsIntegration(runtimeId, rootPath) {
   const runtime = getRuntimeConfig(runtimeId);
   if (runtime.initial_delivery) {
-    return {
-      id: "settings-integration",
-      ok: false,
-      applicable: true,
-      note: "Codex Initial Delivery does not yet establish the required lifecycle gate routing",
-    };
+    return { id: "settings-integration", ok: false, applicable: true, note: "Codex Initial Delivery does not establish generic lifecycle gate routing" };
   }
-  // Mastra Code has two settings-like files (hooks.json + settings.json);
-  // Claude Code and Droid use a single settings.json with a `hooks` block.
-  // Strategy: for declarative runtimes (those with `declarative_hooks`), require all 4
-  // universal-hook commands in the declarative config. For shim-file runtimes, require all
-  // 4 shim basenames in the conventional settings.json hooks.
-  if (runtime.declarative_hooks) {
-    return evaluateDeclarativeSettingsIntegration(join(rootPath, runtime.declarative_hooks));
-  }
-  return evaluateShimFileSettingsIntegration(join(rootPath, runtime.surface, runtime.settings));
-}
-
-/**
- * Req #6 (hook-declarative-config).
- * For runtimes with declarative hook configs (Mastra Code + future), assert that
- * `<surface>/hooks.json` parses AND has the 4 required event-type entries
- * (PreToolUse, UserPromptSubmit, SessionStart — PostToolUse/Stop/Notification optional)
- * AND each `command` points at a universal hook script in `tools/learning-loop-mastra/hooks/universal/`.
- * Parallel/alternative to Req #1 (which stays monomorphic on shim files).
- */
-const REQUIRED_DECLARATIVE_EVENTS = ["PreToolUse", "UserPromptSubmit", "SessionStart"];
-
-function findMissingDeclarativeEvents(eventTypes) {
-  return REQUIRED_DECLARATIVE_EVENTS.filter((e) => !eventTypes.includes(e));
-}
-
-function findReferencedUniversalHooks(commands) {
-  return UNIVERSAL_HOOK_PATHS.filter((p) => commands.some((c) => c.includes(p)));
-}
-
-function findBogusHookCommands(commands) {
-  // Failsafe: every PreToolUse/write command MUST reference a known universal hook
-  // (red-team Security F4: silent passes on bogus paths are unacceptable).
-  return commands.filter((c) => !UNIVERSAL_HOOK_PATHS.some((p) => c.includes(p)));
-}
-
-function evaluateDeclarativeHooks(hooksPath, hooksData) {
-  const eventTypes = Object.keys(hooksData ?? {});
-  const allCommands = collectHookCommands(hooksData);
-  const missingEvents = findMissingDeclarativeEvents(eventTypes);
-  const universalHooksReferenced = findReferencedUniversalHooks(allCommands);
-  const bogusCommands = findBogusHookCommands(allCommands);
-  const ok = missingEvents.length === 0
-    && universalHooksReferenced.length >= REQUIRED_HOOK_COMMANDS.length
-    && bogusCommands.length === 0;
-  return {
-    id: "hook-declarative-config",
-    ok,
-    hooks_path: hooksPath,
-    event_types: eventTypes,
-    required_events: REQUIRED_DECLARATIVE_EVENTS,
-    missing_events: missingEvents,
-    universal_hooks_referenced: universalHooksReferenced,
-    bogus_commands: bogusCommands,
-  };
-}
-
-function checkHookDeclarativeConfig(runtimeId, rootPath) {
-  const runtime = getRuntimeConfig(runtimeId);
-  // Shim-file runtimes don't apply Req #6; report N/A as OK.
-  if (!runtime.declarative_hooks) {
-    return { id: "hook-declarative-config", ok: true, applicable: false, note: "runtime uses shim-file hooks (Req #1); Req #6 N/A" };
-  }
-  const hooksPath = join(rootPath, runtime.declarative_hooks);
-  const parsed = readJsonSafe(hooksPath);
-  if (!parsed.ok) {
-    return {
-      id: "hook-declarative-config",
-      ok: false,
-      hooks_path: hooksPath,
-      event_types: [],
-      universal_hooks_referenced: [],
-      parse_error: parsed.error,
-    };
-  }
-  return evaluateDeclarativeHooks(hooksPath, parsed.data);
-}
-
-// Req #7 (settings-no-bypass).
-// Each entry is a documented bypass for the loop's gates; enabling any is rejected.
-// `shellPassthrough:true` bypasses the bash-gate hook entirely; `disableHooks:true`
-// disables all hooks; `disableMcp:true` disables MCP server connections (the loop IS
-// the MCP server, so this breaks the integration).
-const BYPASS_FIELDS = ["shellPassthrough", "disableHooks", "disableMcp"];
-
-function getBypassViolations(settingsData) {
-  if (!settingsData || typeof settingsData !== "object") return [];
-  return BYPASS_FIELDS
-    .filter((field) => settingsData[field] === true)
-    .map((field) => `${field}:true`);
-}
-
-function evaluateSettingsBypass(settingsPath) {
+  const settingsPath = join(rootPath, runtime.surface, runtime.settings);
   const parsed = readJsonSafe(settingsPath);
-  if (!parsed.ok) {
-    // Bad JSON in settings => treat as bypass attempt (fail closed).
-    return {
-      id: "settings-no-bypass",
-      ok: false,
-      settings_path: settingsPath,
-      violations: ["malformed-settings-json"],
-      parse_error: parsed.error,
-    };
-  }
-  const violations = getBypassViolations(parsed.data);
-  return {
-    id: "settings-no-bypass",
-    ok: violations.length === 0,
-    settings_path: settingsPath,
-    violations,
-  };
+  if (!parsed.ok) return { id: "settings-integration", ok: false, settings_path: settingsPath, commands: [], shims_referenced: [], parse_error: parsed.error };
+  const commands = collectHookCommands(parsed.data?.hooks);
+  const shimsReferenced = SHIM_BASENAMES.filter((basename) => commands.some((command) => command.includes(basename)));
+  return { id: "settings-integration", ok: shimsReferenced.length === SHIM_BASENAMES.length, settings_path: settingsPath, commands, shims_referenced: shimsReferenced };
 }
 
-/**
- * Req #7 (settings-no-bypass).
- * Reject settings that bypass our gates (e.g., Mastra Code's `shellPassthrough: true`).
- * Adversarial: an operator who sets shellPassthrough: true would bypass the bash-gate hook
- * entirely (hooks don't fire when commands are passed-through). Reject loudly.
- */
-function checkSettingsNoBypass(runtimeId, rootPath) {
-  const runtime = getRuntimeConfig(runtimeId);
-  // Only applies to runtimes with declarative settings (Mastra Code today; future too).
-  if (!runtime.settings_path) {
-    return { id: "settings-no-bypass", ok: true, applicable: false, note: "runtime has no declarative settings path; Req #7 N/A" };
-  }
-  const settingsPath = join(rootPath, runtime.settings_path);
-  // No settings file => no bypass possible; vacuously OK.
-  if (!existsSync(settingsPath)) {
-    return { id: "settings-no-bypass", ok: true, applicable: false, settings_path: settingsPath, note: "no settings file present" };
-  }
-  return evaluateSettingsBypass(settingsPath);
-}
-
-// Req #9 (.mastracode-config-presence).
-// For mastra-code, assert .mastracode/ exists with the 4 config files.
-// Other runtimes: applicable:false.
-const MASTRACODE_REQUIRED_FILES = ["mcp.json", "hooks.json", "settings.json", "database.json"];
-
-function checkMastracodeConfigPresence(runtimeId, rootPath) {
-  const runtime = getRuntimeConfig(runtimeId);
-  if (runtime.surface !== ".mastracode") {
-    return {
-      id: ".mastracode-config-presence",
-      ok: true,
-      applicable: false,
-      note: "runtime does not use .mastracode/; Req #9 N/A",
-    };
-  }
-  const dir = join(rootPath, ".mastracode");
-  const missing = MASTRACODE_REQUIRED_FILES.filter((f) => !existsSync(join(dir, f)));
-  return {
-    id: ".mastracode-config-presence",
-    ok: missing.length === 0,
-    dir,
-    required_files: MASTRACODE_REQUIRED_FILES,
-    missing,
-  };
-}
-
-// Req #10 (mastracode-session-start-pins-loop-surface).
-// For mastra-code, assert .mastracode/mcp.json sets env.LOOP_SURFACE on the
-// learning-loop server entry (the operator-chosen env-field wiring approach;
-// shim wiring was replaced by this simpler, more robust mechanism).
-// Other runtimes: applicable:false.
-function checkMastracodeSessionStartPinsLoopSurface(runtimeId, rootPath) {
-  const runtime = getRuntimeConfig(runtimeId);
-  if (runtime.surface !== ".mastracode") {
-    return {
-      id: "mastracode-session-start-pins-loop-surface",
-      ok: true,
-      applicable: false,
-      note: "runtime does not use .mastracode/; Req #10 N/A",
-    };
-  }
-  const configPath = join(rootPath, ".mastracode", "mcp.json");
-  const parsed = readJsonSafe(configPath);
-  if (!parsed.ok) {
-    return {
-      id: "mastracode-session-start-pins-loop-surface",
-      ok: false,
-      config_path: configPath,
-      env_loop_surface: null,
-      parse_error: parsed.error,
-    };
-  }
-  const entry = parsed.data?.mcpServers?.["learning-loop"] ?? null;
-  const envSurface = entry?.env?.LOOP_SURFACE ?? null;
-  return {
-    id: "mastracode-session-start-pins-loop-surface",
-    ok: envSurface === ".mastracode",
-    config_path: configPath,
-    env_loop_surface: envSurface,
-  };
-}
-
-// Req #11 (tools-manifest-has-path-fields).
-// Project-wide invariant: every entry in tools/manifest.json declares
-// pathFields: string[] (may be []). The manifest is JSONC (full-line // comments
-// only); the validator strips comments before parsing, mirroring the shim in
-// mastra/server.js. Applicable to ALL runtimes.
 const MANIFEST_REL = "tools/learning-loop-mastra/tools/manifest.json";
 
-function stripJsoncFullLineComments(text) {
-  return text.replace(/^\s*\/\/.*$/gm, "");
-}
-
-function checkToolsManifestHasPathFields(_runtimeId, rootPath) {
+function checkToolsManifestHasPathFields(rootPath) {
   const manifestPath = join(rootPath, MANIFEST_REL);
-  let raw;
-  try {
-    raw = readFileSync(manifestPath, "utf8");
-  } catch (error) {
-    return {
-      id: "tools-manifest-has-path-fields",
-      ok: false,
-      manifest_path: manifestPath,
-      entries: [],
-      missing_path_fields: [],
-      error: error.message,
-    };
-  }
   let entries;
   try {
-    entries = JSON.parse(stripJsoncFullLineComments(raw));
+    entries = JSON.parse(readFileSync(manifestPath, "utf8").replace(/^\s*\/\/.*$/gm, ""));
   } catch (error) {
-    return {
-      id: "tools-manifest-has-path-fields",
-      ok: false,
-      manifest_path: manifestPath,
-      entries: [],
-      missing_path_fields: [],
-      error: `manifest parse failed: ${error.message}`,
-    };
+    return { id: "tools-manifest-has-path-fields", ok: false, manifest_path: manifestPath, entries: [], missing_path_fields: [], error: error.message };
   }
-  if (!Array.isArray(entries)) {
-    return {
-      id: "tools-manifest-has-path-fields",
-      ok: false,
-      manifest_path: manifestPath,
-      entries,
-      missing_path_fields: [],
-      error: "manifest is not an array",
-    };
+  if (!Array.isArray(entries)) return { id: "tools-manifest-has-path-fields", ok: false, manifest_path: manifestPath, entries, missing_path_fields: [], error: "manifest is not an array" };
+  const missing = entries.filter((entry) => !entry || !Array.isArray(entry.pathFields)).map((entry) => entry?.file ?? JSON.stringify(entry));
+  return { id: "tools-manifest-has-path-fields", ok: missing.length === 0, manifest_path: manifestPath, entries: entries.length, missing_path_fields: missing };
+}
+
+function checkRuntimeOwnedI2Delivery(runtimeId) {
+  if (runtimeId === "codex") {
+    return { id: "runtime-owned-i2-delivery", ok: true, applicable: false, note: "Codex delivery is checked by codex-initial-delivery" };
   }
-  const missing = entries
-    .filter((e) => !e || !Array.isArray(e.pathFields))
-    .map((e) => e?.file ?? JSON.stringify(e));
   return {
-    id: "tools-manifest-has-path-fields",
-    ok: missing.length === 0,
-    manifest_path: manifestPath,
-    entries: entries.length,
-    missing_path_fields: missing,
+    id: "runtime-owned-i2-delivery",
+    ok: false,
+    applicable: true,
+    code: "runtime_owned_delivery_missing",
+    runtime_id: runtimeId,
+    owner: runtimeId,
+    message: `Initial I2 Rule Delivery is not declared for ${runtimeId}; the runtime owner must provide the current native adapter`,
   };
 }
 
 function checkCodexInitialDelivery(runtimeId, rootPath) {
-  if (runtimeId !== "codex") {
-    return { id: "codex-initial-delivery", ok: true, applicable: false, note: "runtime does not use the Codex Initial Delivery adapter" };
-  }
+  if (runtimeId !== "codex") return { id: "codex-initial-delivery", ok: true, applicable: false, note: "runtime does not use the Codex Initial Delivery adapter" };
   const hooksPath = join(rootPath, ".codex", "hooks.json");
   const adapterPath = join(rootPath, ".codex", "hooks", "session-start-i2-delivery.cjs");
   const parsed = readJsonSafe(hooksPath);
-  if (!parsed.ok) {
-    return { id: "codex-initial-delivery", ok: false, hooks_path: hooksPath, adapter_path: adapterPath, activation: "synchronous-session-start", parse_error: parsed.error };
-  }
+  if (!parsed.ok) return { id: "codex-initial-delivery", ok: false, hooks_path: hooksPath, adapter_path: adapterPath, activation: "synchronous-session-start", parse_error: parsed.error };
   const handlers = parsed.data?.hooks?.SessionStart;
-  const commands = Array.isArray(handlers)
-    ? handlers.flatMap((group) => Array.isArray(group?.hooks) ? group.hooks : [])
-    : [];
+  const commands = Array.isArray(handlers) ? handlers.flatMap((group) => Array.isArray(group?.hooks) ? group.hooks : []) : [];
   const handler = commands.find((entry) => entry?.type === "command" && entry.command === "node .codex/hooks/session-start-i2-delivery.cjs");
   const synchronous = handler?.async !== true;
-  const ok = existsSync(adapterPath)
-    && !!handler
-    && synchronous;
   return {
     id: "codex-initial-delivery",
-    ok,
+    ok: existsSync(adapterPath) && !!handler && synchronous,
     hooks_path: hooksPath,
     adapter_path: adapterPath,
     activation: "synchronous-session-start",
@@ -890,32 +327,10 @@ function checkCodexInitialDelivery(runtimeId, rootPath) {
   };
 }
 
-/**
- * Validate a runtime against the MCP-transport conformance contract.
- * @param {string} runtimeId - A Runtime Topology participant or supported legacy runtime.
- * @param {string} [rootPath=process.cwd()] - Project root (defaults to cwd).
- * @returns {{
- *   ok: boolean,
- *   runtimeId: string,
- *   rootPath: string,
- *   missing: string[],
- *   notes: string[],
- *   path_map: object,
- *   error?: string
- * }}
- */
 export function validate(runtimeId, rootPath = process.cwd()) {
   const resolvedRoot = resolve(rootPath);
   if (!getRuntimeConfig(runtimeId)) {
-    return {
-      ok: false,
-      runtimeId,
-      rootPath: resolvedRoot,
-      missing: [],
-      notes: [],
-      path_map: {},
-      error: `unknown-runtime-id: ${runtimeId}`,
-    };
+    return { ok: false, runtimeId, rootPath: resolvedRoot, missing: [], notes: [], path_map: {}, error: `unknown-runtime-id: ${runtimeId}` };
   }
   const checks = [
     checkHookShimSet(runtimeId, resolvedRoot),
@@ -923,55 +338,39 @@ export function validate(runtimeId, rootPath = process.cwd()) {
     checkSkillSpec(runtimeId, resolvedRoot),
     checkIdentityMarker(runtimeId),
     checkSettingsIntegration(runtimeId, resolvedRoot),
-    // Req #6 (hook-declarative-config) + Req #7 (settings-no-bypass).
-    checkHookDeclarativeConfig(runtimeId, resolvedRoot),
-    checkSettingsNoBypass(runtimeId, resolvedRoot),
-    // Req #9 (.mastracode-config-presence),
-    // Req #10 (mastracode-session-start-pins-loop-surface),
-    // Req #11 (tools-manifest-has-path-fields — project-wide invariant).
-    checkMastracodeConfigPresence(runtimeId, resolvedRoot),
-    checkMastracodeSessionStartPinsLoopSurface(runtimeId, resolvedRoot),
-    checkToolsManifestHasPathFields(runtimeId, resolvedRoot),
+    checkToolsManifestHasPathFields(resolvedRoot),
+    checkRuntimeOwnedI2Delivery(runtimeId),
     checkCodexInitialDelivery(runtimeId, resolvedRoot),
   ];
-  const missing = checks.filter((c) => !c.ok).map((c) => c.id);
+  const missing = checks.filter((check) => !check.ok).map((check) => check.id);
   const notes = [];
-  const skill = checks.find((c) => c.id === "skill-spec");
+  const skill = checks.find((check) => check.id === "skill-spec");
   if (skill.ok && !skill.has_tools_block) notes.push("skill-spec-no-tools-block");
-  const identity = checks.find((c) => c.id === "identity-marker");
+  const identity = checks.find((check) => check.id === "identity-marker");
   if (identity.status === "unset") notes.push("identity-marker-not-adopted");
   if (identity.status === "mismatch") notes.push("identity-marker-mismatch");
-  const shim = checks.find((c) => c.id === "hook-shim-set");
-  for (const s of shim.shims) {
-    // Report missing universal hook as an informational note, NOT as a hard fail
-    // (red-team Finding F1 fix: gating breaks the contract for both runtimes).
-    if (existsSync(s.path) && !s.universal_exists) notes.push(`${s.name}-universal-missing`);
+  const shim = checks.find((check) => check.id === "hook-shim-set");
+  for (const entry of shim.shims) {
+    if (existsSync(entry.path) && !entry.universal_exists) notes.push(`${entry.name}-universal-missing`);
   }
-  const path_map = Object.fromEntries(checks.map((c) => [c.id, c]));
-  return { ok: missing.length === 0, runtimeId, rootPath: resolvedRoot, missing, notes, path_map };
+  return { ok: missing.length === 0, runtimeId, rootPath: resolvedRoot, missing, notes, path_map: Object.fromEntries(checks.map((check) => [check.id, check])) };
 }
 
 export function validateAll(ids = listRuntimes().map((runtime) => runtime.id), rootPath = process.cwd()) {
   return Object.fromEntries(ids.map((id) => [id, validate(id, rootPath)]));
 }
 
-// CLI mode: invoked directly (not imported)
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const args = process.argv.slice(2);
-  if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
-    console.error(`usage: node contract.js <runtimeId> [rootPath]\n       node contract.js --list\nknown runtimes: ${[...Object.keys(RUNTIMES), ...Object.keys(LEGACY_RUNTIMES)].join(", ")}`);
+  const [command, rootArg] = process.argv.slice(2);
+  if (!command || command === "--help" || command === "-h") {
+    console.error(`usage: node contract.js <runtimeId> [rootPath]\n       node contract.js --list\nknown runtimes: ${Object.keys(RUNTIMES).join(", ")}`);
     process.exit(2);
   }
-  if (args[0] === "--list") {
-    console.log(JSON.stringify({
-      runtimes: [...Object.keys(RUNTIMES), ...Object.keys(LEGACY_RUNTIMES)],
-      participants: listRuntimes().map((runtime) => runtime.id),
-      requirements: REQUIREMENT_IDS,
-    }, null, 2));
+  if (command === "--list") {
+    console.log(JSON.stringify({ runtimes: Object.keys(RUNTIMES), participants: listRuntimes().map((runtime) => runtime.id), requirements: REQUIREMENT_IDS }, null, 2));
     process.exit(0);
   }
-  const [runtimeId, rootArg] = args;
-  const result = validate(runtimeId, rootArg);
-  console.log(JSON.stringify(result, null, 2));
+  const result = validate(command, rootArg ?? process.cwd());
+  console.log(JSON.stringify(result));
   process.exit(result.ok ? 0 : 1);
 }

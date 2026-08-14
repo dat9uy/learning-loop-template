@@ -92,8 +92,7 @@ export const metaStateReportTool = {
           ? { mechanism_check: true }
           : {}),
       // session_id is the idempotency key for hook-emitted findings. The schema
-      // and the prior hook (`.factory/hooks/loop-surface-inject.cjs`,
-      // `cold-session-discoverability.test.cjs`) all assume the tool persists
+      // and the prior hook integrations all assume the tool persists
       // this; honor it here so callers can use the canonical MCP surface.
       ...(session_id && { session_id }),
 // new findings are written with

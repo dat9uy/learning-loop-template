@@ -29,9 +29,10 @@ describe("evaluate-bash-gate: constraint-match flip on malformed+valid sidecar",
 
   function writeMarker(timestamp) {
     // The bash-gate side reads markers via readLastOperatorMessage → readFromAllSurfaces
-    // which scans every runtime surface coordination dir. Use .factory for stability.
-    mkdirSync(join(tempRoot, ".factory", "coordination"), { recursive: true });
-    const markerPath = join(tempRoot, ".factory", "coordination", ".last-operator-message");
+    // which scans every retained runtime surface coordination dir. Use Hermes
+    // here to exercise the second retained surface.
+    mkdirSync(join(tempRoot, ".hermes", "coordination"), { recursive: true });
+    const markerPath = join(tempRoot, ".hermes", "coordination", ".last-operator-message");
     writeFileSync(markerPath, JSON.stringify({ timestamp, prompt_snippet: "test" }), "utf8");
   }
 

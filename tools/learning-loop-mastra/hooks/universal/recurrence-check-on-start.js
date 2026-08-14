@@ -3,7 +3,7 @@
  * Universal SessionStart hook — checks the gate decision log for recurring
  * false-positive patterns and auto-files findings.
  *
- * Works with both Claude Code and Droid CLI.
+ * Works with the retained hook runtimes.
  *
  * Fail-open contract: any throw inside checkAndEmit (or its scan path)
  * exits 0 with a stderr diagnostic. A blocking hook is worse than a

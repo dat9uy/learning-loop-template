@@ -11,9 +11,9 @@ import { join } from "node:path";
 
 describe("globMatch brace expansion", () => {
   test("expands simple braces and matches each alternative", () => {
-    assert.ok(globMatch(".factory/skills/{use-mcp,find-skills}/**", ".factory/skills/use-mcp/test.js"));
-    assert.ok(globMatch(".factory/skills/{use-mcp,find-skills}/**", ".factory/skills/find-skills/script.js"));
-    assert.ok(!globMatch(".factory/skills/{use-mcp,find-skills}/**", ".factory/skills/other/test.js"));
+    assert.ok(globMatch(".hermes/skills/{use-mcp,find-skills}/**", ".hermes/skills/use-mcp/test.js"));
+    assert.ok(globMatch(".hermes/skills/{use-mcp,find-skills}/**", ".hermes/skills/find-skills/script.js"));
+    assert.ok(!globMatch(".hermes/skills/{use-mcp,find-skills}/**", ".hermes/skills/other/test.js"));
   });
 
   test("nested braces are expanded", () => {
@@ -445,7 +445,7 @@ describe("gate scope predicate", () => {
       const rule = writeRuleEntry({
         id: "rule-project-skill-boundary",
         pattern_type: "glob",
-        pattern: ".factory/skills/{use-mcp,find-skills}/**",
+        pattern: ".hermes/skills/{use-mcp,find-skills}/**",
         scope_predicate: "project_has_learning_loop_mcp",
       });
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
@@ -453,14 +453,14 @@ describe("gate scope predicate", () => {
       const rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 1);
 
-      const result = applyPromotedRules(null, ".factory/skills/use-mcp/test.sh", rules);
+      const result = applyPromotedRules(null, ".hermes/skills/use-mcp/test.sh", rules);
       assert.strictEqual(result.decision, "escalate");
       assert.strictEqual(result.rule_id, "rule-project-skill-boundary");
 
-      const result2 = applyPromotedRules(null, ".factory/skills/find-skills/script.js", rules);
+      const result2 = applyPromotedRules(null, ".hermes/skills/find-skills/script.js", rules);
       assert.strictEqual(result2.decision, "escalate");
 
-      const result3 = applyPromotedRules(null, ".factory/skills/other/test.sh", rules);
+      const result3 = applyPromotedRules(null, ".hermes/skills/other/test.sh", rules);
       assert.strictEqual(result3.decision, "ok");
     } finally {
       if (originalEnv === undefined) {

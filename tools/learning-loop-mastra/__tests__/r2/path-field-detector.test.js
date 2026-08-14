@@ -10,9 +10,9 @@ describe("detectPathFields", () => {
   test("detect_top_level_path: single string path arg", () => {
     const out = detectPathFields({
       tool: { pathFields: ["file_path"] },
-      args: { file_path: ".factory/x" },
+      args: { file_path: ".hermes/x" },
     });
-    assert.deepEqual([...out].sort(), [".factory/x"]);
+    assert.deepEqual([...out].sort(), [".hermes/x"]);
   });
 
   test("detect_recursive_path: dotted pathField descends into nested object", () => {
@@ -26,23 +26,23 @@ describe("detectPathFields", () => {
   test("detect_array_paths: array arg yields each string element", () => {
     const out = detectPathFields({
       tool: { pathFields: ["targets"] },
-      args: { targets: [".factory/a", ".claude/b"] },
+      args: { targets: [".hermes/a", ".claude/b"] },
     });
-    assert.deepEqual([...out].sort(), [".claude/b", ".factory/a"]);
+    assert.deepEqual([...out].sort(), [".claude/b", ".hermes/a"]);
   });
 
   test("detect_array_of_objects_with_path_key: each element's nested path key", () => {
     const out = detectPathFields({
       tool: { pathFields: ["items.path"] },
-      args: { items: [{ path: ".factory/a" }, { path: ".claude/b" }] },
+      args: { items: [{ path: ".hermes/a" }, { path: ".claude/b" }] },
     });
-    assert.deepEqual([...out].sort(), [".claude/b", ".factory/a"]);
+    assert.deepEqual([...out].sort(), [".claude/b", ".hermes/a"]);
   });
 
   test("detect_depth_limit: depth-4 declared pathField is NOT detected", () => {
     const out = detectPathFields({
       tool: { pathFields: ["a.b.c.d"] },
-      args: { a: { b: { c: { d: ".factory/secret" } } } },
+      args: { a: { b: { c: { d: ".hermes/secret" } } } },
     });
     assert.equal(out.size, 0, "depth-4 pathFields must be ignored (limit is 3)");
   });
@@ -50,14 +50,14 @@ describe("detectPathFields", () => {
   test("no_pathfields_explicit_optout: empty array returns empty set", () => {
     const out = detectPathFields({
       tool: { pathFields: [] },
-      args: { anything: { nested: ".factory/x" } },
+      args: { anything: { nested: ".hermes/x" } },
     });
     assert.equal(out.size, 0);
   });
 
   test("missing_pathfields_throws_at_runtime: undefined pathFields throws", () => {
     assert.throws(
-      () => detectPathFields({ tool: {}, args: { x: ".factory" } }),
+      () => detectPathFields({ tool: {}, args: { x: ".hermes" } }),
       /path_fields_undefined_for_tool/,
     );
   });

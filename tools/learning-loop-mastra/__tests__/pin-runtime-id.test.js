@@ -37,16 +37,16 @@ describe("identity-pin", () => {
     assert.strictEqual(getPinnedRuntimeId(), "claude-code");
   });
 
-  test("pin_succeeds_with_valid_surface_factory", () => {
-    process.env.LOOP_SURFACE = ".factory";
+  test("pin_succeeds_with_valid_surface_codex", () => {
+    process.env.LOOP_SURFACE = ".codex";
     pinRuntimeIdAtBoot();
-    assert.strictEqual(getPinnedRuntimeId(), "droid");
+    assert.strictEqual(getPinnedRuntimeId(), "codex");
   });
 
-  test("pin_succeeds_with_valid_surface_mastracode", () => {
-    process.env.LOOP_SURFACE = ".mastracode";
+  test("pin_succeeds_with_valid_surface_hermes", () => {
+    process.env.LOOP_SURFACE = ".hermes";
     pinRuntimeIdAtBoot();
-    assert.strictEqual(getPinnedRuntimeId(), "mastra-code");
+    assert.strictEqual(getPinnedRuntimeId(), "hermes");
   });
 
   test("missing_env_throws_canonical_error", () => {
@@ -62,7 +62,7 @@ describe("identity-pin", () => {
     process.env.LOOP_SURFACE = "../etc";
     assert.throws(
       () => pinRuntimeIdAtBoot(),
-      (err) => err.message === ERRORS.INVALID_LOOP_SURFACE.replace("{value}", "../etc").replace("{allowed}", ".claude, .factory, .mastracode, .hermes"),
+      (err) => err.message === ERRORS.INVALID_LOOP_SURFACE.replace("{value}", "../etc").replace("{allowed}", ".codex, .claude, .hermes"),
       `must throw exact INVALID_LOOP_SURFACE constant with substitutions`,
     );
   });
@@ -88,7 +88,7 @@ describe("identity-pin", () => {
     pinRuntimeIdAtBoot();
     assert.strictEqual(getPinnedRuntimeId(), "claude-code");
     // Mutate env mid-process (the attack scenario from R2).
-    process.env.LOOP_SURFACE = ".factory";
+    process.env.LOOP_SURFACE = ".codex";
     assert.strictEqual(
       getPinnedRuntimeId(),
       "claude-code",
@@ -101,7 +101,7 @@ describe("identity-pin", () => {
     pinRuntimeIdAtBoot();
     const first = getPinnedRuntimeId();
     // Second call must NOT re-read env even if it changed.
-    process.env.LOOP_SURFACE = ".factory";
+    process.env.LOOP_SURFACE = ".codex";
     pinRuntimeIdAtBoot();
     assert.strictEqual(getPinnedRuntimeId(), first);
   });

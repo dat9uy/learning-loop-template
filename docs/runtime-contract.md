@@ -55,7 +55,7 @@ This rule cross-references `docs/loop-engine.md` § "Workflow: definition vs exe
 The word "interface" was overloaded. These are three distinct concerns, now named separately:
 
 - **Runtime participation contract** — the 4 capabilities above. Transport-agnostic. Lives here (L2).
-- **Storage fan-out** — the set of runtime surface directories the loop writes to (.claude, .factory, .mastracode today). Mechanism detail: `tools/learning-loop-mastra/core/surfaces.js` `SURFACES` (L3).
+- **Storage fan-out** — the retained project-local mirror directories the loop writes to (.claude and .hermes today). Codex participates through native Initial Delivery and is not a skill-mirror target. Mechanism detail: `tools/learning-loop-mastra/core/surfaces.js` `SURFACES` (L3).
 - **Feature-code runtime-agnosticism** — the checklist that proves a loop feature works the same across all surfaces (no surface-specific code in feature paths). Mechanism detail: `tools/learning-loop-mastra/core/runtime-agnostic-checklist.js` `CHECKLIST` (L3).
 
 ## Runtime-state row kinds and the budget-tracking lifecycle
@@ -85,7 +85,7 @@ The contract says *what a runtime must be*; the storage fan-out says *which dire
 
 ## Current transports
 
-The MCP+hooks transport is wired today for four runtimes. Their identities, surface directories, and hook wiring are L3 mechanism detail — see `docs/architecture.md` for the gate-event flow and the per-runtime wiring. The CLI (`bin/loop.mjs`) is the single record surface in every runtime: the write-capable CLI carries the full `CLI_TOOLS` set (reads + portable mutation tools in `core/cli-tools.js`), and MCP keeps only the irreducible 8-tool residue (workflow / storage / allowlist / audit + agent wrappers). All four wired runtimes (`.claude`, `.factory`, `.mastracode`, `.hermes`) share this single-surface contract; no flag changes it. The library-import and shell-hook-only transports are forward options, not wired in this codebase.
+The current runtime set is Codex, Claude Code, and Hermes. Their identities, surface directories, and hook wiring are L3 mechanism detail — see `docs/architecture.md` for the gate-event flow and the per-runtime wiring. The CLI (`bin/loop.mjs`) is the single record surface in every runtime: the write-capable CLI carries the full `CLI_TOOLS` set (reads + portable mutation tools in `core/cli-tools.js`), and MCP keeps only the irreducible 8-tool residue (workflow / storage / allowlist / audit + agent wrappers). Codex uses native Initial Delivery; Claude Code and Hermes share the retained project-local mirror contract. The library-import and shell-hook-only transports are forward options, not wired in this codebase.
 
 ## Relationship to the engine
 

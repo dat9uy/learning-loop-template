@@ -252,8 +252,7 @@ test("R17 BOOTSTRAP_DENY_PATTERNS includes .gate-override (bare and nested)", ()
 test("R17 checkR2Ownership denies a write to runtime-state.jsonl with bootstrap_deny", () => {
   const allowlist = {
     "claude-code": { own: [".claude/**"], deny: [] },
-    droid: { own: [".factory/**"], deny: [] },
-    "mastra-code": { own: [".mastracode/**"], deny: [] },
+    hermes: { own: [".hermes/**"], deny: [] },
     universal: [],
   };
   const decision = checkR2Ownership({
@@ -270,12 +269,11 @@ test("R17 checkR2Ownership denies a write to runtime-state.jsonl with bootstrap_
 test("R17 checkR2Ownership denies a write to a nested runtime-state.jsonl with bootstrap_deny", () => {
   const allowlist = {
     "claude-code": { own: [".claude/**"], deny: [] },
-    droid: { own: [".factory/**"], deny: [] },
-    "mastra-code": { own: [".mastracode/**"], deny: [] },
+    hermes: { own: [".hermes/**"], deny: [] },
     universal: [],
   };
   const decision = checkR2Ownership({
-    runtime: "droid",
+    runtime: "hermes",
     path: ".claude/coordination/runtime-state.jsonl",
     allowlist,
     root,
@@ -287,13 +285,12 @@ test("R17 checkR2Ownership denies a write to a nested runtime-state.jsonl with b
 test("R17 checkR2Ownership denies a write to .gate-override with bootstrap_deny", () => {
   const allowlist = {
     "claude-code": { own: [".claude/**"], deny: [] },
-    droid: { own: [".factory/**"], deny: [] },
-    "mastra-code": { own: [".mastracode/**"], deny: [] },
+    hermes: { own: [".hermes/**"], deny: [] },
     universal: [],
   };
   const decision = checkR2Ownership({
-    runtime: "mastra-code",
-    path: ".mastracode/coordination/.gate-override",
+    runtime: "hermes",
+    path: ".hermes/coordination/.gate-override",
     allowlist,
     root,
   });
@@ -306,8 +303,7 @@ test("R17 bootstrap_deny wins even for the runtime that 'owns' the surface dir",
   // must still be bootstrap-denied (R1 self-bootstrap defense).
   const allowlist = {
     "claude-code": { own: [".claude/**"], deny: [] },
-    droid: { own: [".factory/**"], deny: [] },
-    "mastra-code": { own: [".mastracode/**"], deny: [] },
+    hermes: { own: [".hermes/**"], deny: [] },
     universal: [],
   };
   const decision = checkR2Ownership({
@@ -376,8 +372,7 @@ test("C5b serialized_entry_has_no_raw_newline: happy-path R2 denial line is sing
 test("C5b runtime_state_jsonl_denied_by_bootstrap: R2 denies writes to runtime-state.jsonl", () => {
   const allowlist = {
     "claude-code": { own: [".claude/**", "runtime-state.jsonl"], deny: [] },
-    droid: { own: [".factory/**"], deny: [] },
-    "mastra-code": { own: [".mastracode/**"], deny: [] },
+    hermes: { own: [".hermes/**"], deny: [] },
     universal: [],
   };
   // Even with runtime-state.jsonl in claude-code's own list, bootstrap_deny wins.
@@ -394,8 +389,7 @@ test("C5b runtime_state_jsonl_denied_by_bootstrap: R2 denies writes to runtime-s
 test("C5b gate_override_denied_by_bootstrap: R2 denies writes to .gate-override", () => {
   const allowlist = {
     "claude-code": { own: [".claude/**", ".gate-override"], deny: [] },
-    droid: { own: [".factory/**"], deny: [] },
-    "mastra-code": { own: [".mastracode/**"], deny: [] },
+    hermes: { own: [".hermes/**"], deny: [] },
     universal: [],
   };
   const decision = checkR2Ownership({

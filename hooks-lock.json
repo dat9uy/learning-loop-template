@@ -6,8 +6,6 @@
       "event": "SessionStart",
       "wiring": {
         ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/recurrence-check-on-start.cjs" },
-        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/recurrence-check-on-start.cjs" },
-        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js" },
         ".hermes":     { "kind": "adapter", "ref": ".hermes/coordination/hooks/recurrence-check-on-start.cjs" }
       }
     },
@@ -16,8 +14,6 @@
       "event": "SessionStart",
       "wiring": {
         ".claude":     { "kind": "direct",  "ref": "node tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs" },
-        ".factory":    { "kind": "adapter", "ref": ".factory/hooks/loop-surface-inject.cjs", "matcher": "startup" },
-        ".mastracode": { "kind": "none" },
         ".hermes":     { "kind": "adapter", "ref": ".hermes/hooks/loop-surface-inject.cjs", "matcher": "first_turn" }
       }
     },
@@ -26,8 +22,6 @@
       "event": "SessionStart",
       "wiring": {
         ".claude":     { "kind": "direct",  "ref": "node tools/learning-loop-mastra/hooks/universal/session-start-inject-process-hints.cjs" },
-        ".factory":    { "kind": "adapter", "ref": ".factory/hooks/loop-surface-inject.cjs", "matcher": "startup" },
-        ".mastracode": { "kind": "none" },
         ".hermes":     { "kind": "adapter", "ref": ".hermes/hooks/loop-surface-inject.cjs", "matcher": "first_turn" }
       }
     },
@@ -36,30 +30,22 @@
       "event": "SessionStart",
       "wiring": {
         ".claude":     { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/session-start-git-push-preflight.cjs" },
-        ".factory":    { "kind": "none" },
-        ".mastracode": { "kind": "none" },
         ".hermes":     { "kind": "none" }
-      },
-      "notes": "Per plan 260803-1749 risk section: .factory's loop-surface-inject.cjs is hardcoded to the inject-* hooks, so the preflight cannot dispatch through it without invasive adapter changes. .factory and .mastracode coverage deferred to follow-up finding."
+      }
     },
     "session-start-git-merge-driver-preflight": {
       "path": "tools/learning-loop-mastra/hooks/universal/session-start-git-merge-driver-preflight.cjs",
       "event": "SessionStart",
       "wiring": {
         ".claude":     { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/session-start-git-merge-driver-preflight.cjs" },
-        ".factory":    { "kind": "none" },
-        ".mastracode": { "kind": "none" },
         ".hermes":     { "kind": "none" }
-      },
-      "notes": "Same .factory/.mastracode deferral as session-start-git-push-preflight: the .factory adapter is hardcoded to the inject-* hooks. Reports the clone's merge.union.driver state at session start so the merge-driver's silent-no-op failure mode is surfaced; points to the setup-git.sh orchestrator."
+      }
     },
     "bash-gate": {
       "path": "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
       "event": "PreToolUse",
       "wiring": {
         ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/bash-coordination-gate.cjs",     "matcher": "Bash" },
-        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/bash-coordination-gate.cjs",  "matcher": "Execute" },
-        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", "matcher": { "tool_name": "execute_command" } },
         ".hermes":     { "kind": "adapter", "ref": ".hermes/coordination/hooks/bash-coordination-gate.cjs", "matcher": "terminal" }
       }
     },
@@ -68,8 +54,6 @@
       "event": "PreToolUse",
       "wiring": {
         ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/write-coordination-gate.cjs",    "matcher": "Edit|Write" },
-        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/write-coordination-gate.cjs", "matcher": "Edit|Create|ApplyPatch" },
-        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/write-gate.js", "matcher": ["write_file", "string_replace_lsp", "delete_file"] },
         ".hermes":     { "kind": "adapter", "ref": ".hermes/coordination/hooks/write-coordination-gate.cjs", "matcher": "write_file|patch" }
       }
     },
@@ -78,8 +62,6 @@
       "event": "UserPromptSubmit",
       "wiring": {
         ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/inbound-state-gate.cjs" },
-        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/inbound-state-gate.cjs" },
-        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/inbound-gate.js" },
         ".hermes":     { "kind": "adapter", "ref": ".hermes/coordination/hooks/inbound-state-gate.cjs" }
       }
     },
@@ -88,8 +70,6 @@
       "event": "PostToolUseFailure",
       "wiring": {
         ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/toolchain-failure-capture.cjs" },
-        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/toolchain-failure-capture.cjs" },
-        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/toolchain-failure-capture.js" },
         ".hermes":     { "kind": "adapter", "ref": ".hermes/coordination/hooks/toolchain-failure-capture.cjs", "matcher": "terminal" }
       }
     }

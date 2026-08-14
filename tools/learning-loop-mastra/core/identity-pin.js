@@ -14,9 +14,9 @@
  * Keeping the pin in `core/identity-pin.js` makes it unit-testable in
  * isolation without booting the MCP server.
  *
- * Active runtime identity is sourced from Runtime Topology. The legacy map is
- * a one-way compatibility view for runtime surfaces that remain on disk until
- * the supported-runtime cleanup removes them; it is not a participant catalog.
+ * Active runtime identity is sourced exclusively from Runtime Topology. A
+ * retired surface must fail at boot rather than being accepted through a
+ * compatibility alias.
  *
  * Exports:
  *   - pinRuntimeIdAtBoot(): idempotent; reads LOOP_SURFACE once, validates,
@@ -38,18 +38,12 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runtimeIdForSurface } from "./runtime-topology.js";
-import { SURFACES } from "./surfaces.js";
+import { listRuntimes, runtimeIdForSurface } from "./runtime-topology.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ERRORS = JSON.parse(
   readFileSync(join(__dirname, "..", "mastra", "identity-errors.json"), "utf8"),
 );
-
-const LEGACY_SURFACE_TO_RUNTIME = {
-  ".factory": "droid",
-  ".mastracode": "mastra-code",
-};
 
 let pinState = null;
 
@@ -72,16 +66,13 @@ export function pinRuntimeIdAtBoot() {
   if (!surface) {
     throw new Error(ERRORS.MISSING_LOOP_SURFACE);
   }
-  const runtime = runtimeIdForSurface(surface) ?? LEGACY_SURFACE_TO_RUNTIME[surface];
-  if (!runtime && !SURFACES.includes(surface)) {
+  const runtime = runtimeIdForSurface(surface);
+  if (!runtime) {
     throw new Error(
       ERRORS.INVALID_LOOP_SURFACE
         .replace("{value}", surface)
-        .replace("{allowed}", SURFACES.join(", ")),
+        .replace("{allowed}", listRuntimes().map((entry) => entry.surface).join(", ")),
     );
-  }
-  if (!runtime) {
-    throw new Error(ERRORS.MISSING_RUNTIME_MAPPING.replace("{surface}", surface));
   }
   pinState = Object.freeze({ runtime });
 }
@@ -91,7 +82,7 @@ export function pinRuntimeIdAtBoot() {
  * called (the pin is set once at server boot; a missing pin is a fatal
  * mis-configuration, not a recoverable state).
  *
- * @returns {string} the frozen runtime id ("claude-code" | "droid" | "mastra-code")
+ * @returns {string} the frozen runtime id ("codex" | "claude-code" | "hermes")
  */
 export function getPinnedRuntimeId() {
   if (!pinState) {

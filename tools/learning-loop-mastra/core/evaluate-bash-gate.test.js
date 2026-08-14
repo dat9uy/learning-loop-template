@@ -164,9 +164,9 @@ function writeRuntimeStatePreflightMarker(root) {
   // bash-gate's marker check scans every runtime surface coordination dir.
   // Direct shell writes are gated on the edit marker, split from the append
   // marker so routine runtime_state_record appends don't keep this gate warm.
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   writeFileSync(
-    join(root, ".factory", "coordination", ".loop-preflight-runtime-state-edit"),
+    join(root, ".hermes", "coordination", ".loop-preflight-runtime-state-edit"),
     JSON.stringify({ surface: "runtime-state-edit", completed_at: new Date().toISOString() }),
     "utf8",
   );
@@ -174,9 +174,9 @@ function writeRuntimeStatePreflightMarker(root) {
 
 test("redirect to runtime-state.jsonl with only the APPEND marker active → still blocked (markers are decoupled)", () => {
   const root = makeRoot();
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   writeFileSync(
-    join(root, ".factory", "coordination", ".loop-preflight-runtime-state"),
+    join(root, ".hermes", "coordination", ".loop-preflight-runtime-state"),
     JSON.stringify({ surface: "runtime-state", completed_at: new Date().toISOString() }),
     "utf8",
   );
@@ -580,17 +580,12 @@ test("tee append to .claude decision log → block with dedicated reason", () =>
   assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
 });
 
-test(".factory and .mastracode decision-log appends → block with dedicated reason", () => {
+test(".hermes decision-log appends → block with dedicated reason", () => {
   const root = makeRoot();
-  const factory = evaluateBashGate({ command: "echo 'x' >> .factory/coordination/.gate-decision.log", root });
-  assert.strictEqual(factory.decision, "block");
-  assert.strictEqual(factory.hard_block, true);
-  assert.strictEqual(factory.reason, DECISION_LOG_WRITE_REASON);
-
-  const mastracode = evaluateBashGate({ command: "echo 'x' | tee -a .mastracode/coordination/.gate-decision.log", root });
-  assert.strictEqual(mastracode.decision, "block");
-  assert.strictEqual(mastracode.hard_block, true);
-  assert.strictEqual(mastracode.reason, DECISION_LOG_WRITE_REASON);
+  const result = evaluateBashGate({ command: "echo 'x' >> .hermes/coordination/.gate-decision.log", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
 });
 
 test("DECISION_LOG_WRITE_PATTERNS covers every surface's decision-log redirect and tee", () => {
@@ -634,9 +629,9 @@ test("cp into .claude decision log → block with dedicated reason", () => {
   assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
 });
 
-test("mv into .factory decision log → block with dedicated reason", () => {
+test("mv into .hermes decision log → block with dedicated reason", () => {
   const root = makeRoot();
-  const result = evaluateBashGate({ command: "mv /tmp/evil .factory/coordination/.gate-decision.log", root });
+  const result = evaluateBashGate({ command: "mv /tmp/evil .hermes/coordination/.gate-decision.log", root });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
 });
@@ -648,9 +643,9 @@ test("dd of= into .claude decision log → block with dedicated reason", () => {
   assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
 });
 
-test("install into .mastracode decision log → block with dedicated reason", () => {
+test("install into .hermes decision log → block with dedicated reason", () => {
   const root = makeRoot();
-  const result = evaluateBashGate({ command: "install -m 644 /tmp/forged.json .mastracode/coordination/.gate-decision.log", root });
+  const result = evaluateBashGate({ command: "install -m 644 /tmp/forged.json .hermes/coordination/.gate-decision.log", root });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
 });

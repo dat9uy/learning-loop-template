@@ -130,7 +130,7 @@ The surfacing is advisory, not a gate — it cannot block edits or writes. Coars
 
 ## Authoring loop-maintained skills
 
-The maintainer standard for any loop-maintained skill (a skill mirrored across `.claude`/`.factory`/`.mastracode` and declaring `maturity:` frontmatter):
+The maintainer standard for any loop-maintained skill (a skill mirrored across `.claude`/`.hermes` and declaring `maturity:` frontmatter):
 
 1. **Maturity levels** (per `docs/philosophy.md` — injection × consumption axes):
    - `state-1` — escape-hatch: session-scoped markdown, no deterministic injection.
@@ -138,7 +138,7 @@ The maintainer standard for any loop-maintained skill (a skill mirrored across `
    - `state-3` — encoded: deterministic injection + deterministic consumption, realized by the `deterministic-step` role.
 
    The injection axis rides a declared **channel** (named in `core/hint-renderer.js#CHANNELS`); channel delivery fidelity varies per provider profile and is attested by the classifier, not assumed. See `docs/architecture.md` § Context-Injection Division of Labor for the channel table + delivery-attestation mechanism.
-2. **Mirror requirement** — skills mirror across `.claude`/`.factory`/`.mastracode` via `writeToAllSkills` (phase 4 fan-out in `core/surfaces.js`). The byte-identity invariant is asserted by `integration/skills-mirror-parity.test.js`; a single-surface placement fails the contract with `skill-mirror-gap`.
+2. **Mirror requirement** — skills mirror across `.claude`/`.hermes` via `writeToAllSkills` (phase 4 fan-out in `core/surfaces.js`). The byte-identity invariant is asserted by `integration/skills-mirror-parity.test.js`; a single-surface placement fails the contract with `skill-mirror-gap`. Codex is excluded because it receives native Initial Delivery.
 3. **Frontmatter discipline** — `maturity:` (state-1/2/3) is hard-required by `CONTRACT.md` Req #3. Per-skill frontmatter parse is error-isolated (one bad skill yields a per-skill fail, does not abort the validator); size cap is 64KB (billion-laughs guard).
 4. **Gated authoring path** — direct writes to `<surface>/skills/**` are blocked by the skills write-gate (`evaluateWriteGate` skills rule). To edit a skill:
    1. `gate_mark_preflight(surface: "skills")` — unlocks the dedicated `.loop-preflight-skills` marker (30-minute TTL).

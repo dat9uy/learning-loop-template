@@ -78,7 +78,7 @@ describe("classifyCliError", () => {
   });
 
   test("error message with r2_denied prefix → recognized rejection", () => {
-    const err = new Error("r2_denied: write to /path/forbidden under .factory surface");
+    const err = new Error("r2_denied: write to /path/forbidden under .hermes surface");
     const result = classifyCliError(err);
     assert.ok(result);
     const parsed = JSON.parse(result.json);
@@ -86,7 +86,7 @@ describe("classifyCliError", () => {
   });
 
   test("error message with cross_runtime_write_denied prefix → recognized rejection", () => {
-    const err = new Error("cross_runtime_write_denied: loop-surfaces.json forbids .claude from .factory paths");
+    const err = new Error("cross_runtime_write_denied: loop-surfaces.json forbids .claude from .hermes paths");
     const result = classifyCliError(err);
     assert.ok(result);
     const parsed = JSON.parse(result.json);

@@ -29,7 +29,7 @@ describe("cold-session freshness sentinel", () => {
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
     assert.ok(ageDays < FRESHNESS_DAYS,
       `Cold-session probe is stale (${ageDays.toFixed(1)} days since last run). Run: pnpm test:cold-session (freshness gate, not a regression failure).`);
-    assert.ok(["droid", "claude", "deterministic"].includes(data.cli),
-      `sentinel.cli must be "droid", "claude", or "deterministic", got ${data.cli}`);
+    assert.ok(["codex", "claude", "hermes", "claude-code", "deterministic"].includes(data.cli),
+      `sentinel.cli must identify a current runtime or deterministic probe, got ${data.cli}`);
   });
 });

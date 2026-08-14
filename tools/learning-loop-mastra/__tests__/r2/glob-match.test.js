@@ -31,7 +31,7 @@ describe("globMatch semantics (R2 lock)", () => {
     assert.equal(globMatch(".claude/**", ".claude/x"), true);
     assert.equal(globMatch(".claude/**", ".claude/a/b/c"), true);
     assert.equal(globMatch(".claude/**", ".claude/.hidden/file"), true, "** matches .hidden");
-    assert.equal(globMatch(".claude/**", ".factory/x"), false);
+    assert.equal(globMatch(".claude/**", ".hermes/x"), false);
   });
 
   test("** at start: **/X requires a slash before X (globMatch translates ** to .*)", () => {
@@ -59,13 +59,13 @@ describe("globMatch semantics (R2 lock)", () => {
     // ambiguity: prefer `.claude/**` for "under .claude/".
     assert.equal(globMatch(".claude**", ".claude/x"), true);
     assert.equal(globMatch(".claude**", ".claude/a/b"), true);
-    assert.equal(globMatch(".claude**", ".factory/x"), false);
+    assert.equal(globMatch(".claude**", ".hermes/x"), false);
   });
 
   test("brace expansion", () => {
-    assert.equal(globMatch("{.claude,.factory}/**", ".claude/x"), true);
-    assert.equal(globMatch("{.claude,.factory}/**", ".factory/x"), true);
-    assert.equal(globMatch("{.claude,.factory}/**", ".mastracode/x"), false);
+    assert.equal(globMatch("{.claude,.hermes}/**", ".claude/x"), true);
+    assert.equal(globMatch("{.claude,.hermes}/**", ".hermes/x"), true);
+    assert.equal(globMatch("{.claude,.hermes}/**", ".codex/x"), false);
   });
 
   test("brace expansion with suffix", () => {

@@ -46,7 +46,7 @@ await test("surfaces.js exports all cross-surface helpers", () => {
 await test("surfaces.js SURFACES is frozen and contains the canonical runtimes", async () => {
   const mod = await import("../../core/surfaces.js");
   assert.ok(Object.isFrozen(mod.SURFACES), "SURFACES must be Object.frozen");
-  assert.deepStrictEqual([...mod.SURFACES], [".claude", ".factory", ".mastracode", ".hermes"]);
+  assert.deepStrictEqual([...mod.SURFACES], [".claude", ".hermes"]);
 });
 
 await test("surfaces.js helper signatures are stable", () => {
@@ -84,7 +84,7 @@ await test("core/ has no inline for-of-SURFACES loops outside surfaces.js", () =
 
 await test("core/ has no hard-coded join(root, <surface>) outside surfaces.js", () => {
   // Surface alternation derived from SURFACES so the enforcement covers every
-  // runtime (a file hard-coding join(root, ".mastracode") is caught too).
+  // runtime (a file hard-coding a retained surface path is caught too).
   const surfaceAlt = SURFACES.map((s) => s.slice(1)).join("|");
   const hardCodedSurfacePath = new RegExp(`join\\s*\\(\\s*root\\s*,\\s*"\\.(${surfaceAlt})"`);
   const offenders = [];
@@ -129,7 +129,7 @@ await test("all shim directories have the same set of .cjs shim names (manifest-
   // per hook rather than asserted across all surfaces.
   const hooksLockPath = join(MCP_ROOT, "hooks-lock.json");
   if (!existsSync(hooksLockPath)) {
-    // Legacy fallback: name-set parity across all 3 surfaces (no manifest).
+    // Legacy fallback: name-set parity across all retained mirrors (no manifest).
     const filterShims = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".cjs")).sort() : []);
     const nameSets = SHIM_DIRS.map(filterShims);
     const reference = nameSets[0];
@@ -187,15 +187,14 @@ function writeHooksLockFixture(root, hooks) {
  * `kinds` maps each surface to its wiring kind (shim | direct); refs and
  * matchers follow the wiring convention for that kind on that surface.
  */
-function bashGateHooksFixture({ claude = "shim", factory = "shim", mastracode = "direct" } = {}) {
+function bashGateHooksFixture({ claude = "shim", hermes = "shim" } = {}) {
   const direct = { kind: "direct", ref: "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", matcher: { tool_name: "execute_command" } };
   const wiringFor = {
     ".claude": { shim: { kind: "shim", ref: ".claude/coordination/hooks/bash-coordination-gate.cjs", matcher: "Bash" }, direct },
-    ".factory": { shim: { kind: "shim", ref: ".factory/coordination/hooks/bash-coordination-gate.cjs", matcher: "Execute" }, direct },
-    ".mastracode": { direct },
+    ".hermes": { shim: { kind: "shim", ref: ".hermes/coordination/hooks/bash-coordination-gate.cjs", matcher: "terminal" }, direct },
   };
   const wiring = {};
-  for (const [surface, kind] of [[".claude", claude], [".factory", factory], [".mastracode", mastracode]]) {
+  for (const [surface, kind] of [[".claude", claude], [".hermes", hermes]]) {
     wiring[surface] = wiringFor[surface][kind];
     if (!wiring[surface]) throw new Error(`bashGateHooksFixture: no ${kind} wiring known for ${surface}`);
   }
@@ -216,8 +215,6 @@ await test("shims-in-sync fails when shim contents differ across surfaces (manif
   // `test-hook.cjs` is an unknown shim name (not in SHIM_NAME_TO_HOOK_KEY),
   // so the verify asserts parity across all surfaces that carry it.
   writeFileSync(join(root, ".claude", "coordination", "hooks", "test-hook.cjs"), "// shim", "utf8");
-  writeFileSync(join(root, ".factory", "coordination", "hooks", "test-hook.cjs"), "// shim", "utf8");
-  writeFileSync(join(root, ".mastracode", "coordination", "hooks", "test-hook.cjs"), "// divergent shim", "utf8");
   writeFileSync(join(root, ".hermes", "coordination", "hooks", "test-hook.cjs"), "// divergent shim", "utf8");
   // No manifest fixture written → loadHooksManifest returns null → legacy
   // all-surfaces parity applies to the unknown-named `test-hook.cjs`.
@@ -230,18 +227,16 @@ await test("shims-in-sync fails when shim contents differ across surfaces (manif
 });
 
 await test("shims-in-sync: with manifest fixture declaring a kind:direct hook, a missing kind:direct surface shim is NOT a failure", () => {
-  // .mastracode is kind:"direct" for the gate hooks, so a missing
-  // .mastracode shim must PASS — the surface is filtered out of the parity
-  // set for that hook. .claude + .factory are kind:"shim" and DO carry the
+  // .hermes is kind:"direct" for the gate hooks, so a missing
+  // .hermes shim must PASS — the surface is filtered out of the parity
+  // set for that hook. .claude carries the shim and DOES carry the
   // shim, byte-identical.
   const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-missing-direct-"));
   mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
-  mkdirSync(join(root, ".mastracode", "coordination", "hooks"), { recursive: true });
-  // .claude and .factory carry the shim byte-identical; .mastracode (kind:"direct") does NOT.
+  mkdirSync(join(root, ".hermes", "coordination", "hooks"), { recursive: true });
+  // .claude carries the shim; .hermes (kind:"direct") does NOT.
   writeFileSync(join(root, ".claude", "coordination", "hooks", "bash-coordination-gate.cjs"), "// shim", "utf8");
-  writeFileSync(join(root, ".factory", "coordination", "hooks", "bash-coordination-gate.cjs"), "// shim", "utf8");
-  writeHooksLockFixture(root, bashGateHooksFixture());
+  writeHooksLockFixture(root, bashGateHooksFixture({ hermes: "direct" }));
 
   const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
   const result = item.verify("feature/hooks", root);
@@ -253,11 +248,9 @@ await test("shims-in-sync: missing a declared kind:shim shim is still a failure"
   // declares must-carry-it is a failure.
   const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-missing-shim-surface-"));
   mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
   // .claude's shim file intentionally absent — the manifest says .claude is
   // kind:"shim" for bash-gate, so this must fail.
   mkdirSync(join(root, ".claude"), { recursive: true });
-  writeFileSync(join(root, ".factory", "coordination", "hooks", "bash-coordination-gate.cjs"), "// shim", "utf8");
   writeHooksLockFixture(root, bashGateHooksFixture());
 
   const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
@@ -277,8 +270,7 @@ await test("shims-in-sync: declared-but-missing-shim on ALL declared surfaces is
   // so a declared shim is checked even when absent on every surface.
   const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-declared-missing-"));
   mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
-  mkdirSync(join(root, ".mastracode", "coordination", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination", "hooks"), { recursive: true });
   // No shim files written at all.
   writeHooksLockFixture(root, bashGateHooksFixture());
 
@@ -297,14 +289,13 @@ await test("shims-in-sync: manifest-known hook with zero kind:shim surfaces skip
   // a deleted dead-code shim as a byte-drift failure.
   const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-empty-declared-"));
   mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
-  mkdirSync(join(root, ".mastracode", "coordination", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination", "hooks"), { recursive: true });
   // A dead shim file written only on .claude — the manifest says bash-gate
   // has NO kind:"shim" surfaces at all (everyone wires direct/none). The
   // shim is dead code; the check must skip it, not flag a "wrong surface"
   // or "hash differ" failure.
   writeFileSync(join(root, ".claude", "coordination", "hooks", "bash-coordination-gate.cjs"), "// orphan shim", "utf8");
-  writeHooksLockFixture(root, bashGateHooksFixture({ claude: "direct", factory: "direct" }));
+  writeHooksLockFixture(root, bashGateHooksFixture({ claude: "direct", hermes: "direct" }));
 
   const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
   const result = item.verify("feature/hooks", root);
@@ -320,55 +311,52 @@ await test("shims-in-sync passes against the real repo (manifest-declared shim s
   assert.ok(result.ok, `real-repo shims-in-sync should pass: ${result.found ?? ""}`);
 });
 
-await test("cross-surface-iteration flags a hard-coded .mastracode surface path", () => {
+await test("cross-surface-iteration flags a hard-coded .hermes surface path", () => {
   // Regression guard: the auditor's hardCodedPath regex is derived from SURFACES,
-  // so a file with join(root, ".mastracode", ...) is flagged. The prior
-  // hand-rolled /\.claude|\.factory/ regex did not match .mastracode, so such a
-  // file was a false negative.
-  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-mastracode-hardcode-"));
+  // so a file with join(root, ".hermes", ...) is flagged.
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-hermes-hardcode-"));
   mkdirSync(join(root, "feature"), { recursive: true });
   writeFileSync(
     join(root, "feature", "hook.js"),
-    'const x = join(root, ".mastracode", "coordination", ".marker");',
+    'const x = join(root, ".hermes", "coordination", ".marker");',
     "utf8",
   );
   const item = CHECKLIST.find((i) => i.id === "cross-surface-iteration");
   const result = item.verify("feature", root);
-  assert.strictEqual(result.ok, false, "hard-coded .mastracode path should be flagged");
+  assert.strictEqual(result.ok, false, "hard-coded .hermes path should be flagged");
   assert.ok(result.found.includes("hook.js"), `failure should name the offending file: ${result.found}`);
 });
 
-await test("parameterized-for-new-surfaces flags a .mastracode-touching file that does not import surfaces.js", () => {
+await test("parameterized-for-new-surfaces flags a .hermes-touching file that does not import surfaces.js", () => {
   // Regression guard: the auditor's touchesSurfaces regex is derived from
-  // SURFACES, so a file touching .mastracode (even without the "coordination"
-  // keyword) is audited. The prior /\.claude|\.factory/|coordination/ regex
-  // did not match .mastracode, so a .mastracode-only file was skipped entirely.
-  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-mastracode-nosurfaces-"));
+  // SURFACES, so a file touching .hermes (even without the "coordination"
+  // keyword) is audited.
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-hermes-nosurfaces-"));
   mkdirSync(join(root, "feature"), { recursive: true });
   writeFileSync(
     join(root, "feature", "hook.js"),
-    'const p = join(root, ".mastracode", "session.json");',
+    'const p = join(root, ".hermes", "session.json");',
     "utf8",
   );
   const item = CHECKLIST.find((i) => i.id === "parameterized-for-new-surfaces");
   const result = item.verify("feature", root);
-  assert.strictEqual(result.ok, false, "a .mastracode-touching file not importing surfaces.js should be flagged");
+  assert.strictEqual(result.ok, false, "a .hermes-touching file not importing surfaces.js should be flagged");
   assert.ok(result.found.includes("hook.js"), `failure should name the offending file: ${result.found}`);
 });
 
 await test("stripCommentsAndStrings removes comments and template literals before regex testing", () => {
   const input = [
     "    // This comment contains .claude which is a false-positive bait",
-    "    /* This block comment contains .factory which is also a false-positive bait */",
+    "    /* This block comment contains .hermes which is also a false-positive bait */",
     '    const x = ".claude";  // string literal containing .claude (preserved)',
-    "    const y = '.factory'; // single-quoted string (preserved)",
+    "    const y = '.hermes'; // single-quoted string (preserved)",
     "    const z = `${SURFACES[0]}/foo`;  // template literal (stripped)",
     '    const real = "real string content";',
     "  ",
   ].join("\n");
   const stripped = stripCommentsAndStrings(input);
   assert.strictEqual(stripped.includes("// This comment contains .claude"), false, "line comment should be stripped");
-  assert.strictEqual(stripped.includes("This block comment contains .factory"), false, "block comment should be stripped");
+  assert.strictEqual(stripped.includes("This block comment contains .hermes"), false, "block comment should be stripped");
   assert.strictEqual(stripped.includes("${SURFACES[0]}/foo"), false, "template literal content should be stripped");
   assert.ok(stripped.includes('const x = ".claude"'), "quoted string literals should be preserved");
   assert.ok(stripped.includes("const real"), "non-surface code should remain");
@@ -385,8 +373,8 @@ await test("inbound-gate.js writes the operator marker via surfaces.js helper, n
   const src = readFileSync(join(MCP_ROOT, "tools/learning-loop-mastra/hooks/universal/inbound-gate.js"), "utf8");
   assert.ok(src.includes("writeToAllSurfaces"), "inbound-gate.js must use writeToAllSurfaces for the marker write");
   assert.ok(
-    !/for\s*\(\s*const\s+\w+\s+of\s*\[\s*"\.claude"\s*,\s*"\.factory"\s*\]/.test(src),
-    "inbound-gate.js must not keep the hard-coded 2-surface for-of loop",
+    !/for\s*\(\s*const\s+\w+\s+of\s*\[\s*"\.claude"\s*,\s*"\.hermes"\s*\]/.test(src),
+    "inbound-gate.js must not keep a hard-coded surface loop",
   );
   // GATE_MARKER_PATH single-path test override must remain intact.
   assert.ok(src.includes("process.env.GATE_MARKER_PATH"), "GATE_MARKER_PATH override must be preserved");
@@ -396,8 +384,8 @@ await test("mark-preflight-complete-tool.js derives coordination dirs from SURFA
   const src = readFileSync(join(MCP_ROOT, "tools/learning-loop-mastra/tools/handlers/mark-preflight-complete-tool.js"), "utf8");
   assert.ok(src.includes("SURFACES.map"), "mark-preflight tool must derive coordDirs via SURFACES.map");
   assert.ok(
-    !/`\$\{root\}\/\.claude\/coordination`/.test(src) && !/`\$\{root\}\/\.factory\/coordination`/.test(src),
-    "mark-preflight tool must not keep hard-coded .claude/.factory coordination literals",
+    !/`\$\{root\}\/\.claude\/coordination`/.test(src) && !/`\$\{root\}\/\.hermes\/coordination`/.test(src),
+    "mark-preflight tool must not keep hard-coded surface coordination literals",
   );
   // GATE_COORD_DIR single-dir test override must remain intact.
   assert.ok(src.includes("process.env.GATE_COORD_DIR"), "GATE_COORD_DIR override must be preserved");

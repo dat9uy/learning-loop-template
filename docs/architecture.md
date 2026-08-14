@@ -105,12 +105,10 @@ Always exits with code 0 (soft gate).
 **Files (shims → universal hooks):**
 - `.claude/coordination/hooks/bash-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/universal/bash-gate.js`)
 - `.claude/coordination/hooks/write-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/universal/write-gate.js`)
-- `.factory/coordination/hooks/bash-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/universal/bash-gate.js`)
-- `.factory/coordination/hooks/write-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/universal/write-gate.js`)
 **Hook Type:** `PreToolUse`
 **Behavior:** Hard-blocking. A block/escalation denies the call via `hookSpecificOutput.permissionDecision: "deny"` + `permissionDecisionReason` in the stdout JSON and exits 0 — the modern PreToolUse protocol, where exit 0 is required for the harness to process the JSON and surface the reason to the model. (Exit 2 would discard the stdout JSON and fall back to stderr, surfacing a generic "No stderr output" error instead of the reason.) The rich decision (matched_rule, surface, preflight_checklist, hard_block) rides in `hookSpecificOutput.additionalContext`.
 
-Outbound gates intercept agent tool usage before execution. Claude Code and Droid CLI use shim files that delegate to the same universal hook scripts in `tools/learning-loop-mastra/hooks/universal/`; Mastra Code uses declarative `hooks.json` entries pointing at the same universal scripts. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate enforces hard blocks on protected paths and delegates `product/**` to the preflight check.
+Outbound gates intercept agent tool usage before execution. Claude Code uses shim files and Hermes uses runtime-owned adapters that delegate to the same universal hook scripts in `tools/learning-loop-mastra/hooks/universal/`. Codex uses native Initial Delivery. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate enforces hard blocks on protected paths and delegates `product/**` to the preflight check.
 
 #### Bash Coordination Gate Flow
 
@@ -155,7 +153,7 @@ The two gates differ in *mode* (age vs marker), not in window — both use `OBSE
 
 ### Hooks Wiring Manifest
 
-The loop ships six universal hook implementations under `tools/learning-loop-mastra/hooks/universal/`. Each runtime wires these to a different extent through four coexisting wiring patterns. The canonical declaration of which hook is wired how on which runtime lives in `hooks-lock.json` at the repo root (sibling of `skills-lock.json`).
+The loop ships universal hook implementations under `tools/learning-loop-mastra/hooks/universal/`. Claude Code and Hermes wire these through two boundary patterns; Codex uses native Initial Delivery. The canonical declaration of which hook is wired how on which runtime lives in `hooks-lock.json` at the repo root (sibling of `skills-lock.json`).
 
 **Wiring kinds:**
 
@@ -163,19 +161,19 @@ The loop ships six universal hook implementations under `tools/learning-loop-mas
 |---|---|
 | `shim` | Runtime config wires a `<surface>/coordination/hooks/*.cjs` shim that `execFileSync`'s the universal hook. |
 | `direct` | Runtime config wires `node tools/learning-loop-mastra/hooks/universal/<file>` directly. |
-| `adapter` | Runtime config wires a runtime-local adapter (`.factory/hooks/loop-surface-inject.cjs`, `.hermes/coordination/hooks/*.cjs` + `.hermes/hooks/loop-surface-inject.cjs`); single-source, no byte-parity mirror. |
+| `adapter` | Runtime config wires a runtime-local adapter (Hermes `.hermes/coordination/hooks/*.cjs` and `.hermes/hooks/loop-surface-inject.cjs`); single-source, no byte-parity mirror. |
 | `none` | Runtime does not wire this hook (pull-only or not applicable). |
 
 **Per-runtime matrix** — see `hooks-lock.json` for the source of truth (every entry carries its wiring map inline). Examples:
 
-- `bash-gate` (PreToolUse): `.claude`=shim, `.factory`=shim, `.mastracode`=direct, `.hermes`=adapter (`matcher:"terminal"`)
-- `write-gate` (PreToolUse): `.claude`=shim, `.factory`=shim, `.mastracode`=direct (triple-wired for `write_file`/`string_replace_lsp`/`delete_file`), `.hermes`=adapter (`matcher:"write_file|patch"`)
-- `inbound-gate` (UserPromptSubmit): `.claude`=shim, `.factory`=shim, `.mastracode`=direct, `.hermes`=adapter
-- `recurrence-check-on-start` (SessionStart): `.claude`=shim, `.factory`=shim, `.mastracode`=direct, `.hermes`=adapter
-- `session-start-inject-discoverability` (SessionStart): `.claude`=direct, `.factory`=adapter (`matcher:"startup"`), `.mastracode`=none, `.hermes`=adapter (`matcher:"first_turn"`)
-- `session-start-inject-process-hints` (SessionStart): `.claude`=direct, `.factory`=adapter (`matcher:"startup"`), `.mastracode`=none, `.hermes`=adapter (`matcher:"first_turn"`)
+- `bash-gate` (PreToolUse): `.claude`=shim, `.hermes`=adapter (`matcher:"terminal"`)
+- `write-gate` (PreToolUse): `.claude`=shim, `.hermes`=adapter (`matcher:"write_file|patch"`)
+- `inbound-gate` (UserPromptSubmit): `.claude`=shim, `.hermes`=adapter
+- `recurrence-check-on-start` (SessionStart): `.claude`=shim, `.hermes`=adapter
+- `session-start-inject-discoverability` (SessionStart): `.claude`=direct, `.hermes`=adapter (`matcher:"first_turn"`)
+- `session-start-inject-process-hints` (SessionStart): `.claude`=direct, `.hermes`=adapter (`matcher:"first_turn"`)
 
-**Why multiple patterns exist:** Claude Code and Droid's PreToolUse surfaces only match a string command; the shim provides a stable `.cjs` wrapper that the universal hook can `execFileSync`. `.mastracode`'s config is rich enough to call the universal hook directly. The SessionStart adapter exists because context-injection is runtime-specific (Droid needs a different startup shape than Claude's universal hooks emit; Hermes has no SessionStart injection channel, so its adapter rides `pre_llm_call` gated to `is_first_turn` and carries a project-scope guard because Hermes shell hooks are global) — see [Context-Injection Division of Labor](#context-injection-division-of-labor).
+**Why multiple patterns exist:** Claude Code's PreToolUse surface uses a stable `.cjs` wrapper that the universal hook can `execFileSync`, while Hermes uses runtime-owned adapters for its native event names and payloads. The SessionStart adapter exists because context-injection is runtime-specific: Hermes has no SessionStart injection channel, so its adapter rides `pre_llm_call` gated to `is_first_turn` and carries a project-scope guard because Hermes shell hooks are global. Codex receives the initial projection through native Initial Delivery — see [Context-Injection Division of Labor](#context-injection-division-of-labor).
 
 **Adoption path for a new hook:**
 
@@ -213,7 +211,7 @@ For the full gating chain, allowlist schema, and operator runbook, see `docs/sec
 **Files:** `tools/learning-loop-mastra/mastra/server.js` (MCP) and `tools/learning-loop-mastra/bin/loop.mjs` (CLI)
 **Transports:** stdio MCP protocol and stateless CLI one-shot
 
-The handler manifest has 44 entries (`tools/learning-loop-mastra/tools/manifest.json`). 42 of them ride the CLI as `CLI_TOOLS` (12 read `CLI_READ_TOOLS` + 30 write `CLI_WRITE_TOOLS` — see `core/cli-tools.js`, or run `LOOP_SURFACE=.claude node tools/learning-loop-mastra/bin/loop.mjs list`). The CLI is the single record surface in every runtime: all three wired runtimes (`.claude` via root `.mcp.json`, `.factory`, `.mastracode`) share this contract, and the MCP server keeps only the 8-tool residue — `workflow_generate_prompt`, `check_runtime_agnostic`, `update_r2_allowlist`, the two `run_workflow_storage_*` tools, and the three `ask_*` agent wrappers. All policy logic lives in `tools/learning-loop-mastra/core/` — single source of truth for all runtimes.
+The handler manifest has 44 entries (`tools/learning-loop-mastra/tools/manifest.json`). 42 of them ride the CLI as `CLI_TOOLS` (12 read `CLI_READ_TOOLS` + 30 write `CLI_WRITE_TOOLS` — see `core/cli-tools.js`, or run `LOOP_SURFACE=.claude node tools/learning-loop-mastra/bin/loop.mjs list`). The CLI is the single record surface in every runtime: Codex uses `.codex/config.toml`, Claude Code uses root `.mcp.json`, and Hermes uses `.hermes/mcp.json`; all share this contract. The MCP server keeps only the 8-tool residue — `workflow_generate_prompt`, `check_runtime_agnostic`, `update_r2_allowlist`, the two `run_workflow_storage_*` tools, and the three `ask_*` agent wrappers. All policy logic lives in `tools/learning-loop-mastra/core/` — single source of truth for all runtimes.
 
 #### gate_check
 
@@ -398,7 +396,7 @@ flowchart TD
     S3 -->|No| S3b["Update runtime-state<br/>via runtime_state_record"]:::update
     S3a --> S3b
     S3b --> S4
-    S4["<b>4. Agent</b> (Claude / Droid / Mastra Code)<br/>the second filter"]:::agent --> S5
+    S4["<b>4. Agent</b> (Codex / Claude / Hermes)<br/>the second filter"]:::agent --> S5
     subgraph S5["<b>5. meta_state_* tools (CLI + MCP)</b>"]
         direction LR
         T_SP0["<b>Self-Modification</b><br/>log_change, sweep"]:::sp0
@@ -472,12 +470,12 @@ The constraint gate (`core/gate-logic.js`) and the meta-state registry are **sep
 
 ## Context-Injection Division of Labor
 
-The context-injection surface is one **hint registry** consumed by two paths: production injection (builders) and inspection (renderer + CLI). The trust objection that justified an earlier LOCAL mirror ("server hint strings not trusted at render time") is dissolved by the fact that hooks already `require('../../core/loop-introspect.js')` directly, and the factory hook itself already `await import`s core/meta-state.js in its failure path. Direct core import removed the wire, the spawn, and the mirror.
+The context-injection surface is one **hint registry** consumed by two paths: production injection (builders) and inspection (renderer + CLI). The trust objection that justified an earlier LOCAL mirror ("server hint strings not trusted at render time") is dissolved by the fact that hooks already `require('../../core/loop-introspect.js')` directly. Direct core import removed the wire, the spawn, and the mirror.
 
-The SessionStart adapter that delivers the factory side of this scheme (`.factory/hooks/loop-surface-inject.cjs`, declared `kind:"adapter"` in `hooks-lock.json`) is documented under [Hooks Wiring Manifest](#hooks-wiring-manifest), together with the universal hooks it adapts and the four wiring patterns.
+The Hermes SessionStart adapter (`.hermes/hooks/loop-surface-inject.cjs`, declared `kind:"adapter"` in `hooks-lock.json`) is documented under [Hooks Wiring Manifest](#hooks-wiring-manifest), together with the universal hooks it adapts and the two retained wiring patterns. Codex receives the same startup projection through native Initial Delivery.
 
 - **Source of truth:** `core/hint-registry.js` — slug-keyed entries `{ slug, kind, tier, text, suggestion, derived_from_rule }`. `tier` is the **injection policy** (`"startup"` | `"on-demand"`, default `"startup"`), decoupled from semantic `kind` (discoverability | process): it says *when* a hint is injected, not *what it is about*. Rule-derived process entries carry empty inline text and resolve from `rule.hint_text` at render time via the shared `resolveHintText` path.
-- **Startup vs on-demand.** A small startup set (4 discoverability hints needed to prevent a wrong first action) is auto-injected full-text at warm; the remaining reference hints are **on-demand** — discoverable via `hint_index` (all slugs + one-line suggestions, always present on warm) and fetched in full via `loop_get_instruction({key})`. The `tier` filter is applied at **warm-injection sites only** (`loop-introspect` warm builders, `loop-describe` warm `buildHintBlocks`, the `.claude` universal session-start hooks, the `.factory` forked hook). The cold `loop_describe` tier (full history) and the `hint-renderer` channels (inspection) stay **unfiltered** — operators can always preview every hint. `loop_get_instruction` resolves against the full registry regardless of tier. `listHints({kind, tier})` defaults `tier=undefined` (no filter) so `loop_get_instruction`'s numeric-index resolution never silently shrinks.
+- **Startup vs on-demand.** A small startup set (4 discoverability hints needed to prevent a wrong first action) is auto-injected full-text at warm; the remaining reference hints are **on-demand** — discoverable via `hint_index` (all slugs + one-line suggestions, always present on warm) and fetched in full via `loop_get_instruction({key})`. The `tier` filter is applied at **warm-injection sites only** (`loop-introspect` warm builders, `loop-describe` warm `buildHintBlocks`, the `.claude` universal session-start hooks, and the Hermes adapter). The cold `loop_describe` tier (full history) and the `hint-renderer` channels (inspection) stay **unfiltered** — operators can always preview every hint. `loop_get_instruction` resolves against the full registry regardless of tier. `listHints({kind, tier})` defaults `tier=undefined` (no filter) so `loop_get_instruction`'s numeric-index resolution never silently shrinks.
 - **Production injection:** `core/loop-introspect.js` builders (`buildDiscoverabilityHints` / `buildProcessHints`) project the registry into the legacy array-of-strings shape, filtered to `tier:"startup"` on the warm path; `buildHintIndex` projects all slugs + suggestions (reusing the same pointer projection) so on-demand hints stay discoverable. All injection surfaces consume the builders — the hint renderer is NOT on the injection path (the builders already deliver single-source content; wiring hooks through the renderer would churn three hot paths for no behavioral gain).
 
 Four surfaces, one registry. Every injected surface rides a declared **channel** (named in `core/hint-renderer.js#CHANNELS`); delivery fidelity is **attested** by the offline classifier, not assumed:
@@ -485,13 +483,13 @@ Four surfaces, one registry. Every injected surface rides a declared **channel**
 | Surface | Channel | Trigger | Delivery fidelity | Role |
 |---|---|---|---|---|
 | **push (SessionStart `.claude` hooks)** | `claude-session-start` | runtime startup | `full`/`lean`/`unknown` (attested) | Fixed cold-start context projected to `slug — suggestion` pointers, hand-partitioned by the two `.claude` universal hooks under the 10k `additionalContext` cap. Bounded and cache-stable. |
-| **push (SessionStart `.factory` hook)** | `factory-session-start` | runtime startup | attested (deferred) | `.factory` emits the startup-tier hint pointers + a `hint_index` block (all slugs + suggestions) via `formatBlock`; on-demand full text is fetched via `loop_get_instruction`, not pushed. |
+| **push (Codex Initial Delivery)** | `codex-initial-delivery` | runtime startup | native delivery | Codex receives the startup-tier hint pointers + a `hint_index` block through its native Initial Delivery configuration; on-demand full text is fetched via `loop_get_instruction`, not pushed. |
 | **pull-warm (`loop_describe`)** | `mcp-warm` | agent mid-session | n/a (agent-initiated) | Current dynamic state: rules/findings/loop-designs/registry summary. Its warm hint block is the startup-tier builder output + `hint_index` (all slugs); the value-add of a warm call is the dynamic fields. The **cold** tier stays unfiltered (full history — every hint, both tiers). |
 | **pull-single (`loop_get_instruction`)** | _(registry-direct)_ | agent on demand | n/a (agent-initiated) | Re-fetch one hint by slug (or numeric index = registry position, for back-compat) that scrolled out of context — the canonical way to read an on-demand hint's full text. Resolves against the fixed registry order — never the shrinkable builder array. |
 | **static (AGENTS.md / CLAUDE.md / learning-loop skill)** | _(steering layer)_ | always | n/a | Steering layer + prompt-author docs; never a hint-content source. |
 | **sidecar (`.claude/session-context.json`)** | `sidecar` | runtime startup | startup pointers + index (not classified) | The startup-tier pointer payload + `hint_index` the push hook writes; `*_source` flags intact. On-demand full text is not written to the sidecar — it is pulled via `loop_get_instruction`. |
 
-**`.mastracode` is pull-only by decision:** no SessionStart hint injection, so no push channel. Documented so future operators don't read the absence as a bug.
+Claude Code and Hermes retain their declared startup channels; Codex uses native Initial Delivery. No retired runtime is part of the current injection contract.
 
 ### Channels → state axes
 
@@ -507,4 +505,4 @@ State-2 rationale (`docs/philosophy.md` § Skills Are the Same Kind of Escape Ha
 
 Trust boundary: hooks read core directly via `require()` / dynamic `import()`; no server-rendered strings cross a trust boundary.
 
-Inspection (debug tooling, not the injection path): `core/hint-renderer.js` + `node tools/scripts/hint-render.mjs --channel <name> [--partition N] [--provenance]` render the same registry per channel (2-partition `.claude` budget shape, `.factory` single block, `mcp-warm`, `sidecar`) with real rule `hint_text` loaded from the live registry, plus per-hint provenance (slug + kind + source) and skip/oversize warnings. Use to verify hint content and budget sizes without starting a session; per-runtime output envelopes (numbered lists, counts headers) belong to the hooks, not the renderer.
+Inspection (debug tooling, not the injection path): `core/hint-renderer.js` + `node tools/scripts/hint-render.mjs --channel <name> [--partition N] [--provenance]` render the same registry per channel (2-partition `.claude` budget shape, `mcp-warm`, `sidecar`) with real rule `hint_text` loaded from the live registry, plus per-hint provenance (slug + kind + source) and skip/oversize warnings. Use to verify hint content and budget sizes without starting a session; per-runtime output envelopes (numbered lists, counts headers) belong to the hooks, not the renderer.

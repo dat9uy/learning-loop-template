@@ -47,9 +47,7 @@ describe("CHANGE_LOG_BOUND_PATHS — detection set", () => {
       "AGENTS.md",
       "CONTRACT.md",
       ".claude/skills/**",
-      ".factory/skills/**",
-      ".mastracode/skills/**",
-      ".factory/hooks/**",
+      ".hermes/skills/**",
     ];
     for (const r of required) {
       assert.ok(
@@ -262,10 +260,10 @@ describe("isBoundPath — coverage predicate", () => {
     assert.strictEqual(isBoundPath("schemas/foo.json"), true);
     assert.strictEqual(isBoundPath("AGENTS.md"), true);
     assert.strictEqual(isBoundPath(".claude/skills/x.md"), true);
-    assert.strictEqual(isBoundPath(".factory/hooks/loop-surface-inject.cjs"), true);
-    // Not bound: runtimes without a hooks/ tree stay unbound
+    assert.strictEqual(isBoundPath(".hermes/skills/learning-loop/SKILL.md"), true);
+    // Not bound: paths outside the retained skills mirror stay unbound
     assert.strictEqual(isBoundPath(".claude/hooks/x.cjs"), false);
-    assert.strictEqual(isBoundPath(".mastracode/hooks/x.cjs"), false);
+    assert.strictEqual(isBoundPath(".hermes/hooks/x.cjs"), false);
     // Not bound
     assert.strictEqual(isBoundPath("README.md"), false);
     assert.strictEqual(isBoundPath("src/foo.ts"), false);

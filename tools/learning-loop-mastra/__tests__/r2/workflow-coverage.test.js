@@ -16,9 +16,9 @@ const CREATE_LOOP_TOOL = resolve(__dirname, "..", "..", "mastra", "create-loop-t
 const SCHEMA_V1 = {
   version: 1,
   schema: "r2-allowlist/v1",
-  "claude-code": { own: [".claude/**"], deny: [".factory/**", ".mastracode/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"] },
-  droid: { own: [".factory/**"], deny: [".claude/**", ".mastracode/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"] },
-  "mastra-code": { own: [".mastracode/**"], deny: [".claude/**", ".factory/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"] },
+  codex: { own: [".codex/**"], deny: [".claude/**", ".hermes/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"] },
+  "claude-code": { own: [".claude/**"], deny: [".codex/**", ".hermes/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"] },
+  hermes: { own: [".hermes/**"], deny: [".codex/**", ".claude/**", ".loop/r2-allowlist.json", "runtime-state.jsonl", ".gate-override"] },
   universal: ["records/**", "plans/**", "docs/**", "AGENTS.md", "tools/learning-loop-mastra/**", ".loop/.cache/**", "meta-state.jsonl"],
 };
 
@@ -42,13 +42,13 @@ describe("workflow + tool R2 coverage (F13/R4)", () => {
     tempRoot = mkdtempSync(join(tmpdir(), "r2-wf-"));
     mkdirSync(join(tempRoot, ".loop"), { recursive: true });
     mkdirSync(join(tempRoot, ".claude"), { recursive: true });
-    mkdirSync(join(tempRoot, ".factory"), { recursive: true });
+    mkdirSync(join(tempRoot, ".hermes"), { recursive: true });
     mkdirSync(join(tempRoot, "records"), { recursive: true });
     writeFileSync(join(tempRoot, ".loop", "r2-allowlist.json"), JSON.stringify(SCHEMA_V1));
     process.env.GATE_ROOT = tempRoot;
   });
 
-  test("workflow_write_goes_through_r2: workflow tool with pathField targeting .factory/x from claude-code → throws", async () => {
+  test("workflow_write_goes_through_r2: workflow tool with pathField targeting .hermes/x from claude-code → throws", async () => {
     let executeCalled = false;
     const gated = withR2Gate({
       id: "run_workflow_test_write",
@@ -56,7 +56,7 @@ describe("workflow + tool R2 coverage (F13/R4)", () => {
       execute: async () => { executeCalled = true; return "should not reach"; },
     });
     await assert.rejects(
-      () => gated({ target_path: ".factory/x" }, {}),
+      () => gated({ target_path: ".hermes/x" }, {}),
       (err) => {
         if (err.name !== "R2WriteDeniedError") return false;
         const denial = err.denial;
@@ -131,20 +131,20 @@ describe("workflow + tool R2 coverage (F13/R4)", () => {
       pathFields: ["target_path"],
       execute: async (args) => ({ wrote: args.target_path }),
     });
-    // .factory/x is denied for claude-code initially.
-    await assert.rejects(() => gated({ target_path: ".factory/x" }, {}));
+    // .hermes/x is denied for claude-code initially.
+    await assert.rejects(() => gated({ target_path: ".hermes/x" }, {}));
 
     // Simulate the update_r2_allowlist tool: edit + invalidate cache.
     const edited = {
       ...SCHEMA_V1,
-      "claude-code": { own: [".claude/**", ".factory/**"], deny: SCHEMA_V1["claude-code"].deny.filter((p) => p !== ".factory/**") },
+      "claude-code": { own: [".claude/**", ".hermes/**"], deny: SCHEMA_V1["claude-code"].deny.filter((p) => p !== ".hermes/**") },
     };
     writeFileSync(join(tempRoot, ".loop", "r2-allowlist.json"), JSON.stringify(edited));
     const { invalidateAllowlist } = await import("../../core/r2/allowlist-cache.js");
     invalidateAllowlist(tempRoot);
 
-    // Now .factory/x is allowed for claude-code.
-    const out = await gated({ target_path: ".factory/x" }, {});
-    assert.deepEqual(out, { wrote: ".factory/x" });
+    // Now .hermes/x is allowed for claude-code.
+    const out = await gated({ target_path: ".hermes/x" }, {});
+    assert.deepEqual(out, { wrote: ".hermes/x" });
   });
 });

@@ -189,17 +189,17 @@ await test("readDecisionLog returns entries from all surfaces, deduped", () => {
   const ts = new Date().toISOString();
   const shared = { ts, command_prefix: "shared", rule_id: "rule-x", decision: "block", reason: "r", matched_pattern: null, skipped_via_override: false };
   const claudeOnly = { ts: new Date(Date.now() + 1).toISOString(), command_prefix: "claude-only", rule_id: "rule-y", decision: "block", reason: "r", matched_pattern: null, skipped_via_override: false };
-  const factoryOnly = { ts: new Date(Date.now() + 2).toISOString(), command_prefix: "factory-only", rule_id: "rule-z", decision: "block", reason: "r", matched_pattern: null, skipped_via_override: false };
+  const hermesOnly = { ts: new Date(Date.now() + 2).toISOString(), command_prefix: "hermes-only", rule_id: "rule-z", decision: "block", reason: "r", matched_pattern: null, skipped_via_override: false };
 
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
-  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".hermes", "coordination"), { recursive: true });
   writeFileSync(surfaceLogPath(".claude"), [JSON.stringify(shared), JSON.stringify(claudeOnly)].join("\n") + "\n");
-  writeFileSync(surfaceLogPath(".factory"), [JSON.stringify(shared), JSON.stringify(factoryOnly)].join("\n") + "\n");
+  writeFileSync(surfaceLogPath(".hermes"), [JSON.stringify(shared), JSON.stringify(hermesOnly)].join("\n") + "\n");
 
   const entries = readDecisionLog(root, { since: new Date(Date.now() - 1000).toISOString() });
   assert.strictEqual(entries.length, 3);
   const prefixes = entries.map((e) => e.command_prefix).sort();
-  assert.deepStrictEqual(prefixes, ["claude-only", "factory-only", "shared"]);
+  assert.deepStrictEqual(prefixes, ["claude-only", "hermes-only", "shared"]);
 });
 
 await test("readDecisionLog filters by since", () => {

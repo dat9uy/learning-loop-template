@@ -50,7 +50,7 @@ describe("runtime_state_record metadata nested-array rejection", () => {
   test("rejects nested-array metadata (the corrupt row 23 shape)", () => {
     const corrupt = {
       ...BASE_INPUT,
-      metadata: { pending_execution: [[[[[[["close .mastracode gap: real files present"]]]]]]] },
+      metadata: { pending_execution: [[[[[[["close .hermes gap: real files present"]]]]]]] },
     };
     const result = runtimeStateRecordTool.schema.metadata.safeParse(corrupt.metadata);
     assert.strictEqual(result.success, false, "nested arrays in metadata must be rejected");

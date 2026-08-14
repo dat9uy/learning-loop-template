@@ -1,6 +1,6 @@
 // Cold-session discoverability — deterministic rewrite.
 //
-// All tests use direct module imports. No external process spawning (no droid
+// All tests use direct module imports. No external process spawning (no retired
 // exec, no MCP server stdio). This eliminates the two dominant flakiness
 // sources: (1) agent-CLI availability and runtime behavior, (2) wire-format
 // coercion / Zod schema drift in live JSON-RPC.
@@ -19,9 +19,9 @@
 //   6. Stale entries do not trigger session-id churn — regression for TTL
 //      recursion.
 //   7. REMOVED in plans/260717-1826-unify-context-injection Phase 1 — the
-//      factory hook's LOCAL_* mirror is gone; rendering is single-source via
+//      runtime hook's LOCAL_* mirror is gone; rendering is single-source via
 //      core/loop-introspect.js. Replaced by
-//      __tests__/factory-hook-single-source.test.cjs which exercises the hook
+//      the runtime hook tests which exercise the adapter
 //      directly via its exported main() and asserts byte-equality against the
 //      canonical builders.
 //
@@ -209,7 +209,7 @@ describe("cold-session discoverability", () => {
     const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
     const core = await import(pathToFileURL(corePath).href);
     const sessionId = "test-cold-session-mcp-client-loading";
-    const runtime = "droid";
+    const runtime = "hermes";
 
     // Pre-populate with a finding the probe would otherwise log.
     const existingId = core.generateId("mcp-client-loading-missing");

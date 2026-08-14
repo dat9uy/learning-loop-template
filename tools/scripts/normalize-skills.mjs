@@ -8,8 +8,8 @@
  * clobbers it (drops `external:true`/`delivery`/`targets`/`maturity`/`hash`,
  * changes `sourceType:"npx-skills-cli"` → `"github"`, adds opaque
  * `computedHash`). The trust-anchor `hash = sha256(SKILL.md)` is re-derived
- * from the installed files on disk -- the surface with the highest mtime
- * across the 3 surfaces (npx writes detected runtimes with wall-clock mtime;
+ * from the installed files on disk -- the retained mirror with the highest
+ * mtime (npx writes detected runtimes with wall-clock mtime;
  * see `detectExternalHash` in `skills-lib.mjs`).
  *
  * Idempotent: re-running on an already-normalized manifest is a no-op (the
