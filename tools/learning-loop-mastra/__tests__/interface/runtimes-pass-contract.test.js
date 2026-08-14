@@ -6,6 +6,16 @@ import { validate } from "../../interface/contract.js";
 
 const PROJECT_ROOT = join(import.meta.dirname, "..", "..", "..", "..");
 
+test("validate('codex') records native Initial Delivery without falsely certifying wider lifecycle participation", () => {
+  delete process.env.RUNTIME_ID;
+  const result = validate("codex", PROJECT_ROOT);
+  assert.equal(result.ok, false);
+  assert.ok(result.missing.includes("hook-shim-set"));
+  assert.ok(result.missing.includes("settings-integration"));
+  assert.equal(result.path_map["codex-initial-delivery"].ok, true);
+  assert.equal(result.path_map["codex-initial-delivery"].activation, "synchronous-session-start");
+});
+
 test("validate('claude-code') on real repo returns ok: true", () => {
   delete process.env.RUNTIME_ID;
   const result = validate("claude-code", PROJECT_ROOT);

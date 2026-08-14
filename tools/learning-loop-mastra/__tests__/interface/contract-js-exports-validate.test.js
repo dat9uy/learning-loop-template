@@ -17,8 +17,9 @@ test("contract.js exports validate as named export", async () => {
 test("contract.js exports REQUIREMENT_IDS constant", async () => {
   const mod = await import(CONTRACT_JS);
   assert.ok(Array.isArray(mod.REQUIREMENT_IDS), "expected REQUIREMENT_IDS to be an array");
-  // Plan 5-Lite Phase 3: REQUIREMENT_IDS grew 7 → 10 with additive
+  // Plan 5-Lite Phase 3 grew the list to 10; Codex Initial Delivery adds
+  // the dedicated native-adapter conformance result.
   // Req #9 (.mastracode-config-presence), Req #10 (mastracode-session-start-pins-loop-surface),
   // and Req #11 (tools-manifest-has-path-fields). Req #8 is intentionally skipped (gap).
-  assert.equal(mod.REQUIREMENT_IDS.length, 10, "expected 10 requirement IDs (5 base + Req #6 + #7 + #9 + #10 + #11)");
+  assert.equal(mod.REQUIREMENT_IDS.length, 11, "expected 11 requirement IDs (5 base + Req #6 + #7 + #9 + #10 + #11 + #12)");
 });

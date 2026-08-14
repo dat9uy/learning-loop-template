@@ -1,0 +1,7 @@
+[mcp_servers.learning-loop]
+command = "node"
+args = ["tools/learning-loop-mastra/mastra/server.js"]
+
+[mcp_servers.learning-loop.env]
+RUNTIME_ID = "codex"
+LOOP_SURFACE = ".codex"

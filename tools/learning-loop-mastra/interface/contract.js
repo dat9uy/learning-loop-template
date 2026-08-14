@@ -4,8 +4,7 @@
  * MCP-transport conformance validator (1 of N transports). The transport-agnostic
  * runtime participation contract lives at docs/runtime-contract.md; this file
  * validates the MCP+hooks transport's conformance to it. Verifies the requirements
- * in CONTRACT.md (5 base + Req #6 `hook-declarative-config` + Req #7 `settings-no-bypass`,
- * both additive for declarative-hook runtimes like Mastra Code).
+ * in CONTRACT.md, including the runtime-native Codex Initial Delivery adapter.
  *
  * CLI: node tools/learning-loop-mastra/interface/contract.js <runtimeId> [rootPath]
  *      node tools/learning-loop-mastra/interface/contract.js --list
@@ -23,7 +22,7 @@ import { SURFACES } from "../core/surfaces.js";
 // concerns separate prevents native hook/configuration vocabulary from
 // entering Core while letting the validator iterate the catalog.
 const NATIVE_RUNTIME_CONFIG = {
-  "codex":       { mcp_config: ".codex/mcp.json", settings: "settings.json", transport: "mcp" },
+  "codex":       { mcp_config: ".codex/config.toml", hooks_config: ".codex/hooks.json", transport: "mcp", initial_delivery: true },
   "claude-code": { mcp_config: ".mcp.json",        settings: "settings.json", transport: "mcp" },
   "hermes": {
     mcp_config: ".hermes/mcp.json",
@@ -102,7 +101,8 @@ const REQUIRED_TOOL_REFS = ["loop_describe", "meta_state_list"];
 // for runtimes with declarative hook configs (e.g., Mastra Code).
 // Req #1 stays monomorphic (shim files only); Req #6 is parallel/alternative.
 // Additive Reqs #9 (.mastracode-config-presence),
-// #10 (mastracode-session-start-pins-loop-surface), #11 (tools-manifest-has-path-fields).
+// #10 (mastracode-session-start-pins-loop-surface), #11 (tools-manifest-has-path-fields),
+// #12 (codex-initial-delivery).
 // Req #8 is intentionally skipped; the numbering gap is preserved.
 export const REQUIREMENT_IDS = [
   "hook-shim-set",
@@ -115,6 +115,7 @@ export const REQUIREMENT_IDS = [
   ".mastracode-config-presence",
   "mastracode-session-start-pins-loop-surface",
   "tools-manifest-has-path-fields",
+  "codex-initial-delivery",
 ];
 
 function readJsonSafe(p) {
@@ -139,6 +140,16 @@ function findUniversalHookPath(shimContent) {
 function checkHookShimSet(runtimeId, rootPath) {
   const runtime = getRuntimeConfig(runtimeId);
   const { surface } = runtime;
+  if (runtime.initial_delivery) {
+    return {
+      id: "hook-shim-set",
+      ok: false,
+      applicable: true,
+      note: "Codex Initial Delivery does not yet establish the required lifecycle gate shims",
+      shim_dir: join(rootPath, surface, "coordination", "hooks"),
+      shims: [],
+    };
+  }
   // Declarative runtimes (those with `declarative_hooks`) don't use shim files.
   // Req #1 (hook-shim-set) is N/A for them; the contract uses Req #6 (hook-declarative-config)
   // instead. Report OK with `applicable:false` so the contract doesn't fail.
@@ -183,6 +194,7 @@ function checkHookShimSet(runtimeId, rootPath) {
 function checkMcpClientConfig(runtimeId, rootPath) {
   const { mcp_config } = getRuntimeConfig(runtimeId);
   const configPath = join(rootPath, mcp_config);
+  if (runtimeId === "codex") return checkCodexMcpClientConfig(configPath);
   const parsed = readJsonSafe(configPath);
   if (!parsed.ok) {
     return { id: "mcp-client-config", ok: false, config_path: configPath, entry: null, parse_error: parsed.error };
@@ -192,6 +204,41 @@ function checkMcpClientConfig(runtimeId, rootPath) {
     && Array.isArray(entry.args)
     && entry.args.some((a) => typeof a === "string" && a.endsWith("tools/learning-loop-mastra/mastra/server.js"));
   return { id: "mcp-client-config", ok: !!entry && targetOk, config_path: configPath, entry };
+}
+
+function checkCodexMcpClientConfig(configPath) {
+  let content;
+  try {
+    content = readFileSync(configPath, "utf8");
+  } catch (error) {
+    return { id: "mcp-client-config", ok: false, config_path: configPath, entry: null, parse_error: error.message };
+  }
+  const section = tomlSection(content, "[mcp_servers.learning-loop]");
+  const command = section.match(/^command\s*=\s*"([^"]+)"\s*$/m)?.[1] ?? null;
+  const serverConfigured = /args\s*=\s*\[[\s\S]*?tools\/learning-loop-mastra\/mastra\/server\.js[\s\S]*?\]/m.test(section);
+  const envSection = tomlSection(content, "[mcp_servers.learning-loop.env]");
+  const runtimeIdConfigured = /^RUNTIME_ID\s*=\s*"codex"\s*$/m.test(envSection);
+  const loopSurfaceConfigured = /^LOOP_SURFACE\s*=\s*"\.codex"\s*$/m.test(envSection);
+  return {
+    id: "mcp-client-config",
+    ok: command === "node" && serverConfigured && runtimeIdConfigured && loopSurfaceConfigured,
+    config_path: configPath,
+    entry: {
+      command,
+      server_configured: serverConfigured,
+      runtime_id_configured: runtimeIdConfigured,
+      loop_surface_configured: loopSurfaceConfigured,
+    },
+  };
+}
+
+function tomlSection(content, header) {
+  const lines = content.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === header);
+  if (start === -1) return "";
+  const body = lines.slice(start + 1);
+  const nextHeader = body.findIndex((line) => line.trimStart().startsWith("["));
+  return (nextHeader === -1 ? body : body.slice(0, nextHeader)).join("\n");
 }
 
 function resolveSkillPath(candidates, rootPath) {
@@ -549,6 +596,14 @@ function evaluateShimFileSettingsIntegration(settingsPath) {
 
 function checkSettingsIntegration(runtimeId, rootPath) {
   const runtime = getRuntimeConfig(runtimeId);
+  if (runtime.initial_delivery) {
+    return {
+      id: "settings-integration",
+      ok: false,
+      applicable: true,
+      note: "Codex Initial Delivery does not yet establish the required lifecycle gate routing",
+    };
+  }
   // Mastra Code has two settings-like files (hooks.json + settings.json);
   // Claude Code and Droid use a single settings.json with a `hooks` block.
   // Strategy: for declarative runtimes (those with `declarative_hooks`), require all 4
@@ -804,9 +859,40 @@ function checkToolsManifestHasPathFields(_runtimeId, rootPath) {
   };
 }
 
+function checkCodexInitialDelivery(runtimeId, rootPath) {
+  if (runtimeId !== "codex") {
+    return { id: "codex-initial-delivery", ok: true, applicable: false, note: "runtime does not use the Codex Initial Delivery adapter" };
+  }
+  const hooksPath = join(rootPath, ".codex", "hooks.json");
+  const adapterPath = join(rootPath, ".codex", "hooks", "session-start-i2-delivery.cjs");
+  const parsed = readJsonSafe(hooksPath);
+  if (!parsed.ok) {
+    return { id: "codex-initial-delivery", ok: false, hooks_path: hooksPath, adapter_path: adapterPath, activation: "synchronous-session-start", parse_error: parsed.error };
+  }
+  const handlers = parsed.data?.hooks?.SessionStart;
+  const commands = Array.isArray(handlers)
+    ? handlers.flatMap((group) => Array.isArray(group?.hooks) ? group.hooks : [])
+    : [];
+  const handler = commands.find((entry) => entry?.type === "command" && entry.command === "node .codex/hooks/session-start-i2-delivery.cjs");
+  const synchronous = handler?.async !== true;
+  const ok = existsSync(adapterPath)
+    && !!handler
+    && synchronous;
+  return {
+    id: "codex-initial-delivery",
+    ok,
+    hooks_path: hooksPath,
+    adapter_path: adapterPath,
+    activation: "synchronous-session-start",
+    adapter_configured: !!handler,
+    synchronous,
+    additional_context_limit: handler?.additionalContextLimit ?? null,
+  };
+}
+
 /**
- * Validate a runtime against the 5-requirement contract.
- * @param {string} runtimeId - One of: "claude-code", "droid", "mastra-code".
+ * Validate a runtime against the MCP-transport conformance contract.
+ * @param {string} runtimeId - A Runtime Topology participant or supported legacy runtime.
  * @param {string} [rootPath=process.cwd()] - Project root (defaults to cwd).
  * @returns {{
  *   ok: boolean,
@@ -846,6 +932,7 @@ export function validate(runtimeId, rootPath = process.cwd()) {
     checkMastracodeConfigPresence(runtimeId, resolvedRoot),
     checkMastracodeSessionStartPinsLoopSurface(runtimeId, resolvedRoot),
     checkToolsManifestHasPathFields(runtimeId, resolvedRoot),
+    checkCodexInitialDelivery(runtimeId, resolvedRoot),
   ];
   const missing = checks.filter((c) => !c.ok).map((c) => c.id);
   const notes = [];

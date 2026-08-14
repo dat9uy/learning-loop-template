@@ -58,6 +58,7 @@ const E2E_FILES = [
   "tools/learning-loop-mastra/__tests__/e2e/bash-gate-no-verify.test.js",
   "tools/learning-loop-mastra/__tests__/e2e/budget-option-c-e2e.test.js",
   "tools/learning-loop-mastra/__tests__/e2e/change-log-operation-envelope.test.js",
+  "tools/learning-loop-mastra/__tests__/interface/codex-initial-delivery.test.cjs",
   "tools/learning-loop-mastra/__tests__/e2e/ci-registry-deltas.test.cjs",
   "tools/learning-loop-mastra/__tests__/e2e/cross-surface.test.js",
   "tools/learning-loop-mastra/__tests__/e2e/gate-recurrence.test.js",
