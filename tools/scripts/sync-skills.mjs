@@ -36,8 +36,8 @@ import { readFileSync, existsSync, lstatSync, readdirSync, unlinkSync, writeFile
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { writeToAllSkills, SURFACES } from "../learning-loop-mastra/core/surfaces.js";
-import { sha256, findDetectedSurface, normalizeManifest } from "./skills-lib.mjs";
+import { writeToAllSkills } from "../learning-loop-mastra/core/surfaces.js";
+import { sha256, findDetectedSurface, normalizeManifest, SKILL_SURFACES } from "./skills-lib.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -139,7 +139,7 @@ function fanOutExternal(name, entry, repoRoot) {
   // retired source. Probe 2 (2026-07-20) confirmed `npx skills add --copy`
   // atomically replaces the symlink at the detected surface, but the
   // undetected surfaces still carry the legacy symlink until we clear it.
-  for (const surface of SURFACES) {
+  for (const surface of SKILL_SURFACES) {
     if (surface === source) continue;
     const dest = join(repoRoot, surface, "skills", name);
     try {
@@ -215,7 +215,7 @@ function postFanOutParityCheck(name, entry) {
   if (!existsSync(canonicalAbs)) return { ok: true };
   const canonicalBytes = readFileSync(canonicalAbs, "utf8");
   const divergent = [];
-  for (const surface of SURFACES) {
+  for (const surface of SKILL_SURFACES) {
     const mirrorPath = join(repoRoot, surface, "skills", name, "SKILL.md");
     if (!existsSync(mirrorPath)) {
       divergent.push(`${surface}: mirror missing`);
@@ -240,7 +240,7 @@ function postFanOutParityCheck(name, entry) {
 function postExternalFanOutParityCheck(name) {
   let ref = null;
   const divergent = [];
-  for (const surface of SURFACES) {
+  for (const surface of SKILL_SURFACES) {
     const mirrorPath = join(repoRoot, surface, "skills", name, "SKILL.md");
     if (!existsSync(mirrorPath)) {
       divergent.push(`${surface}: mirror missing`);
@@ -320,7 +320,7 @@ function main() {
           console.error(`[sync-skills] PARITY FAIL ${name}: ${parity.divergent.join(", ")}`);
           continue;
         }
-        console.log(`[sync-skills] ok ${name} (external fan-out from ${result.source}) → ${SURFACES.join(", ")}`);
+        console.log(`[sync-skills] ok ${name} (external fan-out from ${result.source}) → ${SKILL_SURFACES.join(", ")}`);
       } else {
         console.log(`[sync-skills] skip ${name} (external, no fan-out)`);
       }
@@ -343,7 +343,7 @@ function main() {
       console.error(`[sync-skills] PARITY FAIL ${name}: ${parity.divergent.join(", ")}`);
       continue;
     }
-    console.log(`[sync-skills] ok ${name} → ${SURFACES.join(", ")}`);
+    console.log(`[sync-skills] ok ${name} → ${SKILL_SURFACES.join(", ")}`);
   }
 
   if (totalFailed > 0) {

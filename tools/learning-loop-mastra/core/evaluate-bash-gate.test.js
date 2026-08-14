@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { evaluateBashGate } from "./evaluate-bash-gate.js";
 import {
   PATH_WRITE_PATTERNS,
+  PROTECTED_SURFACES,
   DECISION_LOG_WRITE_PATTERNS,
   DECISION_LOG_WRITE_REASON,
 } from "./protected-shell-writes.js";
@@ -526,9 +527,9 @@ test("null command → ok", () => {
 
 // ── PATH_WRITE_PATTERNS array ──
 
-test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 4/surface decision-log + 8 state files)", () => {
+test("PATH_WRITE_PATTERNS count scales with known topology and compatibility surfaces", () => {
   assert.ok(Array.isArray(PATH_WRITE_PATTERNS));
-  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 4 * SURFACES.length + 8);
+  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * PROTECTED_SURFACES.length + 4 * PROTECTED_SURFACES.length + 8);
   // Every entry should be a RegExp
   for (const p of PATH_WRITE_PATTERNS) {
     assert.ok(p instanceof RegExp);

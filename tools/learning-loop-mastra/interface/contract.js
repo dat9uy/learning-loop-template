@@ -15,14 +15,40 @@
 import { existsSync, readFileSync, readdirSync, statSync, lstatSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
+import { listRuntimes } from "../core/runtime-topology.js";
 import { SURFACES } from "../core/surfaces.js";
 
-// Per-runtime config layout. Surface = runtime dir at project root.
-// mcp_config = path to MCP server config (relative to project root).
-// settings = path to settings file with hooks arrays (relative to surface).
-const RUNTIMES = {
-  "claude-code": { surface: ".claude",     mcp_config: ".mcp.json",            settings: "settings.json", transport: "mcp" },
-  "droid":       { surface: ".factory",    mcp_config: ".factory/mcp.json",    settings: "settings.json", transport: "mcp" },
+// Runtime Topology owns participant identity, surface, and ownership root.
+// This layer owns only transport-specific conformance details. Keeping these
+// concerns separate prevents native hook/configuration vocabulary from
+// entering Core while letting the validator iterate the catalog.
+const NATIVE_RUNTIME_CONFIG = {
+  "codex":       { mcp_config: ".codex/mcp.json", settings: "settings.json", transport: "mcp" },
+  "claude-code": { mcp_config: ".mcp.json",        settings: "settings.json", transport: "mcp" },
+  "hermes": {
+    mcp_config: ".hermes/mcp.json",
+    settings: "hooks.json",
+    transport: "mcp",
+    // Hermes wires lifecycle events via shell hooks (pre_tool_call /
+    // pre_llm_call / on_session_start) declared in ~/.hermes/config.yaml.
+    // The .hermes/hooks.json mirror records that wiring in-repo (the
+    // filename follows the .mastracode declarative-hooks convention; the
+    // shape is Claude-Code-style so settings-integration resolves the 4
+    // shim basenames).
+    skill_discovery_paths: [".hermes/skills/learning-loop/SKILL.md"],
+  },
+};
+
+const RUNTIMES = Object.fromEntries(
+  listRuntimes().map((runtime) => [runtime.id, { ...runtime, ...NATIVE_RUNTIME_CONFIG[runtime.id] }]),
+);
+
+// One-way compatibility view for callers that still validate the pre-topology
+// runtime surfaces. It is deliberately outside Runtime Topology and is
+// retained only until the supported-runtime cleanup ticket removes those
+// runtime-owned surfaces.
+const LEGACY_RUNTIMES = {
+  "droid": { surface: ".factory", mcp_config: ".factory/mcp.json", settings: "settings.json", transport: "mcp" },
   // Mastra Code uses declarative config (.mastracode/*.json).
   // mcp_config: canonical Mastra-Code path.
   // declarative_hooks: path to .mastracode/hooks.json (Req #6).
@@ -41,22 +67,11 @@ const RUNTIMES = {
       ".claude/skills/learning-loop/SKILL.md",      // Claude-compatible auto-discovery
     ],
   },
-  // Hermes Agent — native shell-hook runtime (config lives in ~/.hermes/config.yaml;
-  // .hermes/*.json are the committed project-local mirrors the validator checks).
-  "hermes": {
-    surface: ".hermes",
-    transport: "mcp",
-    mcp_config: ".hermes/mcp.json",
-    settings: "hooks.json",
-    // Hermes wires lifecycle events via shell hooks (pre_tool_call /
-    // pre_llm_call / on_session_start) declared in ~/.hermes/config.yaml.
-    // The .hermes/hooks.json mirror records that wiring in-repo (the
-    // filename follows the .mastracode declarative-hooks convention; the
-    // shape is Claude-Code-style so settings-integration resolves the 4
-    // shim basenames).
-    skill_discovery_paths: [".hermes/skills/learning-loop/SKILL.md"],
-  },
 };
+
+function getRuntimeConfig(runtimeId) {
+  return RUNTIMES[runtimeId] ?? LEGACY_RUNTIMES[runtimeId];
+}
 
 const SHIM_BASENAMES = [
   "bash-coordination-gate.cjs",
@@ -122,7 +137,7 @@ function findUniversalHookPath(shimContent) {
 }
 
 function checkHookShimSet(runtimeId, rootPath) {
-  const runtime = RUNTIMES[runtimeId];
+  const runtime = getRuntimeConfig(runtimeId);
   const { surface } = runtime;
   // Declarative runtimes (those with `declarative_hooks`) don't use shim files.
   // Req #1 (hook-shim-set) is N/A for them; the contract uses Req #6 (hook-declarative-config)
@@ -166,7 +181,7 @@ function checkHookShimSet(runtimeId, rootPath) {
 }
 
 function checkMcpClientConfig(runtimeId, rootPath) {
-  const { mcp_config } = RUNTIMES[runtimeId];
+  const { mcp_config } = getRuntimeConfig(runtimeId);
   const configPath = join(rootPath, mcp_config);
   const parsed = readJsonSafe(configPath);
   if (!parsed.ok) {
@@ -341,7 +356,7 @@ function checkMirrorPresence(name, rootPath) {
 // contract.test.js req-3 cases.
 // fallow-ignore-next-line complexity -- per-skill validation chain (manifest/read/frontmatter/maturity/mirror/tool-ref); sub-steps already extracted, remaining loop is orchestration
 function checkSkillSpec(runtimeId, rootPath) {
-  const runtime = RUNTIMES[runtimeId];
+  const runtime = getRuntimeConfig(runtimeId);
   const surface = runtime.surface;
   const skillsDir = join(rootPath, surface, "skills");
   // Manifest-driven exclusion. Read fresh on every call (no cache).
@@ -533,7 +548,7 @@ function evaluateShimFileSettingsIntegration(settingsPath) {
 }
 
 function checkSettingsIntegration(runtimeId, rootPath) {
-  const runtime = RUNTIMES[runtimeId];
+  const runtime = getRuntimeConfig(runtimeId);
   // Mastra Code has two settings-like files (hooks.json + settings.json);
   // Claude Code and Droid use a single settings.json with a `hooks` block.
   // Strategy: for declarative runtimes (those with `declarative_hooks`), require all 4
@@ -591,7 +606,7 @@ function evaluateDeclarativeHooks(hooksPath, hooksData) {
 }
 
 function checkHookDeclarativeConfig(runtimeId, rootPath) {
-  const runtime = RUNTIMES[runtimeId];
+  const runtime = getRuntimeConfig(runtimeId);
   // Shim-file runtimes don't apply Req #6; report N/A as OK.
   if (!runtime.declarative_hooks) {
     return { id: "hook-declarative-config", ok: true, applicable: false, note: "runtime uses shim-file hooks (Req #1); Req #6 N/A" };
@@ -653,7 +668,7 @@ function evaluateSettingsBypass(settingsPath) {
  * entirely (hooks don't fire when commands are passed-through). Reject loudly.
  */
 function checkSettingsNoBypass(runtimeId, rootPath) {
-  const runtime = RUNTIMES[runtimeId];
+  const runtime = getRuntimeConfig(runtimeId);
   // Only applies to runtimes with declarative settings (Mastra Code today; future too).
   if (!runtime.settings_path) {
     return { id: "settings-no-bypass", ok: true, applicable: false, note: "runtime has no declarative settings path; Req #7 N/A" };
@@ -672,7 +687,7 @@ function checkSettingsNoBypass(runtimeId, rootPath) {
 const MASTRACODE_REQUIRED_FILES = ["mcp.json", "hooks.json", "settings.json", "database.json"];
 
 function checkMastracodeConfigPresence(runtimeId, rootPath) {
-  const runtime = RUNTIMES[runtimeId];
+  const runtime = getRuntimeConfig(runtimeId);
   if (runtime.surface !== ".mastracode") {
     return {
       id: ".mastracode-config-presence",
@@ -698,7 +713,7 @@ function checkMastracodeConfigPresence(runtimeId, rootPath) {
 // shim wiring was replaced by this simpler, more robust mechanism).
 // Other runtimes: applicable:false.
 function checkMastracodeSessionStartPinsLoopSurface(runtimeId, rootPath) {
-  const runtime = RUNTIMES[runtimeId];
+  const runtime = getRuntimeConfig(runtimeId);
   if (runtime.surface !== ".mastracode") {
     return {
       id: "mastracode-session-start-pins-loop-surface",
@@ -805,7 +820,7 @@ function checkToolsManifestHasPathFields(_runtimeId, rootPath) {
  */
 export function validate(runtimeId, rootPath = process.cwd()) {
   const resolvedRoot = resolve(rootPath);
-  if (!Object.prototype.hasOwnProperty.call(RUNTIMES, runtimeId)) {
+  if (!getRuntimeConfig(runtimeId)) {
     return {
       ok: false,
       runtimeId,
@@ -849,7 +864,7 @@ export function validate(runtimeId, rootPath = process.cwd()) {
   return { ok: missing.length === 0, runtimeId, rootPath: resolvedRoot, missing, notes, path_map };
 }
 
-export function validateAll(ids, rootPath = process.cwd()) {
+export function validateAll(ids = listRuntimes().map((runtime) => runtime.id), rootPath = process.cwd()) {
   return Object.fromEntries(ids.map((id) => [id, validate(id, rootPath)]));
 }
 
@@ -857,11 +872,15 @@ export function validateAll(ids, rootPath = process.cwd()) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
-    console.error(`usage: node contract.js <runtimeId> [rootPath]\n       node contract.js --list\nknown runtimes: ${Object.keys(RUNTIMES).join(", ")}`);
+    console.error(`usage: node contract.js <runtimeId> [rootPath]\n       node contract.js --list\nknown runtimes: ${[...Object.keys(RUNTIMES), ...Object.keys(LEGACY_RUNTIMES)].join(", ")}`);
     process.exit(2);
   }
   if (args[0] === "--list") {
-    console.log(JSON.stringify({ runtimes: Object.keys(RUNTIMES), requirements: REQUIREMENT_IDS }, null, 2));
+    console.log(JSON.stringify({
+      runtimes: [...Object.keys(RUNTIMES), ...Object.keys(LEGACY_RUNTIMES)],
+      participants: listRuntimes().map((runtime) => runtime.id),
+      requirements: REQUIREMENT_IDS,
+    }, null, 2));
     process.exit(0);
   }
   const [runtimeId, rootArg] = args;

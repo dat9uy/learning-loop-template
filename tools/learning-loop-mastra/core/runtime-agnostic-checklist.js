@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
-import { SURFACES } from "./surfaces.js";
+import { PARTICIPANT_SURFACES, SURFACES } from "./surfaces.js";
 
 const UNIVERSAL_DIRS = [
   "tools/learning-loop-mastra/core",
@@ -9,16 +9,17 @@ const UNIVERSAL_DIRS = [
   "tools/learning-loop-mastra/tools/handlers",
 ];
 
-// Surface coordination/hooks dirs, derived from SURFACES so a new runtime is
-// picked up automatically (single source of truth).
+// Shim parity still scans the legacy storage view while the runtime-owned
+// adapters migrate. The surface names used by the shared static checks are
+// the union of that compatibility view and the Runtime Topology catalog.
 const SHIM_DIRS = SURFACES.map((surface) => `${surface}/coordination/hooks`);
 
-// Surface-name regex fragments derived from SURFACES. Surface names start with
+// Surface-name regex fragments derived from Runtime Topology. Surface names start with
 // ".", a regex metachar, so the alternation matches the leading dot literally
-// via `\.(...)`. Deriving these from SURFACES (instead of hand-rolled
+// via `\.(...)`. Deriving these from PARTICIPANT_SURFACES (instead of hand-rolled
 // `\.claude|\.factory` literals) means the auditors cover every runtime surface
 // — a file hard-coding `.mastracode` (or any future surface) paths is caught.
-const SURFACE_NAMES = SURFACES.map((s) => s.slice(1)); // ["claude","factory","mastracode"]
+const SURFACE_NAMES = [...new Set([...PARTICIPANT_SURFACES, ...SURFACES])].map((s) => s.slice(1));
 const SURFACE_ALT = SURFACE_NAMES.join("|");
 const HAND_CODED_SURFACE_PATH = new RegExp(`join\\s*\\(\\s*root\\s*,\\s*"\\.(${SURFACE_ALT})"`);
 const TOUCHES_SURFACES = new RegExp(`\\.(${SURFACE_ALT})|coordination`);

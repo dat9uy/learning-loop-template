@@ -18,10 +18,11 @@ import { tmpdir } from "node:os";
 import {
   evaluateProtectedShellWritePolicy,
   PATH_WRITE_PATTERNS,
+  PROTECTED_SURFACES,
   DECISION_LOG_WRITE_PATTERNS,
   DECISION_LOG_WRITE_REASON,
 } from "./protected-shell-writes.js";
-import { SURFACES } from "./surfaces.js";
+import { PARTICIPANT_SURFACES, SURFACES } from "./surfaces.js";
 
 function makeRoot() {
   return mkdtempSync(join(tmpdir(), "protected-shell-writes-test-"));
@@ -72,6 +73,17 @@ test("preflight-marker write for every surface → block candidate", () => {
     assert.ok(result, `redirect to ${surface} preflight marker should block`);
     assert.strictEqual(result.decision, "block");
   });
+});
+
+test("Runtime Topology participant surfaces include Codex protected paths", () => {
+  assert.ok(PARTICIPANT_SURFACES.includes(".codex"));
+  const root = makeRoot();
+  const result = evaluateProtectedShellWritePolicy({
+    command: "echo x >> .codex/coordination/.gate-decision.log",
+    root,
+  });
+  assert.ok(result, "catalogued participant decision-log writes must be blocked");
+  assert.strictEqual(result.reason, DECISION_LOG_WRITE_REASON);
 });
 
 test("quote-concatenation split (rec''ords/) still detected", () => {
@@ -191,8 +203,8 @@ test("decision-log cp into any surface → dedicated reason", () => {
 
 // ── exported pattern constants (sole-owner read recipe) ──
 
-test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 4/surface decision-log + 8 state files)", () => {
-  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 4 * SURFACES.length + 8);
+test("PATH_WRITE_PATTERNS count scales with known topology and compatibility surfaces", () => {
+  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * PROTECTED_SURFACES.length + 4 * PROTECTED_SURFACES.length + 8);
   for (const p of PATH_WRITE_PATTERNS) assert.ok(p instanceof RegExp);
 });
 
