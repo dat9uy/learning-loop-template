@@ -134,6 +134,16 @@ test("read Rule index keeps the canonical registry read fail-open for malformed 
   assert.equal(index.diagnostics[0].line, 2);
 });
 
+test("read Rule index reports an operational registry-read failure instead of a clean empty index", () => {
+  const root = mkdtempSync(join(tmpdir(), "rule-index-read-failure-"));
+  mkdirSync(join(root, "meta-state.jsonl"));
+
+  const index = readRuleIndex(root);
+
+  assert.deepEqual(index.i2, []);
+  assert.equal(index.diagnostics[0].code, "registry_read_failed");
+});
+
 test("read Rule index rechecks cached I3 grounding when evidence disappears", () => {
   const root = mkdtempSync(join(tmpdir(), "rule-index-cache-grounding-"));
   mkdirSync(join(root, "src"));

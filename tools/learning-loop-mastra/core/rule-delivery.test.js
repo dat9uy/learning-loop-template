@@ -4,16 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "vitest";
 import { buildProcessView, resolveHintText } from "./hint-registry.js";
+import { DeliveryRequestError, deliverI2Rules } from "./rule-delivery.js";
+import { buildLegacyHintEnvelope } from "./rule-delivery-compat.js";
 import {
   DELIVERY_EVIDENCE_REF,
   DELIVERY_FAILURE_EVENT,
   DELIVERY_PRODUCER,
-  DeliveryRequestError,
-  buildDeliveryFailureEntry,
-  buildLegacyHintEnvelope,
-  deliverI2Rules,
-  deliverRulesAtStartup,
-} from "./rule-delivery.js";
+} from "./rule-delivery-logging.js";
+import { deliverRulesAtStartup } from "./rule-delivery-startup.js";
 
 function makeRule(overrides = {}) {
   return {
@@ -209,15 +207,16 @@ test("compatibility adapter preserves legacy identity, content, and observed ord
   // content: legacy hint_text when present
   assert.equal(envelope.hints[0].text, "Legacy hint_text content for the compatibility envelope.");
   // kind/tier/shape parity with the legacy rule-derived process view
-  assert.ok(envelope.hints.every((hint) => hint.kind === "process" && hint.tier === "startup"));
+  assert.ok(envelope.hints.every((hint) => hint.kind === "process" && (hint.tier ?? "startup") === "startup"));
 });
 
-test("compatibility adapter falls back to the authoritative description when hint_text is absent", () => {
+test("compatibility adapter preserves legacy drop semantics when hint_text is absent", () => {
   const envelope = buildLegacyHintEnvelope({
     i2Rules: [makeRule({ id: "rule-no-hint-text", description: "Authoritative description used as envelope content." })],
   });
-  assert.equal(envelope.status, "complete");
-  assert.equal(envelope.hints[0].text, "Authoritative description used as envelope content.");
+  assert.equal(envelope.status, "degraded");
+  assert.deepEqual(envelope.hints, []);
+  assert.ok(envelope.errors.some((error) => error.code === "missing_hint_text"));
 });
 
 test("compatibility adapter skips slug collisions first-wins with a warning", () => {
@@ -235,12 +234,22 @@ test("compatibility adapter skips slug collisions first-wins with a warning", ()
 test("compatibility adapter never reports an empty envelope as successful", () => {
   const envelope = buildLegacyHintEnvelope({ i2Rules: [] });
   assert.equal(envelope.status, "degraded");
-  assert.deepEqual(envelope.errors.map((error) => error.code), ["no_deliverable_rules"]);
+  assert.deepEqual(envelope.errors.map((error) => error.code), ["no_deliverable_hints"]);
 });
 
 test("compatibility adapter rejects malformed requests explicitly", () => {
   assert.throws(() => buildLegacyHintEnvelope({ i2Rules: null }), DeliveryRequestError);
   assert.throws(() => buildLegacyHintEnvelope({ i2Rules: [], charBudget: "10k" }), DeliveryRequestError);
+});
+
+test("delivery rejects an active I2 Rule without an id instead of fabricating provenance", () => {
+  const result = deliverI2Rules({
+    i2Rules: [makeRule({ id: undefined })],
+  });
+  assert.equal(result.status, "degraded");
+  assert.deepEqual(result.rules, []);
+  assert.deepEqual(result.errors.map(({ code }) => code), ["invalid_rule", "no_deliverable_rules"]);
+  assert.deepEqual(result.provenance, []);
 });
 
 // ─── differential: Rule Delivery + adapter vs the old hint path ─────────────
@@ -256,7 +265,7 @@ test("differential: adapter envelopes match the legacy rule-derived process view
 
   // Old hint path: buildProcessView derived rows + shared resolveHintText.
   const legacyDerived = buildProcessView({ rulesById })
-    .filter((entry) => entry.derived_from_rule != null)
+    .filter((entry) => (entry.tier ?? "startup") === "startup")
     .map((entry) => ({
       slug: entry.slug,
       text: resolveHintText(entry, rulesById),
@@ -302,10 +311,10 @@ test("differential: dedup, degradation, and provenance match the legacy rule-der
   ];
   const rulesById = new Map(i2Rules.map((rule) => [rule.id, rule]));
 
-  // Old hint path: buildProcessView derived rows, deduped (first-wins slug),
+  // Old hint path: startup-tier buildProcessView derived rows, deduped (first-wins slug),
   // with unrenderable rows dropped via resolveHintText.
   const legacyDerived = buildProcessView({ rulesById })
-    .filter((entry) => entry.derived_from_rule != null)
+    .filter((entry) => (entry.tier ?? "startup") === "startup")
     .map((entry) => ({ slug: entry.slug, text: resolveHintText(entry, rulesById), order: entry.order }))
     .filter((entry) => entry.text !== null);
 
@@ -320,7 +329,7 @@ test("differential: dedup, degradation, and provenance match the legacy rule-der
   );
   assert.ok(envelope.warnings.some((warning) => warning.includes('"shared"') && warning.includes("collides")));
   assert.equal(envelope.status, "degraded", "a dropped Rule must degrade the envelope");
-  assert.ok(envelope.errors.some((error) => error.code === "missing_description" && error.rule_id === "rule-bad"));
+  assert.ok(envelope.errors.some((error) => error.code === "missing_hint_text" && error.rule_id === "rule-bad"));
 
   // Provenance parity: one provenance row per surviving slug, source = rule id.
   assert.deepEqual(
@@ -333,38 +342,6 @@ test("differential: dedup, degradation, and provenance match the legacy rule-der
     legacyDerived.map((entry) => entry.slug),
     "provenance slugs must mirror the legacy surviving set",
   );
-});
-
-// ─── delivery-failure decision-log rows ─────────────────────────────────────
-
-test("buildDeliveryFailureEntry uses the distinct producer and event type", () => {
-  const entry = buildDeliveryFailureEntry({
-    ruleId: "rule-alpha",
-    errorCode: "missing_description",
-    message: "Rule rule-alpha lacks an authoritative description",
-    sessionId: "11111111-2222-3333-4444-555555555555",
-    sessionTier: "real",
-  });
-
-  assert.equal(entry.event_source, DELIVERY_PRODUCER);
-  assert.equal(entry.event, DELIVERY_FAILURE_EVENT);
-  assert.equal(entry.decision, DELIVERY_FAILURE_EVENT);
-  assert.equal(entry.command_prefix, "delivery:missing_description");
-  assert.equal(entry.rule_id, "rule-alpha");
-  assert.equal(entry.reason, "Rule rule-alpha lacks an authoritative description");
-  assert.equal(entry.matched_pattern, "i2-rule-delivery");
-  assert.equal(entry.error_code, "missing_description");
-  // A delivery failure is never shaped as a gate decision or an
-  // unexpected-match event.
-  assert.notEqual(entry.candidate_kind, "unexpected-match");
-  assert.notEqual(entry.match_origin, "inert-data");
-  assert.notEqual(entry.event_source, "bash-gate-evaluator");
-});
-
-test("buildDeliveryFailureEntry defaults rule_id to the producer when no Rule failed", () => {
-  const entry = buildDeliveryFailureEntry({ errorCode: "no_deliverable_rules" });
-  assert.equal(entry.rule_id, DELIVERY_PRODUCER);
-  assert.equal(entry.session_id, null);
 });
 
 // ─── startup seam: fail-open + decision-log logging ─────────────────────────

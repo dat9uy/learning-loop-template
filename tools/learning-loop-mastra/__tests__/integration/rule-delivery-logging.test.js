@@ -7,11 +7,11 @@ import { tmpdir } from "node:os";
 import {
   DELIVERY_FAILURE_EVENT,
   DELIVERY_PRODUCER,
-  buildDeliveryFailureEntry,
-  deliverRulesAtStartup,
-} from "../../core/rule-delivery.js";
-import { appendDecisionLog, readDecisionLog } from "../../core/gate-decision-log.js";
+  logDeliveryFailure,
+} from "../../core/rule-delivery-logging.js";
+import { readDecisionLog } from "../../core/gate-decision-log.js";
 import { checkAndEmit, findRecurrentGroups } from "../../core/recurrence-tracker.js";
+import { deliverRulesAtStartup } from "../../core/rule-delivery-startup.js";
 import { SURFACES } from "../../core/surfaces.js";
 
 let root;
@@ -38,7 +38,17 @@ function writeDecisionLog(entries, surfaces = SURFACES) {
 
 function deliveryFailure({ ts, ruleId, errorCode, sessionId, sessionTier = "real", message = "" } = {}) {
   return {
-    ...buildDeliveryFailureEntry({ ruleId, errorCode, message, sessionId, sessionTier }),
+    command_prefix: `delivery:${errorCode}`,
+    rule_id: ruleId ?? DELIVERY_PRODUCER,
+    decision: DELIVERY_FAILURE_EVENT,
+    reason: message,
+    matched_pattern: "i2-rule-delivery",
+    skipped_via_override: false,
+    session_id: sessionId ?? null,
+    session_id_tier: sessionTier,
+    event_source: DELIVERY_PRODUCER,
+    event: DELIVERY_FAILURE_EVENT,
+    error_code: errorCode,
     ...(ts ? { ts } : {}),
   };
 }
@@ -48,13 +58,13 @@ const SID = "11111111-2222-3333-4444-555555555555";
 // ─── shared decision-log seam ───────────────────────────────────────────────
 
 await test("delivery failures append through the shared decision log with a distinct producer + event type", () => {
-  appendDecisionLog(root, buildDeliveryFailureEntry({
+  logDeliveryFailure(root, {
     ruleId: "rule-alpha",
     errorCode: "missing_description",
     message: "Rule rule-alpha lacks an authoritative description",
     sessionId: SID,
     sessionTier: "real",
-  }));
+  });
 
   const entries = readDecisionLog(root);
   assert.equal(entries.length, 1);
@@ -142,6 +152,29 @@ await test("findRecurrentGroups never collapses delivery failures with unexpecte
   assert.equal(gateGroups.length, 1, "unexpected-match events form their own group");
   assert.ok(deliveryGroups[0].delivery_failure === true, "delivery group must carry the delivery_failure marker");
   assert.ok(gateGroups[0].delivery_failure !== true, "unexpected-match group must not carry the delivery_failure marker");
+});
+
+await test("findRecurrentGroups keeps delivery producer identity separate from same-shaped gate events", () => {
+  const now = Date.now();
+  const deliveryRows = [
+    deliveryFailure({ ts: new Date(now - 5 * 60000), ruleId: "rule-alpha", errorCode: "missing_description", sessionId: SID }),
+    deliveryFailure({ ts: new Date(now - 4 * 60000), ruleId: "rule-alpha", errorCode: "missing_description", sessionId: SID }),
+    deliveryFailure({ ts: new Date(now - 3 * 60000), ruleId: "rule-alpha", errorCode: "missing_description", sessionId: SID }),
+  ];
+  const gateRows = deliveryRows.map((entry) => ({
+    ...entry,
+    decision: "ok",
+    event_source: "bash-gate-evaluator",
+    event: "unexpected-match",
+    candidate_kind: "unexpected-match",
+    match_origin: "inert-data",
+  }));
+  writeDecisionLog([...deliveryRows, ...gateRows]);
+
+  const groups = findRecurrentGroups(root);
+  assert.equal(groups.length, 2, "producer identity must be part of recurrence grouping");
+  assert.equal(groups.filter((group) => group.delivery_failure === true).length, 1);
+  assert.equal(groups.filter((group) => group.delivery_failure !== true).length, 1);
 });
 
 await test("findRecurrentGroups requires the delivery producer+event pair (wrong producer is telemetry-only)", () => {

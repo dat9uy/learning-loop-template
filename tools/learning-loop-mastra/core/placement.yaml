@@ -25,7 +25,16 @@ files:
     summary: Compiles the canonical active Rule registry into validated I2/I3 projections with I3 evidence grounding diagnostics.
   - path: rule-delivery.js
     role: facade
-    summary: Delivers every latest active I2 Rule from the compiled projection (Rule-id order, partition budgets, provenance, typed complete|degraded results), logs delivery failures through the shared decision log under a distinct producer+event pair, and provides the one-way legacy Hint envelope/ordering compatibility adapter for remaining Hint callers.
+    summary: Pure native I2 Rule delivery (Rule-id order, partition budgets, provenance, and typed complete|degraded results).
+  - path: rule-delivery-compat.js
+    role: facade
+    summary: One-way legacy startup process-Hint compatibility adapter backed by the canonical Hint registry.
+  - path: rule-delivery-logging.js
+    role: facade
+    summary: Shared Rule Delivery failure decision-log producer, event, row builder, and fail-open writer.
+  - path: rule-delivery-startup.js
+    role: facade
+    summary: Fail-open startup orchestration that reads the compiled Rule index, invokes native delivery, and logs every delivery failure.
   - path: gate-override.js
     role: facade
     summary: Reads/validates .gate-override markers with TTL expiry.

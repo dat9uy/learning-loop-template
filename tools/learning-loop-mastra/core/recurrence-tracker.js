@@ -3,7 +3,11 @@ import { readRegistry, writeEntryIfAbsent } from "./meta-state.js";
 import { readJsonlFromAllSurfaces } from "./surfaces.js";
 import { normalizePrefixForKey } from "./command-recurrence.js";
 import { interpretCommand, requestRecurrenceKey } from "./command-interpretation.js";
-import { DELIVERY_EVIDENCE_REF, DELIVERY_FAILURE_EVENT, DELIVERY_PRODUCER } from "./rule-delivery.js";
+import {
+  DELIVERY_EVIDENCE_REF,
+  DELIVERY_FAILURE_EVENT,
+  DELIVERY_PRODUCER,
+} from "./rule-delivery-logging.js";
 
 const RECURRENCE_THRESHOLD_N = 3;
 const FALLBACK_TIER_SPAN_MS = 24 * 60 * 60 * 1000;
@@ -54,7 +58,14 @@ function isDeliveryFailureCandidate(entry) {
   return (
     entry?.event_source === DELIVERY_EVENT_SOURCE
     && entry?.event === DELIVERY_EVENT_TYPE
+    && typeof entry?.error_code === "string"
+    && entry.error_code.length > 0
   );
+}
+
+function recurrenceProducerScope(entry) {
+  if (!isDeliveryFailureCandidate(entry)) return "legacy";
+  return `${entry.event_source}::${entry.event}::${entry.error_code}`;
 }
 
 /**
@@ -229,19 +240,7 @@ export function findRecurrentGroups(root, options = {}) {
   /** @type {Map<string, { rule_id: string, command_prefix_normalized: string, session_id: string, entries: Array }>} */
   const groups = new Map();
   for (const entry of allEntries) {
-    if (!isRecurrenceGroupableEntry(entry)) continue;
-    const sid = entry.session_id ?? "no-session";
-    // Clean cutover: never fire on no-session entries (historical backlog).
-    if (sid === "no-session") continue;
-    // Key normalization is the COARSER tracker-side pass (blankDataPayloadsForKey
-    // first, then the shared normalizePrefix pipeline), so all payload variants
-    // of one root-cause class under one rule hash to a single recurrence_key.
-    const normalized = normalizePrefixForKey(entry.command_prefix);
-    const key = `${entry.rule_id}::${normalized}::${sid}`;
-    if (!groups.has(key)) {
-      groups.set(key, { rule_id: entry.rule_id, command_prefix_normalized: normalized, session_id: sid, entries: [] });
-    }
-    groups.get(key).entries.push(entry);
+    addSessionEntry(groups, entry);
   }
 
   const recurrent = [];
@@ -253,6 +252,9 @@ export function findRecurrentGroups(root, options = {}) {
       rule_id: group.rule_id,
       command_prefix_normalized: group.command_prefix_normalized,
       session_id: group.session_id,
+      producer: group.producer,
+      event: group.event,
+      error_code: group.error_code,
       count: entries.length,
       first_ts: entries[0].ts,
       last_ts: entries[entries.length - 1].ts,
@@ -270,6 +272,28 @@ export function findRecurrentGroups(root, options = {}) {
   recurrent.push(...findCrossSessionGroups(allEntries, recurrent));
 
   return recurrent;
+}
+
+function addSessionEntry(groups, entry) {
+  if (!isRecurrenceGroupableEntry(entry)) return;
+  const sessionId = entry.session_id;
+  if (!sessionId) return;
+  const normalized = normalizePrefixForKey(entry.command_prefix);
+  const key = `${recurrenceProducerScope(entry)}::${entry.rule_id}::${normalized}::${sessionId}`;
+  let group = groups.get(key);
+  if (!group) {
+    group = {
+      rule_id: entry.rule_id,
+      command_prefix_normalized: normalized,
+      session_id: sessionId,
+      producer: entry.event_source ?? null,
+      event: entry.event ?? null,
+      error_code: entry.error_code ?? null,
+      entries: [],
+    };
+    groups.set(key, group);
+  }
+  group.entries.push(entry);
 }
 
 /**
@@ -340,22 +364,31 @@ function groupCrossSessionEntries(allEntries, windowStart) {
   /** @type {Map<string, { rule_id: string, command_prefix_normalized: string, entries: Array, realSessions: Set<string> }>} */
   const crossGroups = new Map();
   for (const entry of allEntries) {
-    if (!entry.rule_id) continue;
-    const tsMs = new Date(entry.ts).getTime();
-    if (!Number.isFinite(tsMs) || tsMs < windowStart) continue;
-    const sid = entry.session_id ?? "no-session";
-    if (sid === "no-session") continue;
-    const normalized = normalizePrefixForKey(entry.command_prefix);
-    const key = `${entry.rule_id}::${normalized}`;
-    let cg = crossGroups.get(key);
-    if (!cg) {
-      cg = { rule_id: entry.rule_id, command_prefix_normalized: normalized, entries: [], realSessions: new Set() };
-      crossGroups.set(key, cg);
-    }
-    cg.entries.push(entry);
-    if (entry.session_id_tier === "real") cg.realSessions.add(sid);
+    addCrossSessionEntry(crossGroups, entry, windowStart);
   }
   return crossGroups;
+}
+
+function addCrossSessionEntry(crossGroups, entry, windowStart) {
+  const timestamp = new Date(entry.ts).getTime();
+  if (!entry.rule_id || !entry.session_id || !Number.isFinite(timestamp) || timestamp < windowStart) return;
+  const normalized = normalizePrefixForKey(entry.command_prefix);
+  const key = `${recurrenceProducerScope(entry)}::${entry.rule_id}::${normalized}`;
+  let group = crossGroups.get(key);
+  if (!group) {
+    group = {
+      rule_id: entry.rule_id,
+      command_prefix_normalized: normalized,
+      producer: entry.event_source ?? null,
+      event: entry.event ?? null,
+      error_code: entry.error_code ?? null,
+      entries: [],
+      realSessions: new Set(),
+    };
+    crossGroups.set(key, group);
+  }
+  group.entries.push(entry);
+  if (entry.session_id_tier === "real") group.realSessions.add(entry.session_id);
 }
 
 /**
@@ -379,6 +412,9 @@ function emitCrossSessionGroups(crossGroups, firedKeys) {
       rule_id: cg.rule_id,
       command_prefix_normalized: cg.command_prefix_normalized,
       session_id: latestRealSessionId(cg.entries),
+      producer: cg.producer,
+      event: cg.event,
+      error_code: cg.error_code,
       count: cg.entries.length,
       first_ts: cg.entries[0].ts,
       last_ts: cg.entries[cg.entries.length - 1].ts,
@@ -423,10 +459,12 @@ function generateFindingId(ruleId) {
 }
 
 function recurrenceKeyFor(group) {
-  return requestRecurrenceKey(
+  const base = requestRecurrenceKey(
     interpretCommand(group.command_prefix_normalized),
     group.rule_id,
   );
+  if (group.producer !== DELIVERY_EVENT_SOURCE) return base;
+  return `${base}::${group.producer}::${group.event}::${group.error_code}`;
 }
 
 /**

@@ -397,7 +397,14 @@ function formatSessionSummary(core, stale_dispatch_hints, change_log_gap_hints, 
 // error fields are added.
 const orNull = (v) => v ?? null;
 
-function buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, injectedAt) {
+function buildContextPayload(
+  core,
+  registry,
+  stale_dispatch_hints,
+  change_log_gap_hints,
+  injectedAt,
+  i2_rule_delivery = null,
+) {
   return {
     discoverability_hints: core.discoverability_hints,
     discoverability_hints_source: core.discoverability_hints_source,
@@ -412,6 +419,15 @@ function buildContextPayload(core, registry, stale_dispatch_hints, change_log_ga
     registry_error: orNull(registry.registry_error),
     stale_dispatch_hints,
     change_log_gap_hints,
+    i2_rule_delivery: i2_rule_delivery ?? {
+      status: "unavailable",
+      channel: "native",
+      rules: [],
+      partitions: [],
+      provenance: [],
+      errors: [{ code: "delivery_not_run", message: "native I2 Rule Delivery did not run" }],
+      warnings: [],
+    },
     injected_at: injectedAt,
   };
 }
@@ -430,7 +446,7 @@ function buildContextPayload(core, registry, stale_dispatch_hints, change_log_ga
 function runStartupDeliveryCheck(root) {
   try {
     const { getSessionId } = require("../../core/worktree-session-id.js");
-    const { deliverRulesAtStartup } = require("../../core/rule-delivery.js");
+    const { deliverRulesAtStartup } = require("../../core/rule-delivery-startup.js");
     const result = deliverRulesAtStartup({
       root,
       sessionId: getSessionId(root),
@@ -445,6 +461,14 @@ function runStartupDeliveryCheck(root) {
     return result;
   } catch (err) {
     console.error(`[session-start] i2 rule delivery check failed (fail-open): ${err?.message ?? String(err)}`);
+    try {
+      const { logDeliveryFailure } = require("../../core/rule-delivery-logging.js");
+      logDeliveryFailure(root, {
+        ruleId: null,
+        errorCode: "startup_hook_failed",
+        message: err?.message ?? String(err),
+      });
+    } catch { /* the outer hook remains fail-open even if logging is unavailable */ }
     return { status: "degraded", errors: [{ code: "startup_check_failed", message: String(err?.message ?? err) }] };
   }
 }
@@ -470,13 +494,20 @@ async function main() {
   const stale_dispatch_hints = loadStaleDispatchHints(registry.entries, dispatchIds, projectRoot);
   const change_log_gap_hints = loadChangeLogGapHints(projectRoot, registry.entries);
 
-  // 3b. Native I2 Rule Delivery check (additive + fail-open): delivers the
-  // compiled I2 projection and logs delivery failures through the shared
-  // decision log. Does NOT change the injected hint surface — the legacy
-  // hint loaders above remain the wire contract for remaining callers.
-  runStartupDeliveryCheck(projectRoot);
+  // 3b. Native I2 Rule Delivery check (additive + fail-open): the full typed
+  // result is persisted in the sidecar. The companion process-hints hook
+  // emits its partitions to the agent, while this hook keeps the existing
+  // discoverability wire unchanged.
+  const i2_rule_delivery = runStartupDeliveryCheck(projectRoot);
 
-  const contextPath = writeContext(projectRoot, buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, new Date().toISOString()));
+  const contextPath = writeContext(projectRoot, buildContextPayload(
+    core,
+    registry,
+    stale_dispatch_hints,
+    change_log_gap_hints,
+    new Date().toISOString(),
+    i2_rule_delivery,
+  ));
 
   // Inline delivery leg: surface discoverability hints to the agent as a
   // SessionStart system-reminder. process hints are injected by the companion
@@ -538,6 +569,15 @@ if (require.main === module) {
       registry_error: err.message,
       stale_dispatch_hints: EMPTY_STALE_DISPATCH,
       change_log_gap_hints: EMPTY_CHANGE_LOG_GAP,
+      i2_rule_delivery: {
+        status: "degraded",
+        channel: "native",
+        rules: [],
+        partitions: [],
+        provenance: [],
+        errors: [{ code: "fatal", message: err.message }],
+        warnings: [],
+      },
       injected_at: new Date().toISOString(),
     });
   } catch { /* ignore */ }
