@@ -1,0 +1,17 @@
+{
+  "description": "Codex Initial Delivery for active I2 Rules.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .codex/hooks/session-start-i2-delivery.cjs",
+            "timeout": 10,
+            "statusMessage": "Delivering active I2 Rules"
+          }
+        ]
+      }
+    ]
+  }
+}

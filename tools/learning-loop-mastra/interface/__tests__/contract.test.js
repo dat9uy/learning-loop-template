@@ -145,7 +145,7 @@ test("contract.js exports validate as named export", () => {
 
 test("contract.js exposes REQUIREMENT_IDS constant", () => {
   assert.ok(Array.isArray(REQUIREMENT_IDS));
-  assert.equal(REQUIREMENT_IDS.length, 10);
+  assert.equal(REQUIREMENT_IDS.length, 11);
   assert.deepEqual(REQUIREMENT_IDS, [
     "hook-shim-set",
     "mcp-client-config",
@@ -157,6 +157,7 @@ test("contract.js exposes REQUIREMENT_IDS constant", () => {
     ".mastracode-config-presence",
     "mastracode-session-start-pins-loop-surface",
     "tools-manifest-has-path-fields",
+    "codex-initial-delivery",
   ]);
 });
 
@@ -167,7 +168,7 @@ test("contract.js runs as CLI (--list)", () => {
   assert.ok(parsed.runtimes.includes("claude-code"));
   assert.ok(parsed.runtimes.includes("droid"));
   assert.ok(parsed.runtimes.includes("mastra-code"));
-  assert.equal(parsed.requirements.length, 10);
+  assert.equal(parsed.requirements.length, 11);
 });
 
 test("contract.js runs as CLI with a runtime id", () => {
@@ -180,6 +181,27 @@ test("contract.js runs as CLI with a runtime id", () => {
 test("validateAll defaults to the Runtime Topology participant set", () => {
   const results = validateAll(undefined, PROJECT_ROOT);
   assert.deepEqual(Object.keys(results), ["codex", "claude-code", "hermes"]);
+});
+
+test("Codex MCP configuration requires the .codex LOOP_SURFACE identity", () => {
+  const root = mkdtempSync(join(tmpdir(), "codex-contract-surface-"));
+  try {
+    mkdirSync(join(root, ".codex"), { recursive: true });
+    writeFileSync(join(root, ".codex", "config.toml"), [
+      "[mcp_servers.learning-loop]",
+      'command = "node"',
+      'args = ["tools/learning-loop-mastra/mastra/server.js"]',
+      "",
+      "[mcp_servers.learning-loop.env]",
+      'RUNTIME_ID = "codex"',
+      'LOOP_SURFACE = ".wrong"',
+    ].join("\n"));
+    const result = validate("codex", root);
+    assert.equal(result.path_map["mcp-client-config"].ok, false);
+    assert.equal(result.path_map["mcp-client-config"].entry.loop_surface_configured, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 // --- Group 2: pass mode (against real runtimes, 2 tests) ---

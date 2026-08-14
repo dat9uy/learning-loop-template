@@ -8,7 +8,7 @@ Before this layer existed, the contract was implicit in code: the 4 hook shims i
 
 The `interface/` directory makes the MCP-transport contract explicit:
 - **README.md** (this file) — what this directory IS and why it exists.
-- **CONTRACT.md** — the MCP-transport conformance checklist (the 10 mechanism checks that prove the 4 concept capabilities are wired).
+- **CONTRACT.md** — the MCP-transport conformance checklist (the 11 mechanism checks that prove the 4 concept capabilities are wired).
 - **contract.js** — the validator. Run as `node tools/learning-loop-mastra/interface/contract.js <runtime-id>`.
 - **RUNTIME_ONBOARDING.md** — step-by-step guide for adding a new runtime on the MCP transport (worked example: Mastra Code).
 
@@ -32,9 +32,9 @@ The `interface/` directory makes the MCP-transport contract explicit:
 - **Mastra shell** wraps Core in Mastra framework primitives (`server.js`, `create-loop-*.js`, `workflows/`, `agents/`).
 - **Runtime interface** (this directory) is the contract runtimes sign to consume the shell. It is NOT core (it mentions MCP, hooks, skill specs — none of which are pure logic) and NOT shell (the shell is the implementation, not the spec).
 
-## The 10 MCP-transport checks (at a glance)
+## The 11 MCP-transport checks (at a glance)
 
-The 4 transport-agnostic capabilities live in `docs/runtime-contract.md`; the 10 mechanism checks below are how the MCP transport proves them. See `CONTRACT.md` for full predicates and verification steps.
+The 4 transport-agnostic capabilities live in `docs/runtime-contract.md`; the 11 mechanism checks below are how the MCP transport proves them. See `CONTRACT.md` for full predicates and verification steps.
 
 | ID | Capability | Pass criteria |
 |----|-----------|---------------|
@@ -48,6 +48,7 @@ The 4 transport-agnostic capabilities live in `docs/runtime-contract.md`; the 10
 | `.mastracode-config-presence` | Identity + discoverability | `.mastracode/` has all 4 config files (Mastra Code) |
 | `mastracode-session-start-pins-loop-surface` | Identity + discoverability | `mcp.json` sets `env.LOOP_SURFACE` on the learning-loop entry (Mastra Code) |
 | `tools-manifest-has-path-fields` | Record routing | Every `tools/manifest.json` entry declares `pathFields: string[]` (all runtimes) |
+| `codex-initial-delivery` | Identity + discoverability | Codex has a synchronous SessionStart adapter that emits native context |
 
 ## How to use this layer
 

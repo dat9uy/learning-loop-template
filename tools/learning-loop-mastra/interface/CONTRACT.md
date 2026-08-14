@@ -6,7 +6,7 @@ The transport-agnostic runtime participation contract lives at `docs/runtime-con
 
 ## The 4 runtime capabilities (concept)
 
-These are the transport-agnostic capabilities from `docs/runtime-contract.md`. The 10 mechanism checks below each derive from one of them.
+These are the transport-agnostic capabilities from `docs/runtime-contract.md`. The mechanism checks below each derive from one of them.
 
 1. **Capability surface** — expose the loop's deterministic-steps and agentic-steps to its agent. *(MCP transport: the server registered in `mcpServers.learning-loop`; the SKILL.md that surfaces the tools. → Req #2, #3)*
 2. **Gate enforcement** — route lifecycle events (pre-tool, pre-write, pre-prompt, session-start) into the loop's gate evaluation. *(MCP transport: hook shims or declarative hooks delegating to the universal gate scripts. → Req #1, #5, #6, #7)*
@@ -94,6 +94,10 @@ The runtime's MCP config (`<surface>/mcp.json`) MUST set `env.LOOP_SURFACE` on t
 ### 11. `tools-manifest-has-path-fields` (Plan 5-Lite Phase 3 — project-wide invariant)
 
 Every entry in `tools/learning-loop-mastra/tools/manifest.json` MUST declare `pathFields: string[]` (may be `[]`). This is the boot-time invariant enforced by `mastra/server.js#validateToolManifest` (Phase 1 R3); surfaced here as a contract requirement so a manifest regression fails loudly in the contract validator, not only at server boot. The manifest is JSONC (full-line `//` comments only); the validator strips comments before parsing. **Pass:** every entry has a `pathFields` array. **Fail:** any entry missing `pathFields` OR `pathFields` is not an array. **Applicability:** ALL runtimes (project-wide invariant).
+
+### 12. `codex-initial-delivery`
+
+Codex's adapter is configured independently from the generic gate-shim checks. `.codex/hooks.json` MUST register a synchronous `SessionStart` command handler for `.codex/hooks/session-start-i2-delivery.cjs`. The adapter translates that native event into Core's I2 Rule Delivery result and emits the complete compiled projection in the native `hookSpecificOutput.additionalContext` envelope; it deliberately declares no local context limit that could truncate a multi-partition projection. **Pass:** the hook config parses, names the command handler, the handler is synchronous, and the adapter file exists. **Fail:** missing or malformed wiring, an asynchronous handler, or a missing adapter. **Applicability:** Codex only. This Initial Delivery check does not certify the generic four lifecycle gate routes; those remain visible as unmet requirements until Codex adopts them.
 
 ## How to verify
 
